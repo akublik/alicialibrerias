@@ -1,6 +1,3 @@
-// src/app/(auth)/login/page.tsx
-import { LoginForm } from '@/components/auth/LoginForm';
-
-export default function LoginPage() {
-  return <LoginForm />;
-}
+// This page is temporarily disabled to help resolve routing conflicts.
+// THIS FILE SHOULD NOT BE TREATED AS AN ACTIVE PAGE.
+export default null;
