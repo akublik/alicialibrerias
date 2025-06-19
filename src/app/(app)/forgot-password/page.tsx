@@ -1,3 +1,2 @@
-// This page's functionality has been moved to /auth/forgot-password.
-// This file is modified to prevent routing conflicts by not exporting a React component.
+// This page's functionality has been moved or disabled to prevent routing conflicts.
 export default null;

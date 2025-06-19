@@ -128,9 +128,11 @@ export function LibraryLoginForm() {
         <Link href="/library-register" className="font-medium text-primary hover:underline">
           ¿No tienes una cuenta? Registra tu librería
         </Link>
+        {/* Link to forgot password removed
         <Link href="/library-forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
           ¿Olvidaste tu contraseña?
         </Link>
+        */}
       </CardFooter>
     </Card>
   );

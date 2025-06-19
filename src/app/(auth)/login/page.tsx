@@ -1,5 +1,2 @@
-import { LoginForm } from '@/components/auth/LoginForm';
-
-export default function LoginPage() {
-  return <LoginForm />;
-}
+// This page is temporarily disabled to help resolve a routing conflict.
+export default null;

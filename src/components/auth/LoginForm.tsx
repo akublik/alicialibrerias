@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -154,9 +155,11 @@ export function LoginForm() {
         <Link href="/register" className="font-medium text-primary hover:underline">
           ¿No tienes una cuenta? Regístrate
         </Link>
+        {/* Link to forgot password removed
         <Link href="/forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
           ¿Olvidaste tu contraseña?
         </Link>
+        */}
       </CardFooter>
     </Card>
   );
