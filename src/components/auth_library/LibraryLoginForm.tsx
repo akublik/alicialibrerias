@@ -128,10 +128,13 @@ export function LibraryLoginForm() {
         <Link href="/library-register" className="font-medium text-primary hover:underline">
           ¿No tienes una cuenta? Registra tu librería
         </Link>
-        {/* <Link href="/forgot-password-library" className="text-muted-foreground hover:text-primary hover:underline">
+        <Link href="/library-forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
           ¿Olvidaste tu contraseña?
-        </Link> */}
+        </Link>
       </CardFooter>
     </Card>
   );
 }
+
+// Placeholder for Loader2 if not already globally available or in a shared component
+// const Loader2 = ({ className }: { className?: string }) => ( /* ...SVG... */ );
