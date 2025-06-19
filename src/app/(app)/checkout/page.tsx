@@ -26,17 +26,16 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag, Store, PackageSearch } from "lucide-react";
-import { Label } from "@/components/ui/label"; // Import Label
+import { Label } from "@/components/ui/label";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
-// Ajustamos el esquema Zod: shippingMethod y paymentMethod ya no son parte del form de react-hook-form
 const checkoutFormSchema = z.object({
   // Buyer Info
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   buyerEmail: z.string().email({ message: "Por favor ingresa un email válido." }),
   buyerPhone: z.string().min(7, { message: "El teléfono debe tener al menos 7 dígitos." }),
-  // Shipping Info (conditionally required based on local state, not Zod for now)
+  // Shipping Info
   shippingAddress: z.string().optional(),
   shippingCity: z.string().optional(),
   shippingProvince: z.string().optional(),
@@ -45,9 +44,7 @@ const checkoutFormSchema = z.object({
   // Optional notes
   orderNotes: z.string().optional(),
 }).superRefine((data, ctx) => {
-  // La validación condicional de la dirección se hará fuera de Zod por ahora,
-  // o se podría pasar el estado local de shippingMethod a esta función si es necesario.
-  // Por simplicidad, la quitamos temporalmente de Zod.
+  // Conditional validation for shipping address will be handled outside Zod if shippingMethod is managed by local state
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -58,7 +55,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   
-  // Estado local para método de envío y pago
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
   
@@ -93,17 +89,40 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
+      // Trigger validation if needed, or ensure required fields for delivery are checked
+      if (form.formState.isSubmitted || form.getFieldState("shippingAddress").isDirty) {
+        form.trigger(["shippingAddress", "shippingCity", "shippingProvince", "shippingPostalCode", "shippingCountry"]);
+      }
     } else {
       setCurrentShippingCost(0);
+      // Clear errors for shipping fields if pickup is selected
+      form.clearErrors(["shippingAddress", "shippingCity", "shippingProvince", "shippingPostalCode", "shippingCountry"]);
     }
-  }, [selectedShippingMethod]);
+  }, [selectedShippingMethod, form]);
 
   const loyaltyPoints = Math.floor(totalPrice);
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (selectedShippingMethod === "delivery") {
+      if (!values.shippingAddress?.trim()) {
+        form.setError("shippingAddress", { type: "manual", message: "La dirección es requerida para envío a domicilio." });
+      }
+      if (!values.shippingCity?.trim()) {
+        form.setError("shippingCity", { type: "manual", message: "La ciudad es requerida para envío a domicilio." });
+      }
+      if (!values.shippingProvince?.trim()) {
+        form.setError("shippingProvince", { type: "manual", message: "La provincia es requerida para envío a domicilio." });
+      }
+       // Add more checks if needed
+      if (!values.shippingAddress?.trim() || !values.shippingCity?.trim() || !values.shippingProvince?.trim()) {
+        toast({ title: "Error de Validación", description: "Por favor completa la dirección de envío.", variant: "destructive" });
+        return;
+      }
+    }
+
+
     setIsLoading(true);
-    // Aquí, si quisieras usar selectedShippingMethod y selectedPaymentMethod, los leerías del estado local.
     console.log("Checkout form submitted:", values, "Selected Shipping:", selectedShippingMethod, "Selected Payment:", selectedPaymentMethod, "Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
     await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -134,7 +153,6 @@ export default function CheckoutPage() {
         </h1>
       </header>
 
-      {/* El Form de react-hook-form solo envuelve los campos que gestiona */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
@@ -149,7 +167,6 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
 
-            {/* Método de Envío - Usando estado local */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
@@ -157,7 +174,7 @@ export default function CheckoutPage() {
               <CardContent>
                 <RadioGroup
                   value={selectedShippingMethod}
-                  onValueChange={setSelectedShippingMethod}
+                  onValueChange={(value) => setSelectedShippingMethod(value)}
                   className="flex flex-col space-y-2"
                 >
                   <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
@@ -203,7 +220,6 @@ export default function CheckoutPage() {
               </Card>
             )}
 
-            {/* Método de Pago - Usando estado local */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center"><CreditCard className="mr-2 h-5 w-5 text-primary"/>Método de Pago</CardTitle>
@@ -211,7 +227,7 @@ export default function CheckoutPage() {
               <CardContent>
                  <RadioGroup
                   value={selectedPaymentMethod}
-                  onValueChange={setSelectedPaymentMethod}
+                  onValueChange={(value) => setSelectedPaymentMethod(value)}
                   className="flex flex-col space-y-2"
                 >
                   <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
@@ -278,7 +294,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between">
                     <span>Envío:</span>
                     <span className="font-medium">
-                      {selectedShippingMethod ? (currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis") : "Por calcular"}
+                      {currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis"}
                     </span>
                   </div>
                   <Separator />
@@ -290,7 +306,7 @@ export default function CheckoutPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading || !form.formState.isValid}>
+                <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading}>
                   {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                   Realizar Pedido
                 </Button>
@@ -302,5 +318,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
     
