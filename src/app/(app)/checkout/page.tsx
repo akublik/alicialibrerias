@@ -24,25 +24,49 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag } from "lucide-react";
+import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag, Store, PackageSearch } from "lucide-react";
+
+const SHIPPING_COST_DELIVERY = 3.50;
 
 const checkoutFormSchema = z.object({
   // Buyer Info
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   buyerEmail: z.string().email({ message: "Por favor ingresa un email válido." }),
   buyerPhone: z.string().min(7, { message: "El teléfono debe tener al menos 7 dígitos." }),
-  // Shipping Info
-  shippingAddress: z.string().min(5, { message: "La dirección debe tener al menos 5 caracteres." }),
-  shippingCity: z.string().min(3, { message: "La ciudad debe tener al menos 3 caracteres." }),
-  shippingProvince: z.string().min(3, { message: "La provincia debe tener al menos 3 caracteres." }),
-  shippingPostalCode: z.string().min(3, { message: "El código postal debe tener al menos 3 caracteres." }),
-  shippingCountry: z.string().min(3, { message: "El país debe tener al menos 3 caracteres." }),
+  // Shipping Method
+  shippingMethod: z.enum(["delivery", "pickup"], {
+    required_error: "Debes seleccionar un método de envío.",
+  }),
+  // Shipping Info (conditionally required)
+  shippingAddress: z.string().optional(),
+  shippingCity: z.string().optional(),
+  shippingProvince: z.string().optional(),
+  shippingPostalCode: z.string().optional(),
+  shippingCountry: z.string().optional(),
   // Payment
   paymentMethod: z.enum(["cod", "transfer"], {
     required_error: "Debes seleccionar un método de pago.",
   }),
   // Optional notes
   orderNotes: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.shippingMethod === "delivery") {
+    if (!data.shippingAddress || data.shippingAddress.length < 5) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La dirección debe tener al menos 5 caracteres.", path: ["shippingAddress"] });
+    }
+    if (!data.shippingCity || data.shippingCity.length < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La ciudad debe tener al menos 3 caracteres.", path: ["shippingCity"] });
+    }
+    if (!data.shippingProvince || data.shippingProvince.length < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La provincia debe tener al menos 3 caracteres.", path: ["shippingProvince"] });
+    }
+    if (!data.shippingPostalCode || data.shippingPostalCode.length < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El código postal debe tener al menos 3 caracteres.", path: ["shippingPostalCode"] });
+    }
+    if (!data.shippingCountry || data.shippingCountry.length < 3) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El país debe tener al menos 3 caracteres.", path: ["shippingCountry"] });
+    }
+  }
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -53,6 +77,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | undefined>(undefined);
+  const [currentShippingCost, setCurrentShippingCost] = useState(0);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -60,6 +85,7 @@ export default function CheckoutPage() {
       buyerName: "",
       buyerEmail: "",
       buyerPhone: "",
+      shippingMethod: undefined,
       shippingAddress: "",
       shippingCity: "",
       shippingProvince: "",
@@ -70,8 +96,10 @@ export default function CheckoutPage() {
     },
   });
   
+  const watchedShippingMethod = form.watch("shippingMethod");
+
   useEffect(() => {
-    if (itemCount === 0 && !isLoading) { // Prevent redirect during submission
+    if (itemCount === 0 && !isLoading) {
       toast({
         title: "Carrito Vacío",
         description: "No puedes proceder al pago con un carrito vacío.",
@@ -81,12 +109,25 @@ export default function CheckoutPage() {
     }
   }, [itemCount, router, toast, isLoading]);
 
+  useEffect(() => {
+    if (watchedShippingMethod === "delivery") {
+      setCurrentShippingCost(SHIPPING_COST_DELIVERY);
+    } else {
+      setCurrentShippingCost(0);
+      // Optionally clear address fields if switching to pickup
+      // form.setValue("shippingAddress", "");
+      // form.setValue("shippingCity", "");
+      // ...etc. or form.resetField for each
+    }
+  }, [watchedShippingMethod, form]);
 
-  const loyaltyPoints = Math.floor(totalPrice); // 1 point per dollar
+
+  const loyaltyPoints = Math.floor(totalPrice); // 1 point per dollar (based on item subtotal)
+  const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
     setIsLoading(true);
-    console.log("Checkout form submitted:", values);
+    console.log("Checkout form submitted:", values, "Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
     // Simulate API call for order placement
     await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -96,7 +137,7 @@ export default function CheckoutPage() {
     });
     
     clearCart();
-    router.push("/dashboard"); // Or a dedicated order confirmation page
+    router.push("/dashboard"); 
     setIsLoading(false);
   }
 
@@ -107,7 +148,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -127,113 +167,47 @@ export default function CheckoutPage() {
                 <CardTitle className="font-headline text-xl flex items-center"><User className="mr-2 h-5 w-5 text-primary"/>Información del Comprador</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="buyerName"
-                  render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>Nombre Completo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Ana Lectora" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="buyerEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="tu@email.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="buyerPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Teléfono</FormLabel>
-                      <FormControl>
-                        <Input type="tel" placeholder="Ej: 0991234567" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="buyerName" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Ej: Ana Lectora" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="buyerEmail" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input type="email" placeholder="tu@email.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="buyerPhone" render={({ field }) => ( <FormItem> <FormLabel>Teléfono</FormLabel> <FormControl><Input type="tel" placeholder="Ej: 0991234567" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
 
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
+                <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <CardContent>
                 <FormField
                   control={form.control}
-                  name="shippingAddress"
+                  name="shippingMethod"
                   render={({ field }) => (
-                    <FormItem className="sm:col-span-2">
-                      <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel>
+                    <FormItem className="space-y-3">
                       <FormControl>
-                        <Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="shippingCity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ciudad</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Quito" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="shippingProvince"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Provincia</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Pichincha" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="shippingPostalCode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Código Postal</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: 170101" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="shippingCountry"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>País</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-2"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl><RadioGroupItem value="delivery" /></FormControl>
+                            <div className="w-full">
+                              <FormLabel className="font-normal flex items-center cursor-pointer">
+                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
+                              </FormLabel>
+                              <p className="text-xs text-muted-foreground ml-7">Recibe tu pedido en la comodidad de tu hogar.</p>
+                            </div>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl><RadioGroupItem value="pickup" /></FormControl>
+                            <div className="w-full">
+                              <FormLabel className="font-normal flex items-center cursor-pointer">
+                                <Store className="mr-2 h-5 w-5 text-muted-foreground"/> Retiro en Librería (Gratis)
+                              </FormLabel>
+                              <p className="text-xs text-muted-foreground ml-7">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</p>
+                            </div>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -241,6 +215,21 @@ export default function CheckoutPage() {
                 />
               </CardContent>
             </Card>
+            
+            {watchedShippingMethod === "delivery" && (
+              <Card className="shadow-md animate-fadeIn">
+                <CardHeader>
+                  <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="shippingAddress" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="shadow-md">
               <CardHeader>
@@ -254,32 +243,21 @@ export default function CheckoutPage() {
                     <FormItem className="space-y-3">
                       <FormControl>
                         <RadioGroup
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            setSelectedPaymentMethod(value);
-                          }}
+                          onValueChange={(value) => { field.onChange(value); setSelectedPaymentMethod(value); }}
                           defaultValue={field.value}
                           className="flex flex-col space-y-2"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="cod" />
-                            </FormControl>
+                            <FormControl><RadioGroupItem value="cod" /></FormControl>
                             <div className="w-full">
-                              <FormLabel className="font-normal flex items-center cursor-pointer">
-                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> Contra Entrega
-                              </FormLabel>
+                              <FormLabel className="font-normal flex items-center cursor-pointer"> <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> Contra Entrega </FormLabel>
                               <p className="text-xs text-muted-foreground ml-7">Paga en efectivo al momento de recibir tu pedido.</p>
                             </div>
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="transfer" />
-                            </FormControl>
+                            <FormControl><RadioGroupItem value="transfer" /></FormControl>
                             <div className="w-full">
-                            <FormLabel className="font-normal flex items-center cursor-pointer">
-                              <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/> Transferencia Bancaria
-                            </FormLabel>
+                            <FormLabel className="font-normal flex items-center cursor-pointer"> <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/> Transferencia Bancaria </FormLabel>
                             <p className="text-xs text-muted-foreground ml-7">Realiza el pago directamente a nuestra cuenta bancaria.</p>
                             </div>
                           </FormItem>
@@ -291,16 +269,9 @@ export default function CheckoutPage() {
                 />
                 {selectedPaymentMethod === "transfer" && (
                   <Card className="mt-4 bg-muted/50">
-                    <CardHeader>
-                      <CardTitle className="text-base font-semibold">Instrucciones para Transferencia Bancaria</CardTitle>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="text-base font-semibold">Instrucciones para Transferencia Bancaria</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-1">
-                      <p><strong>Banco:</strong> Banco del Austro</p>
-                      <p><strong>Tipo de Cuenta:</strong> Ahorros</p>
-                      <p><strong>Número de Cuenta:</strong> 1234567890</p>
-                      <p><strong>Beneficiario:</strong> Alicia Libros S.A.</p>
-                      <p><strong>RUC/CI:</strong> 1790000000001</p>
-                      <p><strong>Email para notificación:</strong> pagos@alicialibros.com</p>
+                      <p><strong>Banco:</strong> Banco del Austro</p> <p><strong>Tipo de Cuenta:</strong> Ahorros</p> <p><strong>Número de Cuenta:</strong> 1234567890</p> <p><strong>Beneficiario:</strong> Alicia Libros S.A.</p> <p><strong>RUC/CI:</strong> 1790000000001</p> <p><strong>Email para notificación:</strong> pagos@alicialibros.com</p>
                       <p className="mt-2 text-xs">Por favor, incluye tu número de pedido en la referencia de la transferencia. Tu pedido será procesado una vez confirmado el pago.</p>
                     </CardContent>
                   </Card>
@@ -308,27 +279,9 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
              <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle className="font-headline text-xl">Notas Adicionales (Opcional)</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="font-headline text-xl">Notas Adicionales (Opcional)</CardTitle></CardHeader>
               <CardContent>
-                 <FormField
-                  control={form.control}
-                  name="orderNotes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Ej: Dejar en portería, entregar en horario de oficina, etc."
-                          className="resize-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <FormField control={form.control} name="orderNotes" render={({ field }) => ( <FormItem> <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel> <FormControl><Textarea placeholder="Ej: Dejar en portería, entregar en horario de oficina, etc." className="resize-none" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
           </div>
@@ -336,62 +289,38 @@ export default function CheckoutPage() {
           {/* Right Column: Order Summary */}
           <div className="lg:col-span-1">
             <Card className="shadow-lg sticky top-20">
-              <CardHeader>
-                <CardTitle className="font-headline text-2xl">Resumen del Pedido</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle className="font-headline text-2xl">Resumen del Pedido</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {cartItems.map((item) => (
                   <div key={item.id} className="flex items-center space-x-3">
                     <div className="relative w-16 h-24 rounded overflow-hidden border">
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        layout="fill"
-                        objectFit="cover"
-                        data-ai-hint={item.dataAiHint || "book checkout"}
-                      />
-                       <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold w-5 h-5 flex items-center justify-center rounded-bl-md">
-                        {item.quantity}
-                      </span>
+                      <Image src={item.imageUrl} alt={item.title} layout="fill" objectFit="cover" data-ai-hint={item.dataAiHint || "book checkout"} />
+                       <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-bold w-5 h-5 flex items-center justify-center rounded-bl-md"> {item.quantity} </span>
                     </div>
-                    <div className="flex-grow">
-                      <h3 className="text-sm font-medium line-clamp-1">{item.title}</h3>
-                      <p className="text-xs text-muted-foreground">
-                        {item.authors.join(", ")}
-                      </p>
-                    </div>
+                    <div className="flex-grow"> <h3 className="text-sm font-medium line-clamp-1">{item.title}</h3> <p className="text-xs text-muted-foreground"> {item.authors.join(", ")} </p> </div>
                     <p className="text-sm font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 ))}
                 <Separator />
                 <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span>Subtotal ({itemCount} artículos):</span>
-                    <span className="font-medium">${totalPrice.toFixed(2)}</span>
-                  </div>
+                  <div className="flex justify-between"><span>Subtotal ({itemCount} artículos):</span> <span className="font-medium">${totalPrice.toFixed(2)}</span></div>
                   <div className="flex justify-between">
                     <span>Envío:</span>
-                    <span className="font-medium">Gratis (Promoción)</span>
+                    <span className="font-medium">
+                      {watchedShippingMethod ? (currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis") : "Por calcular"}
+                    </span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between text-lg font-bold text-primary">
-                    <span>Total:</span>
-                    <span>${totalPrice.toFixed(2)}</span>
-                  </div>
+                  <div className="flex justify-between text-lg font-bold text-primary"><span>Total:</span> <span>${finalTotal.toFixed(2)}</span></div>
                 </div>
                 <Separator/>
                  <div className="flex items-center justify-center text-sm text-accent p-3 bg-accent/10 rounded-md">
-                    <Gift className="mr-2 h-5 w-5"/>
-                    ¡Acumularás <span className="font-bold mx-1">{loyaltyPoints}</span> puntos con esta compra!
+                    <Gift className="mr-2 h-5 w-5"/> ¡Acumularás <span className="font-bold mx-1">{loyaltyPoints}</span> puntos con esta compra!
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading}>
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <CreditCard className="mr-2 h-5 w-5" />
-                  )}
+                <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading || !form.formState.isValid}>
+                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                   Realizar Pedido
                 </Button>
               </CardFooter>
@@ -402,7 +331,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-// Placeholder for Loader2 if not already defined
-// const Loader2 = ({ className }: { className?: string }) => (...);
-// Ensure other icons are imported if not available.
