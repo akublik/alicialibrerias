@@ -24,7 +24,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
             alt={`Portada de ${book.title}`}
             width={imageWidth}
             height={imageHeight}
-            className="w-full h-auto aspect-[2/3] object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
             data-ai-hint={book.dataAiHint || 'book cover'}
           />
         </Link>
