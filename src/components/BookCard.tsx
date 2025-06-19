@@ -1,3 +1,4 @@
+
 import type { Book } from '@/types';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
       </CardHeader>
       <CardContent className={cn("flex-grow", size === 'small' ? 'p-3' : 'p-4')}>
         <Link href={`/books/${book.id}`}>
-          <CardTitle 
+          <CardTitle
             className={cn(
               "font-headline leading-tight mb-1 hover:text-primary transition-colors",
               size === 'small' ? 'text-base' : 'text-lg'
@@ -40,7 +41,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
             {book.title}
           </CardTitle>
         </Link>
-        <p 
+        <p
           className={cn(
             "text-muted-foreground mb-2",
             size === 'small' ? 'text-xs' : 'text-sm'
@@ -48,24 +49,42 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
         >
           {book.authors.join(', ')}
         </p>
-        {book.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{book.description}</p>}
-        <div className="flex items-center space-x-1 text-sm text-amber-500 mb-2">
+        {book.description && (
+          <p className={cn(
+              "text-muted-foreground",
+              size === 'small' ? "text-xs line-clamp-1 mb-1" : "text-sm line-clamp-2 mb-2"
+            )}
+          >
+            {book.description}
+          </p>
+        )}
+        <div className={cn(
+            "flex items-center space-x-1 text-amber-500 mb-2",
+            size === 'small' ? 'text-xs' : 'text-sm'
+          )}
+        >
           {[...Array(5)].map((_, i) => (
-            <Star key={i} className={`w-4 h-4 ${i < 4 ? 'fill-current' : ''}`} />
+            <Star 
+              key={i} 
+              className={cn(
+                i < 4 ? 'fill-current' : '', 
+                size === 'small' ? 'w-3 h-3' : 'w-4 h-4'
+              )} 
+            />
           ))}
-          <span className="text-muted-foreground text-xs">(123 reseñas)</span>
+          <span className={cn("text-muted-foreground", size === 'small' ? 'text-xs' : 'text-xs')}>(123 reseñas)</span>
         </div>
       </CardContent>
-      <CardFooter 
+      <CardFooter
         className={cn(
           "flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2",
           size === 'small' ? 'p-3 pt-0' : 'p-4 pt-0'
         )}
       >
-        <p 
+        <p
           className={cn(
             "font-semibold text-primary",
-            size === 'small' ? 'text-lg' : 'text-xl'
+            size === 'small' ? 'text-base' : 'text-lg'
           )}
         >
           ${book.price.toFixed(2)}
