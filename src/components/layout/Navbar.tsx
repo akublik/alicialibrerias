@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 "use client";
 
@@ -9,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import React from "react";
+import { useCart } from "@/context/CartContext"; // Added useCart
 
 // Mock authentication status
 const useAuth = () => {
@@ -24,6 +24,7 @@ const useAuth = () => {
 
 export function Navbar() {
   const { isAuthenticated } = useAuth();
+  const { itemCount } = useCart(); // Get itemCount from CartContext
   const pathname = usePathname();
 
   const navItems = [
@@ -72,9 +73,16 @@ export function Navbar() {
               </Button>
             </Link>
           )}
-           <Button variant="ghost" size="icon" aria-label="Carrito">
-             <ShoppingCart className="h-6 w-6" />
-           </Button>
+          <Link href="/cart" passHref>
+             <Button variant="ghost" size="icon" aria-label="Carrito" className="relative">
+               <ShoppingCart className="h-6 w-6" />
+               {itemCount > 0 && (
+                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                   {itemCount}
+                 </span>
+               )}
+             </Button>
+           </Link>
         </div>
 
         {/* Mobile Menu */}
@@ -123,10 +131,17 @@ export function Navbar() {
                       </Button>
                   </Link>
                 )}
-                <Button variant="ghost" className="w-full justify-start mt-2 text-foreground/80 hover:bg-accent hover:text-accent-foreground">
-                  <ShoppingCart className="mr-3 h-5 w-5" />
-                  <span>Carrito</span>
-                </Button>
+                <Link href="/cart" passHref>
+                  <Button variant="ghost" className="w-full justify-start mt-2 text-foreground/80 hover:bg-accent hover:text-accent-foreground relative">
+                    <ShoppingCart className="mr-3 h-5 w-5" />
+                    <span>Carrito</span>
+                     {itemCount > 0 && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs">
+                        {itemCount}
+                      </span>
+                    )}
+                  </Button>
+                </Link>
               </div>
             </SheetContent>
           </Sheet>

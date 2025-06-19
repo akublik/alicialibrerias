@@ -42,3 +42,7 @@ export interface Review {
   avatarUrl?: string;
   dataAiHint?: string;
 }
+
+export type CartItem = Book & {
+  quantity: number;
+};

@@ -9,12 +9,13 @@ import type { Book, Review } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, CalendarDays } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
+import { useCart } from '@/context/CartContext'; // Added useCart
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
   return (
@@ -36,6 +37,7 @@ const StarRating = ({ rating, interactive = false, setRating }: { rating: number
 export default function BookDetailsPage() {
   const params = useParams();
   const bookId = params.id as string;
+  const { addToCart } = useCart(); // Get addToCart from CartContext
   
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -59,6 +61,12 @@ export default function BookDetailsPage() {
       }
     }
   }, [bookId]);
+
+  const handleAddToCart = () => {
+    if (book) {
+      addToCart(book);
+    }
+  };
 
 
   if (!book) {
@@ -97,7 +105,7 @@ export default function BookDetailsPage() {
 
           <p className="text-2xl font-bold text-accent mb-6">${book.price.toFixed(2)}</p>
 
-          <Button size="lg" className="w-full sm:w-auto font-body text-base mb-6 shadow-md hover:shadow-lg transition-shadow">
+          <Button size="lg" className="w-full sm:w-auto font-body text-base mb-6 shadow-md hover:shadow-lg transition-shadow" onClick={handleAddToCart}>
             <ShoppingCart className="mr-2 h-5 w-5" /> Agregar al Carrito
           </Button>
 
@@ -151,7 +159,7 @@ export default function BookDetailsPage() {
               {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                   <div className="flex items-start space-x-3 mb-2">
-                    {review.avatarUrl && <Image src={review.avatarUrl} alt={review.userName} width={40} height={40} className="rounded-full" data-ai-hint={review.dataAiHint} />}
+                    {review.avatarUrl && <Image src={review.avatarUrl} alt={review.userName} width={40} height={40} className="rounded-full" data-ai-hint={review.dataAiHint}/>}
                     <div>
                       <p className="font-semibold text-foreground">{review.userName}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(review.date), "PPP", { locale: es })}</p>

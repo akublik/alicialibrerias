@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShoppingCart, Star, Eye, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/context/CartContext'; // Added useCart
 
 interface BookCardProps {
   book: Book;
@@ -13,12 +14,19 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, size = 'normal' }: BookCardProps) {
+  const { addToCart } = useCart(); // Get addToCart from CartContext
   const imageWidth = size === 'small' ? 140 : 200;
   const imageHeight = size === 'small' ? 210 : 300;
 
+  const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Prevent navigation if card itself is a link
+    e.stopPropagation();
+    addToCart(book);
+  };
+
   return (
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl flex flex-col h-full">
-      <CardHeader className="p-0 relative flex justify-center"> {/* Added flex justify-center */}
+      <CardHeader className="p-0 relative flex justify-center">
         <Link href={`/books/${book.id}`} aria-label={`Ver detalles de ${book.title}`}>
           <Image
             src={book.imageUrl}
@@ -98,7 +106,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
               </span>
             </Button>
           </Link>
-          <Button size={size === 'small' ? 'icon' : 'sm'} className="font-body" aria-label="Añadir al carrito">
+          <Button size={size === 'small' ? 'icon' : 'sm'} className="font-body" aria-label="Añadir al carrito" onClick={handleAddToCart}>
             <ShoppingCart className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
             {size !== 'small' && "Añadir"}
           </Button>
