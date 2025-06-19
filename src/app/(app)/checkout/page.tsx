@@ -183,7 +183,9 @@ export default function CheckoutPage() {
                           className="flex flex-col space-y-2"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl>
                               <RadioGroupItem value="delivery" id="shipping-delivery"/>
+                            </FormControl>
                             <FormLabel htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
                               <div className="flex items-center">
                                 <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
@@ -195,7 +197,9 @@ export default function CheckoutPage() {
                             </FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl>
                               <RadioGroupItem value="pickup" id="shipping-pickup"/>
+                            </FormControl>
                             <FormLabel htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
                                <div className="flex items-center">
                                  <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
@@ -247,7 +251,9 @@ export default function CheckoutPage() {
                           className="flex flex-col space-y-2"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl>
                               <RadioGroupItem value="cod" id="payment-cod"/>
+                            </FormControl>
                             <FormLabel htmlFor="payment-cod" className="font-normal flex-grow cursor-pointer">
                               <div className="flex items-center">
                                 <Truck className="mr-2 h-5 w-5 text-muted-foreground"/>
@@ -259,7 +265,9 @@ export default function CheckoutPage() {
                             </FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                            <FormControl>
                               <RadioGroupItem value="transfer" id="payment-transfer"/>
+                            </FormControl>
                             <FormLabel htmlFor="payment-transfer" className="font-normal flex-grow cursor-pointer">
                               <div className="flex items-center">
                                 <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/>
@@ -339,3 +347,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
