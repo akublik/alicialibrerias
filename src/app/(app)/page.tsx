@@ -25,7 +25,7 @@ export default function HomePage() {
 
   return (
     <div className="animate-fadeIn">
-      {/* Hero Section */}
+      {/* 1. Banner (Hero Section) */}
       <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url('https://placehold.co/1920x1080.png?text=Alicia+Libros+Background')", backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint="library pattern"></div>
         <div className="container mx-auto px-4 text-center relative z-10">
@@ -52,10 +52,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Books Section */}
+      {/* 2. Libros Más Vendidos */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Destacados</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Más Vendidos</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {placeholderBooks.slice(0, 4).map((book) => (
               <BookCard key={book.id} book={book} />
@@ -70,27 +70,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      
-      {/* Platform Explanation Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">¿Qué es Alicia Libros?</h2>
-          <p className="text-center text-lg text-foreground/70 mb-12 max-w-3xl mx-auto">
-            Alicia Libros es un marketplace que conecta a lectores apasionados con la riqueza y diversidad de las librerías independientes de Ecuador y Latinoamérica. Fomentamos la lectura, apoyamos la cultura local y te ayudamos a descubrir tu próxima gran aventura literaria.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {platformBenefits.map(benefit => (
-              <div key={benefit.title} className="text-center p-6 bg-card rounded-lg shadow-sm hover:shadow-lg transition-shadow">
-                <benefit.icon className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-headline text-xl font-semibold mb-2 text-foreground">{benefit.title}</h3>
-                <p className="text-sm text-muted-foreground">{benefit.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Ecuadorian Authors Section */}
+      {/* 3. Autores Ecuatorianos */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Autores Ecuatorianos</h2>
@@ -114,7 +95,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Library Search Section */}
+      {/* 4. Buscador Librerías */}
       <section className="py-16 bg-primary/5">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">Encuentra tu Librería</h2>
@@ -125,6 +106,32 @@ export default function HomePage() {
            <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {placeholderLibraries.slice(0,3).map(library => (
               <LibraryCard key={library.id} library={library} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Explicación de la plataforma */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">¿Qué es Alicia Libros?</h2>
+          <p className="text-center text-lg text-foreground/70 mb-12 max-w-3xl mx-auto">
+            Alicia Libros es un marketplace que conecta a lectores apasionados con la riqueza y diversidad de las librerías independientes de Ecuador y Latinoamérica. Fomentamos la lectura, apoyamos la cultura local y te ayudamos a descubrir tu próxima gran aventura literaria.
+          </p>
+        </div>
+      </section>
+
+      {/* 6. Beneficios */}
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Descubre los Beneficios</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {platformBenefits.map(benefit => (
+              <div key={benefit.title} className="text-center p-6 bg-card rounded-lg shadow-sm hover:shadow-lg transition-shadow">
+                <benefit.icon className="h-12 w-12 text-primary mx-auto mb-4" />
+                <h3 className="font-headline text-xl font-semibold mb-2 text-foreground">{benefit.title}</h3>
+                <p className="text-sm text-muted-foreground">{benefit.description}</p>
+              </div>
             ))}
           </div>
         </div>
