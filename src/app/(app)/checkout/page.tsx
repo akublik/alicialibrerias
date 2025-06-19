@@ -30,7 +30,6 @@ import { Label } from "@/components/ui/label";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
-// Schema sin shippingMethod y paymentMethod, ya que se manejan con estado local.
 const checkoutFormSchema = z.object({
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   buyerEmail: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -39,7 +38,7 @@ const checkoutFormSchema = z.object({
   shippingCity: z.string().optional(),
   shippingProvince: z.string().optional(),
   shippingPostalCode: z.string().optional(),
-  shippingCountry: z.string().optional(),
+  shippingCountry: z.string().default("Ecuador"),
   orderNotes: z.string().optional(),
 });
 
@@ -51,7 +50,6 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   
-  // Estado local para método de envío y pago
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
   
@@ -83,7 +81,6 @@ export default function CheckoutPage() {
     }
   }, [itemCount, router, toast, isLoading]);
 
-  // useEffect simplificado para solo actualizar el costo de envío
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
@@ -96,9 +93,8 @@ export default function CheckoutPage() {
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
-    // Validación manual para campos de envío si 'A Domicilio' está seleccionado
+    let hasError = false;
     if (selectedShippingMethod === "delivery") {
-      let hasError = false;
       if (!values.shippingAddress?.trim()) {
         form.setError("shippingAddress", { type: "manual", message: "La dirección es requerida para envío a domicilio." });
         hasError = true;
@@ -120,8 +116,8 @@ export default function CheckoutPage() {
     setIsLoading(true);
     console.log("Checkout form submitted:", {
       ...values,
-      shippingMethod: selectedShippingMethod, // Incluir manualmente si es necesario para el backend
-      paymentMethod: selectedPaymentMethod,   // Incluir manualmente
+      shippingMethod: selectedShippingMethod,
+      paymentMethod: selectedPaymentMethod,
     });
     console.log("Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
     
@@ -137,7 +133,7 @@ export default function CheckoutPage() {
     setIsLoading(false);
   }
 
-  if (itemCount === 0 && typeof window !== 'undefined' && !isLoading) { // Prevenir render en servidor o si ya se está redirigiendo
+  if (itemCount === 0 && typeof window !== 'undefined' && !isLoading) { 
      return (
       <div className="container mx-auto px-4 py-8 text-center">
         <p>Tu carrito está vacío. Redirigiendo...</p>
@@ -270,7 +266,7 @@ export default function CheckoutPage() {
              <Card className="shadow-md">
               <CardHeader><CardTitle className="font-headline text-xl">Notas Adicionales (Opcional)</CardTitle></CardHeader>
               <CardContent>
-                 <FormField control={form.control} name="orderNotes" render={({ field }) => ( <FormItem> <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel> <FormControl><Textarea placeholder="Ej: Dejar en portería, entregar en horario de oficina, etc." className="resize-none" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                 <FormField control={form.control} name="orderNotes" render={({ field }) => ( <FormItem> <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel> <FormControl><Textarea {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
           </div>
