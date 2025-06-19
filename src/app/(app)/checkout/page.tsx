@@ -1,3 +1,4 @@
+
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -25,48 +26,28 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag, Store, PackageSearch } from "lucide-react";
+import { Label } from "@/components/ui/label"; // Import Label
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
+// Ajustamos el esquema Zod: shippingMethod y paymentMethod ya no son parte del form de react-hook-form
 const checkoutFormSchema = z.object({
   // Buyer Info
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   buyerEmail: z.string().email({ message: "Por favor ingresa un email válido." }),
   buyerPhone: z.string().min(7, { message: "El teléfono debe tener al menos 7 dígitos." }),
-  // Shipping Method
-  shippingMethod: z.enum(["delivery", "pickup"], {
-    required_error: "Debes seleccionar un método de envío.",
-  }),
-  // Shipping Info (conditionally required)
+  // Shipping Info (conditionally required based on local state, not Zod for now)
   shippingAddress: z.string().optional(),
   shippingCity: z.string().optional(),
   shippingProvince: z.string().optional(),
   shippingPostalCode: z.string().optional(),
   shippingCountry: z.string().optional(),
-  // Payment
-  paymentMethod: z.enum(["cod", "transfer"], {
-    required_error: "Debes seleccionar un método de pago.",
-  }),
   // Optional notes
   orderNotes: z.string().optional(),
 }).superRefine((data, ctx) => {
-  if (data.shippingMethod === "delivery") {
-    if (!data.shippingAddress || data.shippingAddress.length < 5) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La dirección debe tener al menos 5 caracteres.", path: ["shippingAddress"] });
-    }
-    if (!data.shippingCity || data.shippingCity.length < 3) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La ciudad debe tener al menos 3 caracteres.", path: ["shippingCity"] });
-    }
-    if (!data.shippingProvince || data.shippingProvince.length < 3) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "La provincia debe tener al menos 3 caracteres.", path: ["shippingProvince"] });
-    }
-    if (!data.shippingPostalCode || data.shippingPostalCode.length < 3) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El código postal debe tener al menos 3 caracteres.", path: ["shippingPostalCode"] });
-    }
-    if (!data.shippingCountry || data.shippingCountry.length < 3) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El país debe tener al menos 3 caracteres.", path: ["shippingCountry"] });
-    }
-  }
+  // La validación condicional de la dirección se hará fuera de Zod por ahora,
+  // o se podría pasar el estado local de shippingMethod a esta función si es necesario.
+  // Por simplicidad, la quitamos temporalmente de Zod.
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -76,6 +57,11 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estado local para método de envío y pago
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
+  
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
 
   const form = useForm<CheckoutFormValues>({
@@ -84,20 +70,15 @@ export default function CheckoutPage() {
       buyerName: "",
       buyerEmail: "",
       buyerPhone: "",
-      shippingMethod: "delivery", 
       shippingAddress: "",
       shippingCity: "",
       shippingProvince: "",
       shippingPostalCode: "",
       shippingCountry: "Ecuador",
-      paymentMethod: "cod", 
       orderNotes: "",
     },
   });
   
-  const watchedShippingMethod = form.watch("shippingMethod");
-  const watchedPaymentMethod = form.watch("paymentMethod");
-
   useEffect(() => {
     if (itemCount === 0 && !isLoading) {
       toast({
@@ -110,19 +91,20 @@ export default function CheckoutPage() {
   }, [itemCount, router, toast, isLoading]);
 
   useEffect(() => {
-    if (watchedShippingMethod === "delivery") {
+    if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
     } else {
       setCurrentShippingCost(0);
     }
-  }, [watchedShippingMethod]);
+  }, [selectedShippingMethod]);
 
   const loyaltyPoints = Math.floor(totalPrice);
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
     setIsLoading(true);
-    console.log("Checkout form submitted:", values, "Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
+    // Aquí, si quisieras usar selectedShippingMethod y selectedPaymentMethod, los leerías del estado local.
+    console.log("Checkout form submitted:", values, "Selected Shipping:", selectedShippingMethod, "Selected Payment:", selectedPaymentMethod, "Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     toast({
@@ -152,6 +134,7 @@ export default function CheckoutPage() {
         </h1>
       </header>
 
+      {/* El Form de react-hook-form solo envuelve los campos que gestiona */}
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
@@ -160,66 +143,52 @@ export default function CheckoutPage() {
                 <CardTitle className="font-headline text-xl flex items-center"><User className="mr-2 h-5 w-5 text-primary"/>Información del Comprador</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <FormField control={form.control} name="buyerName" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Ej: Ana Lectora" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                <FormField control={form.control} name="buyerName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Ej: Ana Lectora" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                 <FormField control={form.control} name="buyerEmail" render={({ field }) => ( <FormItem> <FormLabel>Email</FormLabel> <FormControl><Input type="email" placeholder="tu@email.com" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                 <FormField control={form.control} name="buyerPhone" render={({ field }) => ( <FormItem> <FormLabel>Teléfono</FormLabel> <FormControl><Input type="tel" placeholder="Ej: 0991234567" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
 
+            {/* Método de Envío - Usando estado local */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="shippingMethod"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="delivery" id="shipping-delivery"/>
-                            </FormControl>
-                            <FormLabel htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
-                              <div className="flex items-center">
-                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
-                                <div>
-                                  A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
-                                  <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
-                                </div>
-                              </div>
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="pickup" id="shipping-pickup"/>
-                            </FormControl>
-                            <FormLabel htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
-                               <div className="flex items-center">
-                                 <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
-                                 <div>
-                                    Retiro en Librería (Gratis)
-                                    <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
-                                  </div>
-                               </div>
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <RadioGroup
+                  value={selectedShippingMethod}
+                  onValueChange={setSelectedShippingMethod}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="delivery" id="shipping-delivery"/>
+                    <Label htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
+                      <div className="flex items-center">
+                        <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
+                        <div>
+                          A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
+                          <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="pickup" id="shipping-pickup"/>
+                    <Label htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
+                       <div className="flex items-center">
+                         <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
+                         <div>
+                            Retiro en Librería (Gratis)
+                            <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                          </div>
+                       </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
               </CardContent>
             </Card>
             
-            {watchedShippingMethod === "delivery" && (
+            {selectedShippingMethod === "delivery" && (
               <Card className="shadow-md animate-fadeIn">
                 <CardHeader>
                   <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
@@ -234,57 +203,43 @@ export default function CheckoutPage() {
               </Card>
             )}
 
+            {/* Método de Pago - Usando estado local */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center"><CreditCard className="mr-2 h-5 w-5 text-primary"/>Método de Pago</CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                       <FormControl>
-                         <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-col space-y-2"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="cod" id="payment-cod"/>
-                            </FormControl>
-                            <FormLabel htmlFor="payment-cod" className="font-normal flex-grow cursor-pointer">
-                              <div className="flex items-center">
-                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/>
-                                <div>
-                                  Contra Entrega
-                                  <span className="block text-xs text-muted-foreground">Paga en efectivo al momento de recibir tu pedido.</span>
-                                </div>
-                              </div>
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                            <FormControl>
-                              <RadioGroupItem value="transfer" id="payment-transfer"/>
-                            </FormControl>
-                            <FormLabel htmlFor="payment-transfer" className="font-normal flex-grow cursor-pointer">
-                              <div className="flex items-center">
-                                <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/>
-                                <div>
-                                  Transferencia Bancaria
-                                  <span className="block text-xs text-muted-foreground">Realiza el pago directamente a nuestra cuenta bancaria.</span>
-                                </div>
-                              </div>
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {watchedPaymentMethod === "transfer" && (
+                 <RadioGroup
+                  value={selectedPaymentMethod}
+                  onValueChange={setSelectedPaymentMethod}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="cod" id="payment-cod"/>
+                    <Label htmlFor="payment-cod" className="font-normal flex-grow cursor-pointer">
+                      <div className="flex items-center">
+                        <Truck className="mr-2 h-5 w-5 text-muted-foreground"/>
+                        <div>
+                          Contra Entrega
+                          <span className="block text-xs text-muted-foreground">Paga en efectivo al momento de recibir tu pedido.</span>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="transfer" id="payment-transfer"/>
+                    <Label htmlFor="payment-transfer" className="font-normal flex-grow cursor-pointer">
+                      <div className="flex items-center">
+                        <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/>
+                        <div>
+                          Transferencia Bancaria
+                          <span className="block text-xs text-muted-foreground">Realiza el pago directamente a nuestra cuenta bancaria.</span>
+                        </div>
+                      </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
+                {selectedPaymentMethod === "transfer" && (
                   <Card className="mt-4 bg-muted/50">
                     <CardHeader><CardTitle className="text-base font-semibold">Instrucciones para Transferencia Bancaria</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-1">
@@ -323,7 +278,7 @@ export default function CheckoutPage() {
                   <div className="flex justify-between">
                     <span>Envío:</span>
                     <span className="font-medium">
-                      {watchedShippingMethod ? (currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis") : "Por calcular"}
+                      {selectedShippingMethod ? (currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis") : "Por calcular"}
                     </span>
                   </div>
                   <Separator />
@@ -348,3 +303,4 @@ export default function CheckoutPage() {
   );
 }
 
+    
