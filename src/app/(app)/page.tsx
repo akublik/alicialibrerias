@@ -52,13 +52,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Libros Más Vendidos */}
+      {/* 2. Libros Más Vendidos de la Semana */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Más Vendidos</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Más Vendidos de la Semana</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {placeholderBooks.slice(0, 4).map((book) => (
-              <BookCard key={book.id} book={book} />
+              <BookCard key={book.id} book={book} size="small" />
             ))}
           </div>
           <div className="text-center mt-10">
