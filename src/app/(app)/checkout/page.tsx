@@ -85,7 +85,7 @@ export default function CheckoutPage() {
       buyerName: "",
       buyerEmail: "",
       buyerPhone: "",
-      shippingMethod: undefined, // Initially undefined
+      shippingMethod: undefined, 
       shippingAddress: "",
       shippingCity: "",
       shippingProvince: "",
@@ -186,19 +186,23 @@ export default function CheckoutPage() {
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
                             <FormControl><RadioGroupItem value="delivery" /></FormControl>
                             <FormLabel className="font-normal flex-grow cursor-pointer">
+                              <div>
                                 <span className="flex items-center">
                                   <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
                                 </span>
                                 <span className="block text-xs text-muted-foreground ml-7">Recibe tu pedido en la comodidad de tu hogar.</span>
+                              </div>
                             </FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
                             <FormControl><RadioGroupItem value="pickup" /></FormControl>
                             <FormLabel className="font-normal flex-grow cursor-pointer">
-                                <span className="flex items-center">
-                                 <Store className="mr-2 h-5 w-5 text-muted-foreground"/> Retiro en Librería (Gratis)
-                                </span>
-                                <span className="block text-xs text-muted-foreground ml-7">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                               <div>
+                                 <span className="flex items-center">
+                                  <Store className="mr-2 h-5 w-5 text-muted-foreground"/> Retiro en Librería (Gratis)
+                                 </span>
+                                 <span className="block text-xs text-muted-foreground ml-7">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                               </div>
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -244,19 +248,23 @@ export default function CheckoutPage() {
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
                             <FormControl><RadioGroupItem value="cod" /></FormControl>
                             <FormLabel className="font-normal flex-grow cursor-pointer">
+                              <div>
                                 <span className="flex items-center">
                                     <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> Contra Entrega
                                 </span>
                                 <span className="block text-xs text-muted-foreground ml-7">Paga en efectivo al momento de recibir tu pedido.</span>
+                              </div>
                             </FormLabel>
                           </FormItem>
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
                             <FormControl><RadioGroupItem value="transfer" /></FormControl>
                             <FormLabel className="font-normal flex-grow cursor-pointer">
+                              <div>
                                 <span className="flex items-center">
                                     <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/> Transferencia Bancaria
                                 </span>
                                 <span className="block text-xs text-muted-foreground ml-7">Realiza el pago directamente a nuestra cuenta bancaria.</span>
+                              </div>
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -328,4 +336,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
