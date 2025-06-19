@@ -30,21 +30,17 @@ import { Label } from "@/components/ui/label";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
+// Schema sin shippingMethod y paymentMethod, ya que se manejan con estado local.
 const checkoutFormSchema = z.object({
-  // Buyer Info
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   buyerEmail: z.string().email({ message: "Por favor ingresa un email válido." }),
   buyerPhone: z.string().min(7, { message: "El teléfono debe tener al menos 7 dígitos." }),
-  // Shipping Info
   shippingAddress: z.string().optional(),
   shippingCity: z.string().optional(),
   shippingProvince: z.string().optional(),
   shippingPostalCode: z.string().optional(),
   shippingCountry: z.string().optional(),
-  // Optional notes
   orderNotes: z.string().optional(),
-}).superRefine((data, ctx) => {
-  // Conditional validation for shipping address will be handled outside Zod if shippingMethod is managed by local state
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
@@ -55,6 +51,7 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   
+  // Estado local para método de envío y pago
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
   
@@ -76,7 +73,7 @@ export default function CheckoutPage() {
   });
   
   useEffect(() => {
-    if (itemCount === 0 && !isLoading) {
+    if (itemCount === 0 && !isLoading && typeof window !== 'undefined') {
       toast({
         title: "Carrito Vacío",
         description: "No puedes proceder al pago con un carrito vacío.",
@@ -86,44 +83,48 @@ export default function CheckoutPage() {
     }
   }, [itemCount, router, toast, isLoading]);
 
+  // useEffect simplificado para solo actualizar el costo de envío
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
-      // Trigger validation if needed, or ensure required fields for delivery are checked
-      if (form.formState.isSubmitted || form.getFieldState("shippingAddress").isDirty) {
-        form.trigger(["shippingAddress", "shippingCity", "shippingProvince", "shippingPostalCode", "shippingCountry"]);
-      }
     } else {
       setCurrentShippingCost(0);
-      // Clear errors for shipping fields if pickup is selected
-      form.clearErrors(["shippingAddress", "shippingCity", "shippingProvince", "shippingPostalCode", "shippingCountry"]);
     }
-  }, [selectedShippingMethod, form]);
+  }, [selectedShippingMethod]);
 
   const loyaltyPoints = Math.floor(totalPrice);
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
+    // Validación manual para campos de envío si 'A Domicilio' está seleccionado
     if (selectedShippingMethod === "delivery") {
+      let hasError = false;
       if (!values.shippingAddress?.trim()) {
         form.setError("shippingAddress", { type: "manual", message: "La dirección es requerida para envío a domicilio." });
+        hasError = true;
       }
       if (!values.shippingCity?.trim()) {
         form.setError("shippingCity", { type: "manual", message: "La ciudad es requerida para envío a domicilio." });
+        hasError = true;
       }
       if (!values.shippingProvince?.trim()) {
         form.setError("shippingProvince", { type: "manual", message: "La provincia es requerida para envío a domicilio." });
+        hasError = true;
       }
-       // Add more checks if needed
-      if (!values.shippingAddress?.trim() || !values.shippingCity?.trim() || !values.shippingProvince?.trim()) {
+      if (hasError) {
         toast({ title: "Error de Validación", description: "Por favor completa la dirección de envío.", variant: "destructive" });
         return;
       }
     }
 
-
     setIsLoading(true);
-    console.log("Checkout form submitted:", values, "Selected Shipping:", selectedShippingMethod, "Selected Payment:", selectedPaymentMethod, "Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
+    console.log("Checkout form submitted:", {
+      ...values,
+      shippingMethod: selectedShippingMethod, // Incluir manualmente si es necesario para el backend
+      paymentMethod: selectedPaymentMethod,   // Incluir manualmente
+    });
+    console.log("Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
+    
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     toast({
@@ -136,7 +137,7 @@ export default function CheckoutPage() {
     setIsLoading(false);
   }
 
-  if (itemCount === 0 && typeof window !== 'undefined') {
+  if (itemCount === 0 && typeof window !== 'undefined' && !isLoading) { // Prevenir render en servidor o si ya se está redirigiendo
      return (
       <div className="container mx-auto px-4 py-8 text-center">
         <p>Tu carrito está vacío. Redirigiendo...</p>
@@ -174,7 +175,7 @@ export default function CheckoutPage() {
               <CardContent>
                 <RadioGroup
                   value={selectedShippingMethod}
-                  onValueChange={(value) => setSelectedShippingMethod(value)}
+                  onValueChange={setSelectedShippingMethod}
                   className="flex flex-col space-y-2"
                 >
                   <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
@@ -227,7 +228,7 @@ export default function CheckoutPage() {
               <CardContent>
                  <RadioGroup
                   value={selectedPaymentMethod}
-                  onValueChange={(value) => setSelectedPaymentMethod(value)}
+                  onValueChange={setSelectedPaymentMethod}
                   className="flex flex-col space-y-2"
                 >
                   <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
