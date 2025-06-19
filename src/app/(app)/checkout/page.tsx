@@ -84,13 +84,13 @@ export default function CheckoutPage() {
       buyerName: "",
       buyerEmail: "",
       buyerPhone: "",
-      shippingMethod: "delivery", 
+      shippingMethod: "delivery", // Ensure this is a valid string
       shippingAddress: "",
       shippingCity: "",
       shippingProvince: "",
       shippingPostalCode: "",
       shippingCountry: "Ecuador",
-      paymentMethod: "cod", 
+      paymentMethod: "cod", // Ensure this is a valid string
       orderNotes: "",
     },
   });
@@ -176,7 +176,6 @@ export default function CheckoutPage() {
                   name="shippingMethod"
                   render={({ field }) => (
                     <FormItem className="space-y-3">
-                      {/* <FormLabel className="sr-only">Método de Envío</FormLabel> */}
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
@@ -245,7 +244,6 @@ export default function CheckoutPage() {
                   name="paymentMethod"
                   render={({ field }) => (
                     <FormItem className="space-y-3">
-                       {/* <FormLabel className="sr-only">Método de Pago</FormLabel> */}
                        <FormControl>
                          <RadioGroup
                           onValueChange={field.onChange}
@@ -349,3 +347,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
