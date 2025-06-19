@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookCopy, ShoppingCart, BarChart3, PlusCircle } from "lucide-react";
+import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react"; // Added Store import
 
 export default function LibraryAdminDashboardPage() {
   return (
