@@ -76,8 +76,8 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | undefined>(undefined);
-  const [currentShippingCost, setCurrentShippingCost] = useState(0);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod"); // Default to 'cod'
+  const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY); // Default to delivery cost
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -85,13 +85,13 @@ export default function CheckoutPage() {
       buyerName: "",
       buyerEmail: "",
       buyerPhone: "",
-      shippingMethod: undefined, 
+      shippingMethod: "delivery", // Initialize with a default value
       shippingAddress: "",
       shippingCity: "",
       shippingProvince: "",
       shippingPostalCode: "",
       shippingCountry: "Ecuador",
-      paymentMethod: undefined,
+      paymentMethod: "cod", // Initialize with a default value
       orderNotes: "",
     },
   });
@@ -116,6 +116,11 @@ export default function CheckoutPage() {
       setCurrentShippingCost(0);
     }
   }, [watchedShippingMethod]);
+
+  useEffect(() => {
+    // Initialize selectedPaymentMethod based on form's default value
+    setSelectedPaymentMethod(form.getValues("paymentMethod"));
+  }, [form]);
 
 
   const loyaltyPoints = Math.floor(totalPrice);
@@ -180,7 +185,7 @@ export default function CheckoutPage() {
                       <FormControl>
                         <RadioGroup
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
+                          value={field.value}
                           className="flex flex-col space-y-2"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
@@ -188,11 +193,12 @@ export default function CheckoutPage() {
                               <RadioGroupItem value="delivery" id="shipping-delivery"/>
                             </FormControl>
                             <FormLabel htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
-                              <div>
-                                <span className="flex items-center">
-                                  <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
-                                </span>
-                                <span className="block text-xs text-muted-foreground ml-7">Recibe tu pedido en la comodidad de tu hogar.</span>
+                              <div className="flex items-center">
+                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
+                                <div>
+                                  A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
+                                  <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
+                                </div>
                               </div>
                             </FormLabel>
                           </FormItem>
@@ -201,11 +207,12 @@ export default function CheckoutPage() {
                               <RadioGroupItem value="pickup" id="shipping-pickup"/>
                             </FormControl>
                             <FormLabel htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
-                               <div>
-                                 <span className="flex items-center">
-                                  <Store className="mr-2 h-5 w-5 text-muted-foreground"/> Retiro en Librería (Gratis)
-                                 </span>
-                                 <span className="block text-xs text-muted-foreground ml-7">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                               <div className="flex items-center">
+                                 <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
+                                 <div>
+                                    Retiro en Librería (Gratis)
+                                    <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                                  </div>
                                </div>
                             </FormLabel>
                           </FormItem>
@@ -246,7 +253,7 @@ export default function CheckoutPage() {
                       <FormControl>
                         <RadioGroup
                           onValueChange={(value) => { field.onChange(value); setSelectedPaymentMethod(value); }}
-                          defaultValue={field.value}
+                          value={field.value}
                           className="flex flex-col space-y-2"
                         >
                           <FormItem className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
@@ -254,11 +261,12 @@ export default function CheckoutPage() {
                               <RadioGroupItem value="cod" id="payment-cod"/>
                             </FormControl>
                             <FormLabel htmlFor="payment-cod" className="font-normal flex-grow cursor-pointer">
-                              <div>
-                                <span className="flex items-center">
-                                    <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> Contra Entrega
-                                </span>
-                                <span className="block text-xs text-muted-foreground ml-7">Paga en efectivo al momento de recibir tu pedido.</span>
+                              <div className="flex items-center">
+                                <Truck className="mr-2 h-5 w-5 text-muted-foreground"/>
+                                <div>
+                                  Contra Entrega
+                                  <span className="block text-xs text-muted-foreground">Paga en efectivo al momento de recibir tu pedido.</span>
+                                </div>
                               </div>
                             </FormLabel>
                           </FormItem>
@@ -267,11 +275,12 @@ export default function CheckoutPage() {
                               <RadioGroupItem value="transfer" id="payment-transfer"/>
                             </FormControl>
                             <FormLabel htmlFor="payment-transfer" className="font-normal flex-grow cursor-pointer">
-                              <div>
-                                <span className="flex items-center">
-                                    <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/> Transferencia Bancaria
-                                </span>
-                                <span className="block text-xs text-muted-foreground ml-7">Realiza el pago directamente a nuestra cuenta bancaria.</span>
+                              <div className="flex items-center">
+                                <Landmark className="mr-2 h-5 w-5 text-muted-foreground"/>
+                                <div>
+                                  Transferencia Bancaria
+                                  <span className="block text-xs text-muted-foreground">Realiza el pago directamente a nuestra cuenta bancaria.</span>
+                                </div>
                               </div>
                             </FormLabel>
                           </FormItem>
@@ -344,3 +353,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
