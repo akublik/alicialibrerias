@@ -2,19 +2,19 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2 } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import React from "react";
-import { useCart } from "@/context/CartContext"; // Added useCart
+import { useCart } from "@/context/CartContext"; 
 
 // Mock authentication status
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   React.useEffect(() => {
-    // Simulate checking auth status
+    // Simulate checking auth status for regular users
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
   }, []);
@@ -24,7 +24,7 @@ const useAuth = () => {
 
 export function Navbar() {
   const { isAuthenticated } = useAuth();
-  const { itemCount } = useCart(); // Get itemCount from CartContext
+  const { itemCount } = useCart(); 
   const pathname = usePathname();
 
   const navItems = [
@@ -59,6 +59,12 @@ export function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center space-x-3">
+          <Link href="/library-login">
+            <Button variant="ghost" className="font-body">
+              <Store className="mr-2 h-4 w-4" />
+              Soy Librería
+            </Button>
+          </Link>
           {isAuthenticated ? (
             <Link href="/dashboard">
               <Button variant="ghost" size="icon" aria-label="Dashboard">
@@ -115,17 +121,24 @@ export function Navbar() {
                 ))}
               </nav>
               <div className="mt-auto pt-6 border-t">
+                <Link href="/library-login" className={cn(
+                    "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground mb-2",
+                    "text-foreground/80"
+                  )}>
+                  <Store className="h-5 w-5" />
+                  <span>Soy Librería</span>
+                </Link>
                 {isAuthenticated ? (
                    <Link href="/dashboard" className={cn(
                       "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                        "text-foreground/80"
                     )}>
                       <UserCircle className="h-5 w-5" />
-                      <span>Mi Cuenta</span>
+                      <span>Mi Cuenta Lector</span>
                    </Link>
                 ) : (
                   <Link href="/login">
-                     <Button variant="default" className="w-full font-body">
+                     <Button variant="default" className="w-full font-body mb-2">
                         <LogIn className="mr-2 h-4 w-4" />
                         Ingresar / Registrarse
                       </Button>
