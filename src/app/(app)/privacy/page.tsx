@@ -11,7 +11,7 @@ export default function PrivacyPage() {
             Política de Privacidad
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Tu privacidad es importante para nosotros. Esta política explica cómo recopilamos, usamos y protegemos tu información personal.
+            Tu privacidad es importante para nosotros. Esta política explica cómo recopilamos, usamos y protegemos tu información personal en Alicia Libros.
           </p>
         </div>
       </section>
@@ -23,7 +23,7 @@ export default function PrivacyPage() {
 
             <h2>1. Introducción</h2>
             <p>
-              En Alicia Lee (en adelante, "Nosotros" o "la Plataforma"), respetamos tu privacidad y estamos comprometidos a proteger tu información personal. Esta Política de Privacidad describe cómo recopilamos, utilizamos, divulgamos y protegemos la información que obtenemos de los usuarios de nuestra plataforma.
+              En Alicia Libros (en adelante, "Nosotros" o "la Plataforma"), respetamos tu privacidad y estamos comprometidos a proteger tu información personal. Esta Política de Privacidad describe cómo recopilamos, utilizamos, divulgamos y protegemos la información que obtenemos de los usuarios de nuestra plataforma.
             </p>
 
             <h2>2. Información que Recopilamos</h2>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
 
             <h2>10. Contacto</h2>
             <p>
-              Si tienes preguntas o inquietudes sobre esta Política de Privacidad o nuestras prácticas de datos, por favor contáctanos en <a href="mailto:privacidad@alicialee.com">privacidad@alicialee.com</a>.
+              Si tienes preguntas o inquietudes sobre esta Política de Privacidad o nuestras prácticas de datos, por favor contáctanos en <a href="mailto:privacidad@alicialibros.com">privacidad@alicialibros.com</a>.
             </p>
           </div>
         </div>

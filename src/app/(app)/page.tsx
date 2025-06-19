@@ -27,10 +27,10 @@ export default function HomePage() {
     <div className="animate-fadeIn">
       {/* Hero Section */}
       <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url('https://placehold.co/1920x1080.png?text=Alicia+Lee+Background')", backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint="library pattern"></div>
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url('https://placehold.co/1920x1080.png?text=Alicia+Libros+Background')", backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint="library pattern"></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
-            Bienvenido a Alicia Lee
+            Bienvenido a Alicia Libros
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
             Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.
@@ -74,9 +74,9 @@ export default function HomePage() {
       {/* Platform Explanation Section */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">¿Qué es Alicia Lee?</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">¿Qué es Alicia Libros?</h2>
           <p className="text-center text-lg text-foreground/70 mb-12 max-w-3xl mx-auto">
-            Alicia Lee es un marketplace que conecta a lectores apasionados con la riqueza y diversidad de las librerías independientes de Ecuador y Latinoamérica. Fomentamos la lectura, apoyamos la cultura local y te ayudamos a descubrir tu próxima gran aventura literaria.
+            Alicia Libros es un marketplace que conecta a lectores apasionados con la riqueza y diversidad de las librerías independientes de Ecuador y Latinoamérica. Fomentamos la lectura, apoyamos la cultura local y te ayudamos a descubrir tu próxima gran aventura literaria.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {platformBenefits.map(benefit => (

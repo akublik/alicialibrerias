@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { placeholderReviews, bookClubs } from "@/lib/placeholders";
+import { placeholderReviews, bookClubs, placeholderBooks } from "@/lib/placeholders";
 import type { Review } from "@/types";
 import Image from "next/image";
 import { MessageSquare, Users, CalendarDays, Star, ThumbsUp, Send, PlusCircle } from "lucide-react";
@@ -68,7 +68,7 @@ export default function CommunityPage() {
       <header className="mb-12 text-center">
         <Users className="mx-auto h-16 w-16 text-primary mb-4" />
         <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-4">
-          Comunidad Alicia Lee
+          Comunidad Alicia Libros
         </h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
           Conéctate con otros lectores, comparte tus opiniones y descubre nuevas perspectivas literarias.

@@ -53,7 +53,7 @@ export default function ForgotPasswordPage() {
        <div className="absolute top-8 left-8">
         <Link href="/" className="flex items-center space-x-2 text-primary hover:opacity-80 transition-opacity">
           <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          <span className="font-headline text-2xl font-bold">Alicia Lee</span>
+          <span className="font-headline text-2xl font-bold">Alicia Libros</span>
         </Link>
       </div>
       <Card className="w-full max-w-md shadow-2xl animate-fadeIn">
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
         </CardFooter>
       </Card>
        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground">
-         &copy; {new Date().getFullYear()} Alicia Lee. Todos los derechos reservados.
+         &copy; {new Date().getFullYear()} Alicia Libros. Todos los derechos reservados.
       </footer>
     </div>
   );

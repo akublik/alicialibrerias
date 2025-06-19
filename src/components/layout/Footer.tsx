@@ -10,7 +10,7 @@ export function Footer() {
           <div>
             <Link href="/" className="flex items-center space-x-2 mb-4">
               <BookOpen className="h-8 w-8 text-primary" />
-              <span className="font-headline text-2xl font-bold text-primary">Alicia Lee</span>
+              <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
             </Link>
             <p className="text-muted-foreground text-sm">
               Conectando lectores con librerías independientes en Ecuador y Latinoamérica.
@@ -35,7 +35,7 @@ export function Footer() {
         </div>
         <div className="mt-8 border-t pt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} Alicia Lee. Todos los derechos reservados.
+            &copy; {new Date().getFullYear()} Alicia Libros. Todos los derechos reservados.
           </p>
         </div>
       </div>

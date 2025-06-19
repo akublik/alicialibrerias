@@ -11,7 +11,7 @@ export default function TermsPage() {
             Términos y Condiciones
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Por favor, lee atentamente nuestros términos y condiciones antes de usar la plataforma Alicia Lee.
+            Por favor, lee atentamente nuestros términos y condiciones antes de usar la plataforma Alicia Libros.
           </p>
         </div>
       </section>
@@ -23,12 +23,12 @@ export default function TermsPage() {
 
             <h2>1. Aceptación de los Términos</h2>
             <p>
-              Al acceder y utilizar la plataforma Alicia Lee (en adelante, "la Plataforma"), operada por [Nombre Legal de la Empresa/Organización] (en adelante, "Nosotros"), aceptas cumplir y estar sujeto a los siguientes términos y condiciones de uso. Si no estás de acuerdo con alguno de estos términos, no debes utilizar la Plataforma.
+              Al acceder y utilizar la plataforma Alicia Libros (en adelante, "la Plataforma"), operada por [Nombre Legal de la Empresa/Organización] (en adelante, "Nosotros"), aceptas cumplir y estar sujeto a los siguientes términos y condiciones de uso. Si no estás de acuerdo con alguno de estos términos, no debes utilizar la Plataforma.
             </p>
 
             <h2>2. Uso de la Plataforma</h2>
             <p>
-              Alicia Lee es un marketplace que conecta a librerías independientes con lectores. Te comprometes a utilizar la Plataforma de manera legal, ética y de acuerdo con estos términos. No podrás utilizar la Plataforma para fines ilícitos o que infrinjan los derechos de terceros.
+              Alicia Libros es un marketplace que conecta a librerías independientes con lectores. Te comprometes a utilizar la Plataforma de manera legal, ética y de acuerdo con estos términos. No podrás utilizar la Plataforma para fines ilícitos o que infrinjan los derechos de terceros.
             </p>
             <h3>2.1. Cuentas de Usuario</h3>
             <p>
@@ -37,12 +37,12 @@ export default function TermsPage() {
 
             <h2>3. Propiedad Intelectual</h2>
             <p>
-              Todo el contenido presente en la Plataforma, incluyendo textos, gráficos, logos, iconos, imágenes, y software, es propiedad de Alicia Lee o de sus licenciantes y está protegido por las leyes de propiedad intelectual. No puedes reproducir, distribuir, modificar o crear obras derivadas de dicho contenido sin nuestro consentimiento previo por escrito.
+              Todo el contenido presente en la Plataforma, incluyendo textos, gráficos, logos, iconos, imágenes, y software, es propiedad de Alicia Libros o de sus licenciantes y está protegido por las leyes de propiedad intelectual. No puedes reproducir, distribuir, modificar o crear obras derivadas de dicho contenido sin nuestro consentimiento previo por escrito.
             </p>
 
             <h2>4. Compras y Pagos</h2>
             <p>
-              Alicia Lee facilita la compra de libros de librerías independientes. Los términos específicos de cada compra, incluyendo precios, envío y devoluciones, serán establecidos por cada librería. Nosotros no somos responsables directos de estas transacciones, aunque proveemos la plataforma para ellas. Se aplicarán las políticas de pago de los procesadores de pago integrados.
+              Alicia Libros facilita la compra de libros de librerías independientes. Los términos específicos de cada compra, incluyendo precios, envío y devoluciones, serán establecidos por cada librería. Nosotros no somos responsables directos de estas transacciones, aunque proveemos la plataforma para ellas. Se aplicarán las políticas de pago de los procesadores de pago integrados.
             </p>
 
             <h2>5. Contenido Generado por el Usuario</h2>
@@ -52,7 +52,7 @@ export default function TermsPage() {
 
             <h2>6. Limitación de Responsabilidad</h2>
             <p>
-              La Plataforma se proporciona "tal cual" y "según disponibilidad". No garantizamos que la Plataforma sea ininterrumpida, libre de errores o segura. En la máxima medida permitida por la ley, Alicia Lee no será responsable por daños directos, indirectos, incidentales, especiales o consecuentes derivados del uso o la imposibilidad de uso de la Plataforma.
+              La Plataforma se proporciona "tal cual" y "según disponibilidad". No garantizamos que la Plataforma sea ininterrumpida, libre de errores o segura. En la máxima medida permitida por la ley, Alicia Libros no será responsable por daños directos, indirectos, incidentales, especiales o consecuentes derivados del uso o la imposibilidad de uso de la Plataforma.
             </p>
 
             <h2>7. Modificaciones a los Términos</h2>
@@ -67,7 +67,7 @@ export default function TermsPage() {
 
             <h2>9. Contacto</h2>
             <p>
-              Si tienes alguna pregunta sobre estos Términos y Condiciones, por favor contáctanos a través de <a href="mailto:legal@alicialee.com">legal@alicialee.com</a>.
+              Si tienes alguna pregunta sobre estos Términos y Condiciones, por favor contáctanos a través de <a href="mailto:legal@alicialibros.com">legal@alicialibros.com</a>.
             </p>
           </div>
         </div>

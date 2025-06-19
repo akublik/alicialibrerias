@@ -180,7 +180,7 @@ export default function ContactPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="mailto:info@alicialee.com" className="text-primary hover:underline text-lg block">info@alicialee.com</a>
+                    <a href="mailto:info@alicialibros.com" className="text-primary hover:underline text-lg block">info@alicialibros.com</a>
                      <p className="text-sm text-muted-foreground">Respondemos en 24-48 horas hábiles.</p>
                   </CardContent>
                 </Card>

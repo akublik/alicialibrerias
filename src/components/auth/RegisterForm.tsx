@@ -55,7 +55,7 @@ export function RegisterForm() {
     localStorage.setItem("isAuthenticated", "true");
     toast({
         title: "Registro Exitoso",
-        description: "¡Tu cuenta ha sido creada! Bienvenido a Alicia Lee.",
+        description: "¡Tu cuenta ha sido creada! Bienvenido a Alicia Libros.",
     });
     if (typeof window !== 'undefined') window.location.href = "/dashboard"; // Redirect to dashboard
     setIsLoading(false);
@@ -80,7 +80,7 @@ export function RegisterForm() {
     <Card className="w-full max-w-md shadow-2xl animate-fadeIn">
       <CardHeader className="text-center">
         <CardTitle className="font-headline text-3xl text-primary">Crear Cuenta</CardTitle>
-        <CardDescription>Únete a la comunidad de Alicia Lee y descubre un mundo de libros.</CardDescription>
+        <CardDescription>Únete a la comunidad de Alicia Libros y descubre un mundo de libros.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

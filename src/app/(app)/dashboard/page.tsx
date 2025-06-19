@@ -61,7 +61,7 @@ export default function DashboardPage() {
           Mi Espacio Lector
         </h1>
         <p className="text-lg text-foreground/80">
-          Bienvenida de nuevo, {mockUser.name}. Aquí puedes gestionar tu actividad en Alicia Lee.
+          Bienvenida de nuevo, {mockUser.name}. Aquí puedes gestionar tu actividad en Alicia Libros.
         </p>
       </header>
 

@@ -28,7 +28,7 @@ export function Navbar() {
   const navItems = [
     { href: "/", label: "Inicio", icon: Home },
     { href: "/libraries", label: "Librerías", icon: Library },
-    { href: "/recommendations", label: "Recomendaciones IA", icon: UserCircle },
+    { href: "/recommendations", label: "Recomendaciones IA", icon: UserCircle }, // Icon was MessageSquare, changed to UserCircle to match other user-related icons. Re-evaluating suitable icon. Sparkles might be better.
     { href: "/community", label: "Comunidad", icon: Users },
   ];
 
@@ -37,7 +37,7 @@ export function Navbar() {
       <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4 md:px-6">
         <Link href="/" className="flex items-center space-x-2">
           <BookOpen className="h-8 w-8 text-primary" />
-          <span className="font-headline text-2xl font-bold text-primary">Alicia Lee</span>
+          <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
@@ -87,7 +87,7 @@ export function Navbar() {
             <SheetContent side="right" className="w-[280px] bg-background p-6">
               <Link href="/" className="flex items-center space-x-2 mb-8">
                 <BookOpen className="h-8 w-8 text-primary" />
-                <span className="font-headline text-2xl font-bold text-primary">Alicia Lee</span>
+                <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
               </Link>
               <nav className="flex flex-col space-y-4">
                 {navItems.map((item) => (

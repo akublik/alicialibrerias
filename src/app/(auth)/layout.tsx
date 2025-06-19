@@ -11,12 +11,12 @@ export default function AuthLayout({
       <div className="absolute top-8 left-8">
         <Link href="/" className="flex items-center space-x-2 text-primary hover:opacity-80 transition-opacity">
           <BookOpen className="h-8 w-8" />
-          <span className="font-headline text-2xl font-bold">Alicia Lee</span>
+          <span className="font-headline text-2xl font-bold">Alicia Libros</span>
         </Link>
       </div>
       <main className="w-full max-w-md">{children}</main>
        <footer className="absolute bottom-8 text-center text-sm text-muted-foreground">
-         &copy; {new Date().getFullYear()} Alicia Lee. Todos los derechos reservados.
+         &copy; {new Date().getFullYear()} Alicia Libros. Todos los derechos reservados.
       </footer>
     </div>
   );

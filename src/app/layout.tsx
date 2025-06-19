@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Alicia Lee - Tu marketplace de librerías independientes',
+  title: 'Alicia Libros - Tu marketplace de librerías independientes',
   description: 'Descubre libros únicos y apoya a librerías independientes en Ecuador y Latinoamérica.',
 };
 

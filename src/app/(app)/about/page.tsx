@@ -1,6 +1,7 @@
 // src/app/(app)/about/page.tsx
 import { BookHeart, Users, MapPinned, Sparkles } from 'lucide-react';
 import Image from 'next/image';
+import { Card } from '@/components/ui/card'; // Added import
 
 export default function AboutPage() {
   const teamMembers = [
@@ -15,7 +16,7 @@ export default function AboutPage() {
          <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url('https://placehold.co/1920x1080.png?text=Book+Pattern')", backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint="subtle pattern"></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
-            Sobre Alicia Lee
+            Sobre Alicia Libros
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
             Nuestra pasión es conectar a lectores con la magia de las librerías independientes, fomentando la cultura y el amor por la lectura en cada rincón de Latinoamérica.
@@ -29,14 +30,14 @@ export default function AboutPage() {
             <div>
               <h2 className="font-headline text-3xl font-semibold text-foreground mb-6">Nuestra Misión</h2>
               <p className="text-lg text-foreground/70 mb-4 leading-relaxed">
-                En Alicia Lee, creemos que cada librería independiente es un tesoro cultural, un espacio único que ofrece mucho más que libros: ofrece comunidad, descubrimiento y pasión por las historias. Nuestra misión es ser el puente que une estos valiosos espacios con lectores ávidos de nuevas aventuras literarias.
+                En Alicia Libros, creemos que cada librería independiente es un tesoro cultural, un espacio único que ofrece mucho más que libros: ofrece comunidad, descubrimiento y pasión por las historias. Nuestra misión es ser el puente que une estos valiosos espacios con lectores ávidos de nuevas aventuras literarias.
               </p>
               <p className="text-lg text-foreground/70 leading-relaxed">
                 Buscamos fortalecer el ecosistema del libro en Ecuador y Latinoamérica, proporcionando herramientas tecnológicas a las librerías para que puedan prosperar y llegar a más personas, mientras ofrecemos a los lectores una plataforma intuitiva y enriquecedora para explorar, conectar y comprar.
               </p>
             </div>
             <div className="relative aspect-video rounded-lg overflow-hidden shadow-xl">
-                <Image src="https://placehold.co/600x400.png" alt="Equipo de Alicia Lee trabajando" layout="fill" objectFit="cover" data-ai-hint="diverse team discussion" />
+                <Image src="https://placehold.co/600x400.png" alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint="diverse team discussion" />
             </div>
           </div>
         </div>
@@ -44,7 +45,7 @@ export default function AboutPage() {
 
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">¿Por Qué Alicia Lee?</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">¿Por Qué Alicia Libros?</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: BookHeart },
