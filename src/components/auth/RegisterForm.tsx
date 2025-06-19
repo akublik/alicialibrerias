@@ -1,6 +1,6 @@
 "use client";
 
-// This component is temporarily disabled and renders nothing.
+// This component explicitly returns null.
 export function RegisterForm() {
   return null;
 }
