@@ -1,8 +1,9 @@
+
 // src/components/layout/Navbar.tsx
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, MessageSquare, UserCircle, Users, LogIn, ShoppingCart, Menu } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
@@ -28,7 +29,8 @@ export function Navbar() {
   const navItems = [
     { href: "/", label: "Inicio", icon: Home },
     { href: "/libraries", label: "Librerías", icon: Library },
-    { href: "/recommendations", label: "Recomendaciones IA", icon: UserCircle }, // Icon was MessageSquare, changed to UserCircle to match other user-related icons. Re-evaluating suitable icon. Sparkles might be better.
+    { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles },
+    { href: "/games", label: "Juegos", icon: Gamepad2 },
     { href: "/community", label: "Comunidad", icon: Users },
   ];
 
