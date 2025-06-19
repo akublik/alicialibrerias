@@ -6,9 +6,6 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <React.Fragment>
-      {children}
-    </React.Fragment>
-  );
+  // This layout now renders nothing, effectively disabling it.
+  return null;
 }

@@ -1,3 +1,4 @@
-// This page is temporarily disabled to help resolve routing conflicts.
-// THIS FILE SHOULD NOT BE TREATED AS AN ACTIVE PAGE.
-export default null;
+// This page is temporarily disabled and renders nothing.
+export default function RegisterPage() {
+  return null;
+}
