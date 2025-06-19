@@ -38,7 +38,7 @@ const checkoutFormSchema = z.object({
   shippingCity: z.string().optional(),
   shippingProvince: z.string().optional(),
   shippingPostalCode: z.string().optional(),
-  shippingCountry: z.string().default("Ecuador"),
+  shippingCountry: z.string().optional(),
   orderNotes: z.string().optional(),
 });
 
@@ -212,7 +212,7 @@ export default function CheckoutPage() {
                   <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                   <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                   <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                  <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} value={field.value || ''} /></FormControl> <FormMessage /> </FormItem> )} />
                 </CardContent>
               </Card>
             )}
@@ -266,7 +266,7 @@ export default function CheckoutPage() {
              <Card className="shadow-md">
               <CardHeader><CardTitle className="font-headline text-xl">Notas Adicionales (Opcional)</CardTitle></CardHeader>
               <CardContent>
-                 <FormField control={form.control} name="orderNotes" render={({ field }) => ( <FormItem> <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel> <FormControl><Textarea {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                 <FormField control={form.control} name="orderNotes" render={({ field }) => ( <FormItem> <FormLabel>¿Alguna instrucción especial para tu pedido o la entrega?</FormLabel> <FormControl><Textarea {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
           </div>
