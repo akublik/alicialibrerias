@@ -18,7 +18,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
 
   return (
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl flex flex-col h-full">
-      <CardHeader className="p-0 relative">
+      <CardHeader className="p-0 relative flex justify-center"> {/* Added flex justify-center */}
         <Link href={`/books/${book.id}`} aria-label={`Ver detalles de ${book.title}`}>
           <Image
             src={book.imageUrl}
