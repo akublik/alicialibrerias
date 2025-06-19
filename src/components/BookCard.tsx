@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart, Star, Eye, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BookCardProps {
@@ -13,8 +13,8 @@ interface BookCardProps {
 }
 
 export function BookCard({ book, size = 'normal' }: BookCardProps) {
-  const imageWidth = size === 'small' ? 160 : 300;
-  const imageHeight = size === 'small' ? 240 : 450;
+  const imageWidth = size === 'small' ? 140 : 200;
+  const imageHeight = size === 'small' ? 210 : 300;
 
   return (
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl flex flex-col h-full">
@@ -77,8 +77,8 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
       </CardContent>
       <CardFooter
         className={cn(
-          "flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0 sm:space-x-2",
-          size === 'small' ? 'p-3 pt-0' : 'p-4 pt-0'
+          "flex items-center justify-between",
+          size === 'small' ? 'p-3 pt-2' : 'p-4 pt-2'
         )}
       >
         <p
@@ -89,10 +89,24 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
         >
           ${book.price.toFixed(2)}
         </p>
-        <Button size="sm" className="w-full sm:w-auto font-body">
-          <ShoppingCart className="mr-2 h-4 w-4" />
-          Agregar
-        </Button>
+        <div className="flex items-center space-x-1">
+          <Link href={`/books/${book.id}`} passHref>
+            <Button asChild variant="ghost" size={size === 'small' ? 'icon' : 'sm'} aria-label="Ver libro">
+              <span>
+                <Eye className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
+                {size !== 'small' && "Ver"}
+              </span>
+            </Button>
+          </Link>
+          <Button size={size === 'small' ? 'icon' : 'sm'} className="font-body" aria-label="Añadir al carrito">
+            <ShoppingCart className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
+            {size !== 'small' && "Añadir"}
+          </Button>
+          <Button variant="ghost" size={size === 'small' ? 'icon' : 'sm'} aria-label="Marcar como favorito">
+            <Heart className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
+            {size !== 'small' && "Favorito"}
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
