@@ -35,7 +35,7 @@ const libraryRegisterFormSchema = z.object({
   libraryPostalCode: z.string().optional(),
   libraryPhone: z.string().optional(),
   libraryDescription: z.string().optional(),
-  libraryLogo: z.any().optional(), // Campo para el logo
+  libraryLogo: z.any().optional(),
 }).refine(data => data.adminPassword === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
@@ -71,7 +71,6 @@ export function LibraryRegisterForm() {
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     console.log("Library Register values:", values);
     if (values.libraryLogo && values.libraryLogo.length > 0) {
@@ -82,11 +81,25 @@ export function LibraryRegisterForm() {
       });
     }
     
-    // Store mock registration details in localStorage
+    const libraryDataForStorage = {
+      id: "newly-registered-library", // Consistent ID for the new library
+      name: values.libraryName,
+      location: `${values.libraryCity}, ${values.libraryCountry}`, // Combining for location string
+      address: values.libraryAddress, // Storing separately if needed
+      city: values.libraryCity,
+      province: values.libraryProvince,
+      country: values.libraryCountry,
+      postalCode: values.libraryPostalCode,
+      phone: values.libraryPhone,
+      description: values.libraryDescription,
+      logoName: values.libraryLogo && values.libraryLogo.length > 0 ? values.libraryLogo[0].name : undefined,
+      imageUrl: 'https://placehold.co/400x300.png', // Default placeholder
+      dataAiHint: 'new bookstore' 
+    };
+    localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
+    
     localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
     localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
-    // Also store library name for dashboard display (example)
-    localStorage.setItem("mockRegisteredLibraryName", values.libraryName); 
     localStorage.setItem("isLibraryAdminAuthenticated", "true");
 
     toast({
@@ -98,7 +111,7 @@ export function LibraryRegisterForm() {
   }
 
   return (
-    <Card className="w-full max-w-lg shadow-2xl animate-fadeIn my-8"> {/* Increased max-width and margin */}
+    <Card className="w-full max-w-lg shadow-2xl animate-fadeIn my-8">
       <CardHeader className="text-center">
         <Building className="mx-auto h-12 w-12 text-primary mb-4" />
         <CardTitle className="font-headline text-3xl text-primary">Registra tu Librería</CardTitle>
@@ -123,14 +136,14 @@ export function LibraryRegisterForm() {
             <FormField
               control={form.control}
               name="libraryLogo"
-              render={({ field: { onChange, value, ...rest } }) => ( // Destructure field to handle file input correctly
+              render={({ field: { onChange, value, ...rest } }) => (
                 <FormItem>
                   <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4 text-muted-foreground"/>Logo de la Librería (Opcional)</FormLabel>
                   <FormControl>
                     <Input 
                       type="file" 
                       accept="image/*"
-                      onChange={(e) => onChange(e.target.files)} // Pass FileList to react-hook-form
+                      onChange={(e) => onChange(e.target.files)}
                       {...rest} 
                     />
                   </FormControl>
@@ -169,4 +182,3 @@ export function LibraryRegisterForm() {
     </Card>
   );
 }
-

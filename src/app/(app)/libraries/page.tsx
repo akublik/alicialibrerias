@@ -1,7 +1,7 @@
 // src/app/(app)/libraries/page.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { SearchBar } from "@/components/SearchBar";
 import { placeholderLibraries } from "@/lib/placeholders";
@@ -16,23 +16,40 @@ const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
-  // const [libraries, setLibraries] = useState<Library[]>(placeholderLibraries); // For actual API call
+  const [allLibraries, setAllLibraries] = useState<Library[]>(placeholderLibraries);
+
+  useEffect(() => {
+    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+    let currentLibraries = [...placeholderLibraries];
+    if (storedLibraryData) {
+      try {
+        const newLibrary: Library = JSON.parse(storedLibraryData);
+        // Remove existing new library if page reloads, to avoid duplicates from initial state
+        currentLibraries = currentLibraries.filter(lib => lib.id !== "newly-registered-library");
+        currentLibraries = [newLibrary, ...currentLibraries];
+      } catch (e) {
+        console.error("Error parsing registered library data:", e);
+      }
+    }
+    setAllLibraries(currentLibraries);
+  }, []);
+
 
   const handleSearch = (term: string) => {
     setSearchTerm(term.toLowerCase());
   };
 
   const filteredLibraries = useMemo(() => {
-    return placeholderLibraries.filter((library) => {
+    return allLibraries.filter((library) => {
       const matchesSearchTerm =
         library.name.toLowerCase().includes(searchTerm) ||
-        library.description?.toLowerCase().includes(searchTerm) ||
+        (library.description && library.description.toLowerCase().includes(searchTerm)) ||
         library.location.toLowerCase().includes(searchTerm);
       const matchesLocation =
         selectedLocation === "Todas" || library.location.includes(selectedLocation);
       return matchesSearchTerm && matchesLocation;
     });
-  }, [searchTerm, selectedLocation]);
+  }, [searchTerm, selectedLocation, allLibraries]);
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">

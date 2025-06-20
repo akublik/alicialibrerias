@@ -3,14 +3,42 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react"; // Added Store import
+import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react";
+import { useEffect, useState } from "react"; // Added useEffect and useState
 
 export default function LibraryAdminDashboardPage() {
+  const [libraryName, setLibraryName] = useState<string>("Tu Librería");
+
+  useEffect(() => {
+    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (storedLibraryData) {
+        try {
+            const libDetails = JSON.parse(storedLibraryData);
+            if (libDetails && libDetails.name) {
+              setLibraryName(libDetails.name);
+            }
+        } catch (e) {
+            console.error("Error parsing registered library data for dashboard:", e);
+            // Fallback to old method if new one fails
+            const nameFromOldStorage = localStorage.getItem("mockRegisteredLibraryName");
+            if (nameFromOldStorage) {
+                 setLibraryName(nameFromOldStorage);
+            }
+        }
+    } else {
+        // Fallback if new key doesn't exist
+        const nameFromOldStorage = localStorage.getItem("mockRegisteredLibraryName");
+        if (nameFromOldStorage) {
+             setLibraryName(nameFromOldStorage);
+        }
+    }
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8 animate-fadeIn">
       <header className="mb-8">
         <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
-          Bienvenido al Panel de tu Librería
+          Bienvenido al Panel de {libraryName}
         </h1>
         <p className="text-lg text-foreground/80">
           Gestiona tus libros, pedidos y perfil desde aquí.
@@ -24,9 +52,9 @@ export default function LibraryAdminDashboardPage() {
             <BookCopy className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">125</div>
+            <div className="text-2xl font-bold">125</div> {/* Placeholder */}
             <p className="text-xs text-muted-foreground">
-              +5 esta semana
+              +5 esta semana {/* Placeholder */}
             </p>
           </CardContent>
         </Card>
@@ -36,9 +64,9 @@ export default function LibraryAdminDashboardPage() {
             <ShoppingCart className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">12</div> {/* Placeholder */}
             <p className="text-xs text-muted-foreground">
-              +3 nuevos hoy
+              +3 nuevos hoy {/* Placeholder */}
             </p>
           </CardContent>
         </Card>
@@ -48,9 +76,9 @@ export default function LibraryAdminDashboardPage() {
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$1,250.00</div>
+            <div className="text-2xl font-bold">$1,250.00</div> {/* Placeholder */}
             <p className="text-xs text-muted-foreground">
-              Comparado con $980.00 el mes pasado
+              Comparado con $980.00 el mes pasado {/* Placeholder */}
             </p>
           </CardContent>
         </Card>
