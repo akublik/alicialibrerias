@@ -1,11 +1,10 @@
 // src/app/(auth)/layout.tsx
-import React from 'react';
-
-export default function AuthLayout({
+// Este layout devuelve null explícitamente para asegurar que no interfiere
+// y para ayudar a diagnosticar el error de rutas paralelas.
+export default function AuthLayoutNull({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // This layout is explicitly returning null to ensure it doesn't interfere.
   return null;
 }

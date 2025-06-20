@@ -1,5 +1,6 @@
 // src/app/(app)/forgot-password/page.tsx
-export default function AppForgotPasswordPage() {
-  // This page explicitly returns null to ensure it doesn't create a route.
+// Esta página devuelve null explícitamente para asegurar que no crea una ruta o conflicto,
+// ayudando a diagnosticar el error de rutas paralelas.
+export default function AppForgotPasswordPageNull() {
   return null;
 }
