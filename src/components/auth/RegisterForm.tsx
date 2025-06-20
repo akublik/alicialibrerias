@@ -1,7 +1,7 @@
 // src/components/auth/RegisterForm.tsx
 "use client";
 // This component returns null explicitly to prevent any rendering or logic execution,
-// helping to isolate the parallel routes error.
+// keeping it inert until the login flow is confirmed to be stable.
 export function RegisterForm() {
   return null;
 }
