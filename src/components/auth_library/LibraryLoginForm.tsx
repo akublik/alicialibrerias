@@ -42,12 +42,25 @@ export function LibraryLoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
     console.log("Library Login values:", values);
-    
-    // Mock success/failure
-    if (values.email === "libreria@example.com" && values.password === "password") {
+
+    const registeredEmail = localStorage.getItem("mockRegisteredLibraryAdminEmail");
+    const registeredPassword = localStorage.getItem("mockRegisteredLibraryAdminPassword");
+
+    let loggedIn = false;
+
+    if (registeredEmail && registeredPassword && values.email === registeredEmail && values.password === registeredPassword) {
+      loggedIn = true;
+    } else if (values.email === "libreria@example.com" && values.password === "password") {
+      // Fallback to hardcoded default credentials
+      loggedIn = true;
+      if (!registeredEmail) { 
+           console.log("Logging in with default credentials. No dynamic registration found in localStorage.");
+      }
+    }
+
+    if (loggedIn) {
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
       toast({
         title: "Inicio de Sesión Exitoso",

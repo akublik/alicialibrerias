@@ -73,8 +73,11 @@ export function LibraryRegisterForm() {
     await new Promise(resolve => setTimeout(resolve, 1500));
     console.log("Library Register values:", values);
     
-    // Mock success
+    // Store mock registration details in localStorage
+    localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
+    localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
     localStorage.setItem("isLibraryAdminAuthenticated", "true");
+
     toast({
         title: "¡Registro Exitoso!",
         description: `Tu librería ${values.libraryName} ha sido registrada. Bienvenida a Alicia Libros.`,
