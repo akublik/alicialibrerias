@@ -1,3 +1,4 @@
+
 // src/app/(library_dashboard)/library-admin/dashboard/page.tsx
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react";
 import { useEffect, useState } from "react"; 
+import Image from "next/image";
 
 export default function LibraryAdminDashboardPage() {
   const [libraryName, setLibraryName] = useState<string>("Tu Librería");
+  const [libraryImageUrl, setLibraryImageUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -15,11 +18,16 @@ export default function LibraryAdminDashboardPage() {
       if (storedLibraryData) {
           try {
               const libDetails = JSON.parse(storedLibraryData);
-              if (libDetails && libDetails.name) {
-                setLibraryName(libDetails.name);
-                console.log("Dashboard: Library name set to:", libDetails.name);
+              if (libDetails) {
+                if (libDetails.name) {
+                  setLibraryName(libDetails.name);
+                  console.log("Dashboard: Library name set to:", libDetails.name);
+                }
+                if (libDetails.imageUrl) {
+                  setLibraryImageUrl(libDetails.imageUrl);
+                  console.log("Dashboard: Library image URL set to:", libDetails.imageUrl);
+                }
               } else {
-                // Fallback if name is not in the main object for some reason
                 const oldName = localStorage.getItem("mockRegisteredLibraryName");
                 if (oldName) setLibraryName(oldName);
               }
@@ -29,7 +37,6 @@ export default function LibraryAdminDashboardPage() {
               if (oldName) setLibraryName(oldName);
           }
       } else {
-          // Fallback if new key doesn't exist at all
           const oldName = localStorage.getItem("mockRegisteredLibraryName");
           if (oldName) {
             setLibraryName(oldName);
@@ -43,13 +50,26 @@ export default function LibraryAdminDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fadeIn">
-      <header className="mb-8">
-        <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
-          Bienvenido al Panel de {libraryName}
-        </h1>
-        <p className="text-lg text-foreground/80">
-          Gestiona tus libros, pedidos y perfil desde aquí.
-        </p>
+      <header className="mb-8 flex flex-col sm:flex-row items-center gap-4">
+       {libraryImageUrl && (
+         <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md border-2 border-primary/20 flex-shrink-0">
+           <Image
+             src={libraryImageUrl}
+             alt={`Logo de ${libraryName}`}
+             layout="fill"
+             objectFit="cover"
+             data-ai-hint="library logo dashboard"
+           />
+         </div>
+       )}
+       <div>
+          <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
+            Bienvenido al Panel de {libraryName}
+          </h1>
+          <p className="text-lg text-foreground/80">
+            Gestiona tus libros, pedidos y perfil desde aquí.
+          </p>
+       </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
