@@ -1,5 +1,4 @@
-// This file is intentionally kept empty to help isolate parallel route conflicts.
-// Functionality will be restored incrementally.
+// This file is intentionally left empty to resolve a parallel routes issue.
 export default function LoginPage() {
   return null;
 }
