@@ -12,36 +12,45 @@ import { Input } from "@/components/ui/input";
 
 const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
 
-const NEW_LIBRARY_ID = "newly-registered-library";
+const NEW_LIBRARY_LOCALSTORAGE_KEY = "newly-registered-library-details-temp";
 
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
-  // Initialize with placeholders only, localStorage will be merged in useEffect
+  // Initialize with placeholders. localStorage will be merged in useEffect.
   const [allLibraries, setAllLibraries] = useState<Library[]>(placeholderLibraries);
 
   useEffect(() => {
     // This effect runs only on the client-side after hydration
     if (typeof window !== "undefined") {
-      const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+      const storedLibraryData = localStorage.getItem(NEW_LIBRARY_LOCALSTORAGE_KEY);
       if (storedLibraryData) {
         try {
           const newLibrary: Library = JSON.parse(storedLibraryData);
           console.log("LibrariesPage useEffect: Found new library in localStorage:", newLibrary);
-          // Add the new library, ensuring it's at the top and no duplicates by ID
+          
+          // Add the new library from localStorage, ensuring it's at the top and no duplicates by ID
           setAllLibraries(prevLibraries => {
-            const existingIds = new Set(prevLibraries.map(lib => lib.id));
-            if (!existingIds.has(newLibrary.id)) {
+            const existingLibraryIndex = prevLibraries.findIndex(lib => lib.id === newLibrary.id);
+            if (existingLibraryIndex !== -1) {
+              // If it exists (e.g. from a previous load or if placeholder had same ID), update it
+              const updatedLibraries = [...prevLibraries];
+              updatedLibraries[existingLibraryIndex] = newLibrary;
+              return updatedLibraries;
+            } else {
+              // If it doesn't exist, add it to the beginning
               return [newLibrary, ...prevLibraries];
             }
-            // If it somehow exists (e.g. placeholder with same ID), update it
-            return [newLibrary, ...prevLibraries.filter(lib => lib.id !== newLibrary.id)];
           });
         } catch (e) {
           console.error("LibrariesPage useEffect: Error parsing registered library data:", e);
         }
       } else {
-        console.log("LibrariesPage useEffect: No new library found in localStorage.");
+        console.log("LibrariesPage useEffect: No new library found in localStorage for key:", NEW_LIBRARY_LOCALSTORAGE_KEY);
+        // Si no hay nada en localStorage con esa clave, nos aseguramos de que `allLibraries`
+        // no contenga una librería con el ID que se podría haber usado para una librería temporal
+        // (esto es más una medida de limpieza por si acaso)
+        setAllLibraries(prev => prev.filter(lib => lib.id !== "newly-registered-library")); // Assuming 'newly-registered-library' was a temp ID
       }
     }
   }, []); // Empty dependency array ensures this runs once on mount
@@ -52,7 +61,8 @@ export default function LibrariesPage() {
   };
 
   const filteredLibraries = useMemo(() => {
-    console.log("Filtering libraries, allLibraries count:", allLibraries.length);
+    // A futuro, aquí se leerían las librerías de Firestore y se combinarían con la de localStorage si existe.
+    console.log("Filtering libraries. Current allLibraries count:", allLibraries.length, "First item ID:", allLibraries[0]?.id);
     return allLibraries.filter((library) => {
       const matchesSearchTerm =
         library.name.toLowerCase().includes(searchTerm) ||
@@ -72,6 +82,7 @@ export default function LibrariesPage() {
         </h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
           Explora nuestra red de librerías independientes en Ecuador y Latinoamérica. Encuentra tu próximo tesoro literario.
+          (Nota: Actualmente mostrando datos de prueba y librerías recién registradas desde el almacenamiento local.)
         </p>
       </header>
 

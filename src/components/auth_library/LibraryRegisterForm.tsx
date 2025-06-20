@@ -21,6 +21,8 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase"; // Importar la instancia de Firestore
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const libraryRegisterFormSchema = z.object({
   adminName: z.string().min(2, { message: "El nombre del administrador debe tener al menos 2 caracteres." }),
@@ -43,7 +45,7 @@ const libraryRegisterFormSchema = z.object({
 
 type LibraryRegisterFormValues = z.infer<typeof libraryRegisterFormSchema>;
 
-const NEW_LIBRARY_ID = "newly-registered-library"; // Define a consistent ID
+const NEW_LIBRARY_ID_LOCALSTORAGE = "newly-registered-library-details-temp"; // Para UI post-registro
 
 export function LibraryRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -74,55 +76,75 @@ export function LibraryRegisterForm() {
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
     console.log("Intentando registrar librería con valores:", values);
-    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    let logoFileName = undefined;
-    if (values.libraryLogo && values.libraryLogo.length > 0 && values.libraryLogo[0]) {
-      logoFileName = values.libraryLogo[0].name;
-      console.log("Library Logo details:", {
-        name: values.libraryLogo[0].name,
-        type: values.libraryLogo[0].type,
-        size: values.libraryLogo[0].size,
-      });
-    }
+    // Simular una pequeña demora como si fuera una llamada a API
+    await new Promise(resolve => setTimeout(resolve, 1000)); 
+
+    let logoFileName = values.libraryLogo && values.libraryLogo.length > 0 && values.libraryLogo[0] 
+                       ? values.libraryLogo[0].name 
+                       : undefined;
     
-    const libraryDataForStorage = {
-      id: NEW_LIBRARY_ID, 
-      name: values.libraryName,
-      location: `${values.libraryCity}, ${values.libraryCountry}`,
-      address: values.libraryAddress,
-      city: values.libraryCity,
-      province: values.libraryProvince,
-      country: values.libraryCountry,
-      postalCode: values.libraryPostalCode || "",
-      phone: values.libraryPhone || "",
-      description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
-      logoName: logoFileName,
-      imageUrl: 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName), 
-      dataAiHint: 'new bookstore entry' 
-    };
+    // TODO: Implementar subida real del logo a Firebase Storage y obtener la URL
+    const placeholderLogoUrl = 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName);
 
     try {
-      localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
-      console.log("Librería guardada en localStorage:", libraryDataForStorage);
+      // Preparar datos para Firestore
+      const libraryDataForFirestore = {
+        adminName: values.adminName,
+        adminEmail: values.adminEmail,
+        adminPassword: values.adminPassword, // ADVERTENCIA: No guardar contraseñas en texto plano en producción. Usar Firebase Auth.
+        libraryName: values.libraryName,
+        address: values.libraryAddress,
+        city: values.libraryCity,
+        province: values.libraryProvince,
+        country: values.libraryCountry,
+        postalCode: values.libraryPostalCode || "",
+        phone: values.libraryPhone || "",
+        description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
+        logoUrl: placeholderLogoUrl, // A futuro, aquí iría la URL del logo subido a Firebase Storage
+        createdAt: serverTimestamp(), // Añade una marca de tiempo del servidor
+      };
+
+      // Guardar en Firestore
+      const docRef = await addDoc(collection(db, "libraries"), libraryDataForFirestore);
+      console.log("Librería registrada en Firestore con ID: ", docRef.id);
+
+      // Guardar temporalmente algunos detalles en localStorage para la UI post-registro inmediata
+      // y para el login simulado (que también deberá actualizarse para usar Firestore)
+      const libraryDataForLocalStorage = {
+        id: docRef.id, // Usar el ID de Firestore
+        name: values.libraryName,
+        location: `${values.libraryCity}, ${values.libraryCountry}`,
+        address: values.libraryAddress,
+        city: values.libraryCity,
+        province: values.libraryProvince,
+        country: values.libraryCountry,
+        postalCode: values.libraryPostalCode || "",
+        phone: values.libraryPhone || "",
+        description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
+        logoName: logoFileName,
+        imageUrl: placeholderLogoUrl, 
+        dataAiHint: 'new bookstore entry' 
+      };
+      localStorage.setItem(NEW_LIBRARY_ID_LOCALSTORAGE, JSON.stringify(libraryDataForLocalStorage));
       
+      // Esto es para el login simulado actual, se debería reemplazar con Firebase Auth
       localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
       localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
-      // For dashboard display, ensure it uses the most recent name.
-      localStorage.setItem("mockRegisteredLibraryName", values.libraryName);
-
+      localStorage.setItem("mockRegisteredLibraryName", values.libraryName); // Para el dashboard
 
       toast({
           title: "¡Registro Exitoso!",
-          description: `Tu librería ${values.libraryName} ha sido registrada. Bienvenida a Alicia Libros.`,
+          description: `Tu librería ${values.libraryName} ha sido registrada en Firestore.`,
       });
+      // Redirigir al dashboard, pasando el ID de la nueva librería podría ser útil
       router.push("/library-admin/dashboard"); 
     } catch (error) {
-      console.error("Error al guardar en localStorage:", error);
+      console.error("Error al registrar librería en Firestore:", error);
       toast({
         title: "Error de Registro",
-        description: "Hubo un problema al guardar la información de la librería.",
+        description: "Hubo un problema al guardar la información de la librería en Firestore. Revisa la consola.",
         variant: "destructive",
       });
     } finally {
@@ -156,14 +178,14 @@ export function LibraryRegisterForm() {
             <FormField
               control={form.control}
               name="libraryLogo"
-              render={({ field: { onChange, value, ...rest } }) => (
+              render={({ field: { onChange, value, ...rest } }) => ( // Adaptado para react-hook-form con input file
                 <FormItem>
                   <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4 text-muted-foreground"/>Logo de la Librería (Opcional)</FormLabel>
                   <FormControl>
                     <Input 
                       type="file" 
                       accept="image/*"
-                      onChange={(e) => onChange(e.target.files)}
+                      onChange={(e) => onChange(e.target.files)} // Enviar FileList a react-hook-form
                       {...rest} 
                     />
                   </FormControl>
@@ -202,4 +224,3 @@ export function LibraryRegisterForm() {
     </Card>
   );
 }
-

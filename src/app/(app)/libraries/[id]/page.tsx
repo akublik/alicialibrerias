@@ -13,7 +13,8 @@ import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-const NEWLY_REGISTERED_LIBRARY_ID = "newly-registered-library";
+// const NEWLY_REGISTERED_LIBRARY_ID = "newly-registered-library"; // ID usado para localStorage
+const NEW_LIBRARY_ID_LOCALSTORAGE_KEY = "newly-registered-library-details-temp";
 
 export default function LibraryDetailsPage() {
   const params = useParams();
@@ -27,20 +28,26 @@ export default function LibraryDetailsPage() {
     console.log("LibraryDetailsPage: loading for ID:", libraryId);
     if (libraryId) {
       let foundLibrary: Library | null = null;
-      if (libraryId === NEWLY_REGISTERED_LIBRARY_ID && typeof window !== "undefined") {
-        const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+      // Intenta cargar desde localStorage si el ID coincide con el que usamos para el registro temporal
+      // Esto es principalmente para la UX inmediata post-registro.
+      // Para librerías ya persistidas, se debería cargar desde Firestore.
+      if (typeof window !== "undefined") {
+        const storedLibraryData = localStorage.getItem(NEW_LIBRARY_ID_LOCALSTORAGE_KEY);
         if (storedLibraryData) {
           try {
-            foundLibrary = JSON.parse(storedLibraryData) as Library;
-            console.log("LibraryDetailsPage: Loaded new library from localStorage:", foundLibrary);
+            const tempRegisteredLib = JSON.parse(storedLibraryData) as Library;
+            if (tempRegisteredLib.id === libraryId) { // Comparamos el ID guardado con el ID de la URL
+              foundLibrary = tempRegisteredLib;
+              console.log("LibraryDetailsPage: Loaded library from localStorage (temp post-register):", foundLibrary);
+            }
           } catch (e) {
             console.error("LibraryDetailsPage: Error parsing registered library data for details page:", e);
           }
-        } else {
-          console.log("LibraryDetailsPage: No data in localStorage for NEWLY_REGISTERED_LIBRARY_ID");
         }
       }
       
+      // Si no se encontró en localStorage (o el ID no coincide), busca en los placeholders
+      // A futuro, aquí se haría una consulta a Firestore con el libraryId
       if (!foundLibrary) {
         foundLibrary = placeholderLibraries.find(l => l.id === libraryId) || null;
         if (foundLibrary) {
@@ -51,7 +58,7 @@ export default function LibraryDetailsPage() {
       setLibrary(foundLibrary);
 
       if (foundLibrary) {
-        // Mock books for this library
+        // Mock books para esta librería (a futuro, se cargarían desde Firestore)
         setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
         if (typeof window !== "undefined") {
           setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
@@ -77,7 +84,7 @@ export default function LibraryDetailsPage() {
   };
 
   if (!library) {
-    return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada para el ID: {libraryId}.</div>;
+    return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada para el ID: {libraryId}. (Nota: Las librerías nuevas se guardan en Firestore, esta página aún carga principalmente de placeholders o localStorage temporal).</div>;
   }
 
   const { name, location, description } = library;
@@ -212,4 +219,3 @@ export default function LibraryDetailsPage() {
     </div>
   );
 }
-
