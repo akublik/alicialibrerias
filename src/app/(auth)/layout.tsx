@@ -1,7 +1,7 @@
 // src/app/(auth)/layout.tsx
 // Este layout devuelve null explícitamente para asegurar que no interfiere
 // y para ayudar a diagnosticar el error de rutas paralelas.
-export default function AuthLayoutNull({
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
