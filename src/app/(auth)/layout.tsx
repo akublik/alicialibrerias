@@ -6,5 +6,6 @@ export default function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Returning null directly to ensure this layout contributes nothing.
   return null;
 }
