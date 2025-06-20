@@ -34,7 +34,7 @@ export default function LibraryDetailsPage() {
             foundLibrary = JSON.parse(storedLibraryData) as Library;
             console.log("LibraryDetailsPage: Loaded new library from localStorage:", foundLibrary);
           } catch (e) {
-            console.error("Error parsing registered library data for details page:", e);
+            console.error("LibraryDetailsPage: Error parsing registered library data for details page:", e);
           }
         } else {
           console.log("LibraryDetailsPage: No data in localStorage for NEWLY_REGISTERED_LIBRARY_ID");
@@ -71,6 +71,8 @@ export default function LibraryDetailsPage() {
       } else {
         localStorage.removeItem(`fav-lib-${library.id}`);
       }
+      // Simple toast feedback, can be enhanced
+      alert(newFavStatus ? `${library.name} añadida a favoritos.` : `${library.name} eliminada de favoritos.`);
     }
   };
 
@@ -78,7 +80,6 @@ export default function LibraryDetailsPage() {
     return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada para el ID: {libraryId}.</div>;
   }
 
-  // Extracting details for easier use, especially for the newly registered library
   const { name, location, description } = library;
   const imageUrl = library.imageUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(name)}`;
   const dataAiHint = library.dataAiHint || 'library large view';
@@ -115,7 +116,7 @@ export default function LibraryDetailsPage() {
               </CardDescription>
             </div>
              <Button onClick={toggleFavorite} variant={isFavorite ? "default" : "outline"} size="lg" className="mt-4 sm:mt-0 shrink-0 font-body">
-                <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
+                <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-current text-destructive' : ''}`} />
                 {isFavorite ? 'Favorita' : 'Agregar a Favoritos'}
             </Button>
           </div>
@@ -211,3 +212,4 @@ export default function LibraryDetailsPage() {
     </div>
   );
 }
+

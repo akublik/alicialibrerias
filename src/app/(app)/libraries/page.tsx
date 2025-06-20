@@ -14,44 +14,37 @@ const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"];
 
 const NEW_LIBRARY_ID = "newly-registered-library";
 
-// Helper function to load initial libraries including the one from localStorage
-const getInitialLibraries = (): Library[] => {
-  let initialLibs = [...placeholderLibraries]; // Start with placeholders
-  if (typeof window !== "undefined") {
-    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
-    if (storedLibraryData) {
-      try {
-        const newLibrary: Library = JSON.parse(storedLibraryData);
-        console.log("Found new library in localStorage on LibrariesPage:", newLibrary);
-        // Remove any existing library with the same ID (e.g., if it was a placeholder or stale entry)
-        initialLibs = initialLibs.filter(lib => lib.id !== newLibrary.id);
-        // Add the new library to the beginning of the list
-        initialLibs = [newLibrary, ...initialLibs];
-      } catch (e) {
-        console.error("Error parsing registered library data for initial list:", e);
-      }
-    }
-  }
-  console.log("Initial libraries for LibrariesPage:", initialLibs);
-  return initialLibs;
-};
-
-
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
-  // Initialize allLibraries using the helper function
-  const [allLibraries, setAllLibraries] = useState<Library[]>(getInitialLibraries);
+  // Initialize with placeholders only, localStorage will be merged in useEffect
+  const [allLibraries, setAllLibraries] = useState<Library[]>(placeholderLibraries);
 
-  // This useEffect can be used if we need to react to storage changes dynamically,
-  // but for initial load, getInitialLibraries handles it.
   useEffect(() => {
-     // If you need to listen for storage events or re-fetch, you can do it here.
-     // For now, we ensure the list is up-to-date on mount by using getInitialLibraries in useState.
-     // To force re-fetch if localStorage might change while page is open (e.g. via another tab),
-     // you could add a listener or a button to refresh.
-     // For simplicity, we assume navigation will cause a re-mount or this initial load is sufficient.
-  }, []);
+    // This effect runs only on the client-side after hydration
+    if (typeof window !== "undefined") {
+      const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+      if (storedLibraryData) {
+        try {
+          const newLibrary: Library = JSON.parse(storedLibraryData);
+          console.log("LibrariesPage useEffect: Found new library in localStorage:", newLibrary);
+          // Add the new library, ensuring it's at the top and no duplicates by ID
+          setAllLibraries(prevLibraries => {
+            const existingIds = new Set(prevLibraries.map(lib => lib.id));
+            if (!existingIds.has(newLibrary.id)) {
+              return [newLibrary, ...prevLibraries];
+            }
+            // If it somehow exists (e.g. placeholder with same ID), update it
+            return [newLibrary, ...prevLibraries.filter(lib => lib.id !== newLibrary.id)];
+          });
+        } catch (e) {
+          console.error("LibrariesPage useEffect: Error parsing registered library data:", e);
+        }
+      } else {
+        console.log("LibrariesPage useEffect: No new library found in localStorage.");
+      }
+    }
+  }, []); // Empty dependency array ensures this runs once on mount
 
 
   const handleSearch = (term: string) => {
@@ -59,6 +52,7 @@ export default function LibrariesPage() {
   };
 
   const filteredLibraries = useMemo(() => {
+    console.log("Filtering libraries, allLibraries count:", allLibraries.length);
     return allLibraries.filter((library) => {
       const matchesSearchTerm =
         library.name.toLowerCase().includes(searchTerm) ||
@@ -95,7 +89,6 @@ export default function LibrariesPage() {
                 className="flex-grow text-base md:text-sm"
                 aria-label="Buscar librería"
               />
-              {/* Removed the explicit search button, search is now on type */}
             </div>
           </div>
           <div>
