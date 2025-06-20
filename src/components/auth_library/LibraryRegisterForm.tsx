@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, Store, Loader2, Building } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,7 @@ const libraryRegisterFormSchema = z.object({
   libraryPostalCode: z.string().optional(),
   libraryPhone: z.string().optional(),
   libraryDescription: z.string().optional(),
+  libraryLogo: z.any().optional(), // Campo para el logo
 }).refine(data => data.adminPassword === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
@@ -64,6 +65,7 @@ export function LibraryRegisterForm() {
       libraryPostalCode: "",
       libraryPhone: "",
       libraryDescription: "",
+      libraryLogo: undefined,
     },
   });
 
@@ -72,10 +74,19 @@ export function LibraryRegisterForm() {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     console.log("Library Register values:", values);
+    if (values.libraryLogo && values.libraryLogo.length > 0) {
+      console.log("Library Logo details:", {
+        name: values.libraryLogo[0].name,
+        type: values.libraryLogo[0].type,
+        size: values.libraryLogo[0].size,
+      });
+    }
     
     // Store mock registration details in localStorage
     localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
     localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
+    // Also store library name for dashboard display (example)
+    localStorage.setItem("mockRegisteredLibraryName", values.libraryName); 
     localStorage.setItem("isLibraryAdminAuthenticated", "true");
 
     toast({
@@ -108,6 +119,26 @@ export function LibraryRegisterForm() {
 
             <h3 className="font-headline text-lg text-foreground border-b pb-2 pt-4 mb-4">Información de la Librería</h3>
             <FormField control={form.control} name="libraryName" render={({ field }) => ( <FormItem> <FormLabel>Nombre de la Librería</FormLabel> <FormControl><Input placeholder="Ej: El Gato Lector" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+            
+            <FormField
+              control={form.control}
+              name="libraryLogo"
+              render={({ field: { onChange, value, ...rest } }) => ( // Destructure field to handle file input correctly
+                <FormItem>
+                  <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4 text-muted-foreground"/>Logo de la Librería (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => onChange(e.target.files)} // Pass FileList to react-hook-form
+                      {...rest} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField control={form.control} name="libraryAddress" render={({ field }) => ( <FormItem> <FormLabel>Dirección (Calle Principal, Número, Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
             <div className="grid sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="libraryCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -138,3 +169,4 @@ export function LibraryRegisterForm() {
     </Card>
   );
 }
+
