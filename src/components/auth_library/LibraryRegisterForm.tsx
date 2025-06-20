@@ -43,6 +43,8 @@ const libraryRegisterFormSchema = z.object({
 
 type LibraryRegisterFormValues = z.infer<typeof libraryRegisterFormSchema>;
 
+const NEW_LIBRARY_ID = "newly-registered-library"; // Define a consistent ID
+
 export function LibraryRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -71,9 +73,12 @@ export function LibraryRegisterForm() {
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
+    console.log("Intentando registrar librería con valores:", values);
     await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Library Register values:", values);
-    if (values.libraryLogo && values.libraryLogo.length > 0) {
+    
+    let logoFileName = undefined;
+    if (values.libraryLogo && values.libraryLogo.length > 0 && values.libraryLogo[0]) {
+      logoFileName = values.libraryLogo[0].name;
       console.log("Library Logo details:", {
         name: values.libraryLogo[0].name,
         type: values.libraryLogo[0].type,
@@ -82,32 +87,47 @@ export function LibraryRegisterForm() {
     }
     
     const libraryDataForStorage = {
-      id: "newly-registered-library", // Consistent ID for the new library
+      id: NEW_LIBRARY_ID, 
       name: values.libraryName,
-      location: `${values.libraryCity}, ${values.libraryCountry}`, // Combining for location string
-      address: values.libraryAddress, // Storing separately if needed
+      location: `${values.libraryCity}, ${values.libraryCountry}`,
+      address: values.libraryAddress,
       city: values.libraryCity,
       province: values.libraryProvince,
       country: values.libraryCountry,
-      postalCode: values.libraryPostalCode,
-      phone: values.libraryPhone,
-      description: values.libraryDescription,
-      logoName: values.libraryLogo && values.libraryLogo.length > 0 ? values.libraryLogo[0].name : undefined,
-      imageUrl: 'https://placehold.co/400x300.png', // Default placeholder
-      dataAiHint: 'new bookstore' 
+      postalCode: values.libraryPostalCode || "",
+      phone: values.libraryPhone || "",
+      description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
+      logoName: logoFileName,
+      imageUrl: 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName), 
+      dataAiHint: 'new bookstore entry' 
     };
-    localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
-    
-    localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
-    localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
-    localStorage.setItem("isLibraryAdminAuthenticated", "true");
 
-    toast({
-        title: "¡Registro Exitoso!",
-        description: `Tu librería ${values.libraryName} ha sido registrada. Bienvenida a Alicia Libros.`,
-    });
-    router.push("/library-admin/dashboard"); 
-    setIsLoading(false);
+    try {
+      localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
+      console.log("Librería guardada en localStorage:", libraryDataForStorage);
+      
+      localStorage.setItem("mockRegisteredLibraryAdminEmail", values.adminEmail);
+      localStorage.setItem("mockRegisteredLibraryAdminPassword", values.adminPassword);
+      localStorage.setItem("isLibraryAdminAuthenticated", "true");
+      // For dashboard display, ensure it uses the most recent name.
+      localStorage.setItem("mockRegisteredLibraryName", values.libraryName);
+
+
+      toast({
+          title: "¡Registro Exitoso!",
+          description: `Tu librería ${values.libraryName} ha sido registrada. Bienvenida a Alicia Libros.`,
+      });
+      router.push("/library-admin/dashboard"); 
+    } catch (error) {
+      console.error("Error al guardar en localStorage:", error);
+      toast({
+        title: "Error de Registro",
+        description: "Hubo un problema al guardar la información de la librería.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -182,3 +202,4 @@ export function LibraryRegisterForm() {
     </Card>
   );
 }
+

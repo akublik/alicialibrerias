@@ -3,35 +3,54 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { LibraryCard } from "@/components/LibraryCard";
-import { SearchBar } from "@/components/SearchBar";
 import { placeholderLibraries } from "@/lib/placeholders";
 import type { Library } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, ListFilter, Search } from "lucide-react";
+import { MapPin, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; // Example locations
+const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
+
+const NEW_LIBRARY_ID = "newly-registered-library";
+
+// Helper function to load initial libraries including the one from localStorage
+const getInitialLibraries = (): Library[] => {
+  let initialLibs = [...placeholderLibraries]; // Start with placeholders
+  if (typeof window !== "undefined") {
+    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (storedLibraryData) {
+      try {
+        const newLibrary: Library = JSON.parse(storedLibraryData);
+        console.log("Found new library in localStorage on LibrariesPage:", newLibrary);
+        // Remove any existing library with the same ID (e.g., if it was a placeholder or stale entry)
+        initialLibs = initialLibs.filter(lib => lib.id !== newLibrary.id);
+        // Add the new library to the beginning of the list
+        initialLibs = [newLibrary, ...initialLibs];
+      } catch (e) {
+        console.error("Error parsing registered library data for initial list:", e);
+      }
+    }
+  }
+  console.log("Initial libraries for LibrariesPage:", initialLibs);
+  return initialLibs;
+};
+
 
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
-  const [allLibraries, setAllLibraries] = useState<Library[]>(placeholderLibraries);
+  // Initialize allLibraries using the helper function
+  const [allLibraries, setAllLibraries] = useState<Library[]>(getInitialLibraries);
 
+  // This useEffect can be used if we need to react to storage changes dynamically,
+  // but for initial load, getInitialLibraries handles it.
   useEffect(() => {
-    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
-    let currentLibraries = [...placeholderLibraries];
-    if (storedLibraryData) {
-      try {
-        const newLibrary: Library = JSON.parse(storedLibraryData);
-        // Remove existing new library if page reloads, to avoid duplicates from initial state
-        currentLibraries = currentLibraries.filter(lib => lib.id !== "newly-registered-library");
-        currentLibraries = [newLibrary, ...currentLibraries];
-      } catch (e) {
-        console.error("Error parsing registered library data:", e);
-      }
-    }
-    setAllLibraries(currentLibraries);
+     // If you need to listen for storage events or re-fetch, you can do it here.
+     // For now, we ensure the list is up-to-date on mount by using getInitialLibraries in useState.
+     // To force re-fetch if localStorage might change while page is open (e.g. via another tab),
+     // you could add a listener or a button to refresh.
+     // For simplicity, we assume navigation will cause a re-mount or this initial load is sufficient.
   }, []);
 
 
@@ -71,13 +90,12 @@ export default function LibrariesPage() {
                 id="search-library"
                 type="text"
                 placeholder="Ej: El Gato Lector, libros infantiles..."
+                value={searchTerm} // Controlled input
                 onChange={(e) => handleSearch(e.target.value)}
                 className="flex-grow text-base md:text-sm"
                 aria-label="Buscar librería"
               />
-              <Button type="button" variant="default" size="icon" aria-label="Buscar" onClick={() => handleSearch(searchTerm)}>
-                <Search className="h-5 w-5" />
-              </Button>
+              {/* Removed the explicit search button, search is now on type */}
             </div>
           </div>
           <div>

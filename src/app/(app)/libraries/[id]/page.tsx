@@ -8,7 +8,7 @@ import type { Library, Book } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon } from 'lucide-react'; // Renamed CalendarDays to avoid conflict
+import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -23,36 +23,47 @@ export default function LibraryDetailsPage() {
   const [books, setBooks] = useState<Book[]>([]); 
   const [isFavorite, setIsFavorite] = useState(false);
 
-
   useEffect(() => {
+    console.log("LibraryDetailsPage: loading for ID:", libraryId);
     if (libraryId) {
       let foundLibrary: Library | null = null;
-      if (libraryId === NEWLY_REGISTERED_LIBRARY_ID) {
+      if (libraryId === NEWLY_REGISTERED_LIBRARY_ID && typeof window !== "undefined") {
         const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
         if (storedLibraryData) {
           try {
             foundLibrary = JSON.parse(storedLibraryData) as Library;
+            console.log("LibraryDetailsPage: Loaded new library from localStorage:", foundLibrary);
           } catch (e) {
             console.error("Error parsing registered library data for details page:", e);
           }
+        } else {
+          console.log("LibraryDetailsPage: No data in localStorage for NEWLY_REGISTERED_LIBRARY_ID");
         }
       }
       
       if (!foundLibrary) {
         foundLibrary = placeholderLibraries.find(l => l.id === libraryId) || null;
+        if (foundLibrary) {
+          console.log("LibraryDetailsPage: Found library in placeholders:", foundLibrary);
+        }
       }
       
       setLibrary(foundLibrary);
 
       if (foundLibrary) {
+        // Mock books for this library
         setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
-        setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+        if (typeof window !== "undefined") {
+          setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+        }
+      } else {
+         console.log("LibraryDetailsPage: Library not found for ID:", libraryId);
       }
     }
   }, [libraryId]);
   
   const toggleFavorite = () => {
-    if (library) {
+    if (library && typeof window !== "undefined") {
       const newFavStatus = !isFavorite;
       setIsFavorite(newFavStatus);
       if (newFavStatus) {
@@ -64,15 +75,17 @@ export default function LibraryDetailsPage() {
   };
 
   if (!library) {
-    return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada.</div>;
+    return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada para el ID: {libraryId}.</div>;
   }
 
   // Extracting details for easier use, especially for the newly registered library
-  const { name, location, description, imageUrl, dataAiHint } = library;
-  const libraryAddress = (library as any).address || location; // Use specific address if available
-  const libraryPhone = (library as any).phone || "+593 123 45678"; // Placeholder if no phone
+  const { name, location, description } = library;
+  const imageUrl = library.imageUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(name)}`;
+  const dataAiHint = library.dataAiHint || 'library large view';
+  const libraryAddress = (library as any).address || location; 
+  const libraryPhone = (library as any).phone || "No disponible";
   const libraryEmailDomain = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/gi, '');
-  const libraryEmail = `info@${libraryEmailDomain || 'libreria'}.com`;
+  const libraryEmail = (library as any).email || `info@${libraryEmailDomain || 'libreria'}.com`;
 
 
   return (
@@ -82,20 +95,18 @@ export default function LibraryDetailsPage() {
       </Link>
 
       <Card className="mb-8 md:mb-12 shadow-xl overflow-hidden">
-        {imageUrl && (
-          <div className="relative h-64 md:h-96 w-full">
-            <Image
-              src={imageUrl}
-              alt={`Imagen de ${name}`}
-              layout="fill"
-              objectFit="cover"
-              priority
-              data-ai-hint={dataAiHint || 'library large'}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-          </div>
-        )}
-        <CardHeader className={imageUrl ? "relative -mt-24 md:-mt-32 z-10 p-6 md:p-8 bg-background/80 backdrop-blur-sm rounded-t-lg m-4 md:m-6" : ""}>
+        <div className="relative h-64 md:h-96 w-full">
+          <Image
+            src={imageUrl}
+            alt={`Imagen de ${name}`}
+            layout="fill"
+            objectFit="cover"
+            priority
+            data-ai-hint={dataAiHint}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
+        </div>
+        <CardHeader className={"relative -mt-24 md:-mt-32 z-10 p-6 md:p-8 bg-background/80 backdrop-blur-sm rounded-t-lg m-4 md:m-6"}>
           <div className="flex flex-col sm:flex-row justify-between items-start">
             <div>
               <CardTitle className="font-headline text-3xl md:text-4xl font-bold text-primary mb-1">{name}</CardTitle>
@@ -200,7 +211,3 @@ export default function LibraryDetailsPage() {
     </div>
   );
 }
-// Placeholder for CalendarDays icon if not imported from lucide-react correctly
-// const CalendarDays = ({ className }: { className?: string }) => (
-//   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>
-// );

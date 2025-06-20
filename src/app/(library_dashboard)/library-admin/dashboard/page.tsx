@@ -4,33 +4,40 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react";
-import { useEffect, useState } from "react"; // Added useEffect and useState
+import { useEffect, useState } from "react"; 
 
 export default function LibraryAdminDashboardPage() {
   const [libraryName, setLibraryName] = useState<string>("Tu Librería");
 
   useEffect(() => {
-    const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
-    if (storedLibraryData) {
-        try {
-            const libDetails = JSON.parse(storedLibraryData);
-            if (libDetails && libDetails.name) {
-              setLibraryName(libDetails.name);
-            }
-        } catch (e) {
-            console.error("Error parsing registered library data for dashboard:", e);
-            // Fallback to old method if new one fails
-            const nameFromOldStorage = localStorage.getItem("mockRegisteredLibraryName");
-            if (nameFromOldStorage) {
-                 setLibraryName(nameFromOldStorage);
-            }
-        }
-    } else {
-        // Fallback if new key doesn't exist
-        const nameFromOldStorage = localStorage.getItem("mockRegisteredLibraryName");
-        if (nameFromOldStorage) {
-             setLibraryName(nameFromOldStorage);
-        }
+    if (typeof window !== "undefined") {
+      const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+      if (storedLibraryData) {
+          try {
+              const libDetails = JSON.parse(storedLibraryData);
+              if (libDetails && libDetails.name) {
+                setLibraryName(libDetails.name);
+                console.log("Dashboard: Library name set to:", libDetails.name);
+              } else {
+                // Fallback if name is not in the main object for some reason
+                const oldName = localStorage.getItem("mockRegisteredLibraryName");
+                if (oldName) setLibraryName(oldName);
+              }
+          } catch (e) {
+              console.error("Error parsing registered library data for dashboard:", e);
+              const oldName = localStorage.getItem("mockRegisteredLibraryName");
+              if (oldName) setLibraryName(oldName);
+          }
+      } else {
+          // Fallback if new key doesn't exist at all
+          const oldName = localStorage.getItem("mockRegisteredLibraryName");
+          if (oldName) {
+            setLibraryName(oldName);
+            console.log("Dashboard: Using fallback library name:", oldName);
+          } else {
+            console.log("Dashboard: No library name found in localStorage.");
+          }
+      }
     }
   }, []);
 
