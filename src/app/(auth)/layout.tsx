@@ -1,6 +1,6 @@
 // src/app/(auth)/layout.tsx
-// Este layout devuelve null explícitamente para asegurar que no interfiere
-// y para ayudar a diagnosticar el error de rutas paralelas.
+// This layout returns null explicitly to ensure it does not interfere
+// and to help diagnose the parallel routes error.
 export default function AuthLayout({
   children,
 }: {

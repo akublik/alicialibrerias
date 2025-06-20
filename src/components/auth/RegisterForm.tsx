@@ -1,7 +1,7 @@
 "use client";
 
-// Este componente devuelve null explícitamente para prevenir cualquier renderizado o ejecución de lógica,
-// ayudando a aislar el error de rutas paralelas.
+// This component returns null explicitly to prevent any rendering or logic execution,
+// helping to isolate the parallel routes error.
 export function RegisterForm() {
   return null;
 }
