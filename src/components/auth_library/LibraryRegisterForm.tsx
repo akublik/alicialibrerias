@@ -106,13 +106,13 @@ export function LibraryRegisterForm() {
       
       const libraryDocRef = await addDoc(collection(db, "libraries"), libraryData);
       
-      // 3. Create the user document with a link to the library
+      // 3. Create the user document with a link to the library and the correct role
       const userData = {
         name: values.adminName,
         email: values.adminEmail,
-        password: values.adminPassword, // This is not secure for production
-        role: 'library',
-        libraryId: libraryDocRef.id, // Link user to the library document
+        password: values.adminPassword, // IMPORTANT: In a real app, this would be hashed on a server.
+        role: 'library', // Role for library admins is always 'library'
+        libraryId: libraryDocRef.id, // This links the user to their library document
         createdAt: serverTimestamp(),
       };
       

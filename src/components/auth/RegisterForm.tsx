@@ -71,13 +71,12 @@ export function RegisterForm() {
         return;
       }
 
-      // In a real app, this would be hashed on a server.
-      // Storing plain text passwords is a major security risk.
+      // Create the new user object with the correct role
       const newUser = {
         name: values.name,
         email: values.email,
-        password: values.password,
-        role: "reader", // Default role for public registration
+        password: values.password, // IMPORTANT: In a real app, this would be hashed on a server.
+        role: "reader", // Role for regular users is always 'reader'
         createdAt: serverTimestamp(),
       };
 
