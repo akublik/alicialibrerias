@@ -21,9 +21,9 @@ const missingConfigKeys = Object.entries(firebaseConfig)
   .map(([key]) => key);
 
 if (missingConfigKeys.length > 0) {
-  const errorMessage = `
+  const warningMessage = `
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! ERROR DE CONFIGURACIÓN DE FIREBASE !!!
+    !!! ATENCIÓN: CONFIGURACIÓN DE FIREBASE INCOMPLETA !!!
     
     Faltan las siguientes variables de entorno: ${missingConfigKeys.join(', ')}
     
@@ -33,7 +33,8 @@ if (missingConfigKeys.length > 0) {
     El registro no funcionará hasta que esto se corrija.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   `;
-  console.error(errorMessage);
+  // Using console.warn to avoid the Next.js error overlay while still providing a clear warning.
+  console.warn(warningMessage);
 }
 
 
@@ -55,7 +56,7 @@ if (!getApps().length) {
 const db = app ? getFirestore(app) : null;
 
 if (!db) {
-    console.error("ERROR: No se pudo inicializar Firestore. Revisa los errores de configuración de Firebase de más arriba.");
+    console.warn("ADVERTENCIA: No se pudo inicializar Firestore. Revisa los mensajes de configuración de Firebase en la consola.");
 }
 
 
