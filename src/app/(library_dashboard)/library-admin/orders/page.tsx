@@ -155,6 +155,7 @@ export default function LibraryOrdersPage() {
                 <TableRow>
                   <TableHead>Pedido</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Libros</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Estado</TableHead>
@@ -168,6 +169,11 @@ export default function LibraryOrdersPage() {
                     <TableCell>
                       <div>{order.buyerName}</div>
                       <div className="text-xs text-muted-foreground">{order.buyerEmail}</div>
+                    </TableCell>
+                    <TableCell className="max-w-[250px]">
+                      <div className="font-medium truncate" title={order.items.map(item => `${item.title} (x${item.quantity})`).join(', ')}>
+                        {order.items.map(item => `${item.title} (x${item.quantity})`).join(', ')}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {format(new Date(order.createdAt as string), 'dd MMM yyyy', { locale: es })}
@@ -198,7 +204,7 @@ export default function LibraryOrdersPage() {
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                        <div className="flex flex-col items-center gap-2">
                         <PackageOpen className="h-12 w-12" />
                         <h3 className="font-semibold">No se encontraron pedidos</h3>
