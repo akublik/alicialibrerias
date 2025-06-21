@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star, ShoppingCart } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -223,6 +223,11 @@ export default function LibraryBooksPage() {
                               <DropdownMenuItem asChild>
                                 <Link href={`/library-admin/books/edit/${book.id}`}>
                                   <Edit className="mr-2 h-4 w-4" /> Editar
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/library-admin/orders?bookId=${book.id}&bookTitle=${encodeURIComponent(book.title)}`}>
+                                  <ShoppingCart className="mr-2 h-4 w-4" /> Ver Pedidos
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleToggleStatus(book)}>

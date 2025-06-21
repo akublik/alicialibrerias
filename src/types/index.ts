@@ -52,3 +52,24 @@ export interface Review {
 export type CartItem = Book & {
   quantity: number;
 };
+
+export interface OrderItem {
+  bookId: string;
+  title: string;
+  price: number;
+  quantity: number;
+  imageUrl?: string;
+}
+
+export interface Order {
+  id: string;
+  libraryId: string;
+  buyerName: string;
+  buyerEmail: string;
+  items: OrderItem[];
+  totalPrice: number;
+  status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
+  createdAt: any; // Firestore Timestamp
+  shippingAddress?: string;
+  orderNotes?: string;
+}
