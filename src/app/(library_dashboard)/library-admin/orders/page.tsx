@@ -2,11 +2,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ShoppingCart, Loader2, PackageOpen, ArrowLeft, FilterX } from "lucide-react";
 import { db } from "@/lib/firebase";
@@ -52,7 +50,13 @@ export default function LibraryOrdersPage() {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const libraryOrders: Order[] = [];
       querySnapshot.forEach((doc) => {
-        libraryOrders.push({ id: doc.id, ...doc.data() } as Order);
+        const data = doc.data();
+        libraryOrders.push({ 
+          id: doc.id,
+          ...data,
+          // Ensure createdAt is a serializable object, not a Firestore Timestamp
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+         } as Order);
       });
       setOrders(libraryOrders);
       setIsLoading(false);
@@ -164,7 +168,7 @@ export default function LibraryOrdersPage() {
                       <div className="text-xs text-muted-foreground">{order.buyerEmail}</div>
                     </TableCell>
                     <TableCell>
-                      {format(new Date(order.createdAt.seconds * 1000), 'dd MMM yyyy', { locale: es })}
+                      {format(new Date(order.createdAt as string), 'dd MMM yyyy', { locale: es })}
                     </TableCell>
                     <TableCell>${order.totalPrice.toFixed(2)}</TableCell>
                     <TableCell>
@@ -185,7 +189,6 @@ export default function LibraryOrdersPage() {
                         </DropdownMenu>
                     </TableCell>
                     <TableCell>
-                      {/* Actions for a specific order can be added here */}
                       <Button variant="ghost" size="icon">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>

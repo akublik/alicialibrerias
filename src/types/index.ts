@@ -64,12 +64,16 @@ export interface OrderItem {
 export interface Order {
   id: string;
   libraryId: string;
+  buyerId: string;
   buyerName: string;
   buyerEmail: string;
+  buyerPhone: string;
   items: OrderItem[];
   totalPrice: number;
   status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
   createdAt: any; // Firestore Timestamp
+  shippingMethod: string;
+  paymentMethod: string;
   shippingAddress?: string;
   orderNotes?: string;
 }

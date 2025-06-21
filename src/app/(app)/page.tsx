@@ -3,17 +3,46 @@
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
 import { SearchBar } from "@/components/SearchBar";
-import { placeholderBooks, ecuadorianAuthors, placeholderLibraries } from "@/lib/placeholders";
+import { ecuadorianAuthors, placeholderLibraries } from "@/lib/placeholders";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookHeart, Users, MapPinned, Sparkles } from "lucide-react";
+import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
+import { useEffect, useState } from "react";
+import type { Book } from "@/types";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, limit, query } from "firebase/firestore";
 
 export default function HomePage() {
+  const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!db) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const booksRef = collection(db, "books");
+        const q = query(booksRef, limit(4));
+        const querySnapshot = await getDocs(q);
+        const books: Book[] = [];
+        querySnapshot.forEach((doc) => {
+          books.push({ id: doc.id, ...doc.data() } as Book);
+        });
+        setFeaturedBooks(books);
+      } catch (error) {
+        console.error("Error fetching featured books:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchBooks();
+  }, []);
+
   const handleSearch = (term: string) => {
-    // TODO: Implement search logic or navigation
     console.log("Searching for:", term);
-    // router.push(`/libraries?search=${term}`);
   };
 
   const platformBenefits = [
@@ -56,11 +85,19 @@ export default function HomePage() {
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Más Vendidos de la Semana</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {placeholderBooks.slice(0, 4).map((book) => (
-              <BookCard key={book.id} book={book} size="small" />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : featuredBooks.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredBooks.map((book) => (
+                <BookCard key={book.id} book={book} size="small" />
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground">No hay libros destacados en este momento. ¡Añade algunos desde el panel de tu librería!</p>
+          )}
           <div className="text-center mt-10">
             <Link href="/books">
               <Button variant="link" className="text-primary font-body">

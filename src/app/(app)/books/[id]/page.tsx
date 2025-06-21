@@ -1,21 +1,22 @@
 // src/app/(app)/books/[id]/page.tsx
 "use client"; 
-// Marking as client component to use hooks like useParams, though data fetching can be server-side initially.
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { placeholderBooks, placeholderReviews } from '@/lib/placeholders';
+import { placeholderReviews } from '@/lib/placeholders';
 import type { Book, Review } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, CalendarDays } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2 } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
-import { useCart } from '@/context/CartContext'; // Added useCart
+import { useCart } from '@/context/CartContext';
+import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
   return (
@@ -37,29 +38,55 @@ const StarRating = ({ rating, interactive = false, setRating }: { rating: number
 export default function BookDetailsPage() {
   const params = useParams();
   const bookId = params.id as string;
-  const { addToCart } = useCart(); // Get addToCart from CartContext
+  const { addToCart } = useCart();
   
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [relatedBooks, setRelatedBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (bookId) {
-      const foundBook = placeholderBooks.find(b => b.id === bookId);
-      setBook(foundBook || null);
-      if (foundBook) {
-        const bookReviews = placeholderReviews.filter(r => r.bookId === bookId);
-        setReviews(bookReviews);
-        // Simple related books logic: books from same author or category (mocked)
-        setRelatedBooks(placeholderBooks.filter(b => b.id !== bookId && (b.authors.some(a => foundBook.authors.includes(a)) || b.categories?.some(c => foundBook.categories?.includes(c)))).slice(0,3)
-        .map(b => ({...b, id: b.id + '-related'}))
-        );
+    if (!bookId || !db) return;
 
-        if(relatedBooks.length < 3) {
-            setRelatedBooks(prev => [...prev, ...placeholderBooks.filter(b => b.id !== bookId && !prev.find(rb => rb.id === b.id + '-related')).slice(0, 3 - prev.length).map(b => ({...b, id: b.id + '-related'}))]);
+    const fetchBookData = async () => {
+      setIsLoading(true);
+      try {
+        const bookRef = doc(db, "books", bookId);
+        const bookSnap = await getDoc(bookRef);
+
+        if (bookSnap.exists()) {
+          const foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
+          setBook(foundBook);
+
+          // Mock reviews for now
+          const bookReviews = placeholderReviews.filter(r => r.bookId === bookId || r.bookId === '1' || r.bookId === '2');
+          setReviews(bookReviews);
+          
+          // Fetch related books from the same library or category
+          if (foundBook.libraryId) {
+             const booksRef = collection(db, "books");
+             const q = query(
+                booksRef, 
+                where("libraryId", "==", foundBook.libraryId), 
+                where("__name__", "!=", bookId), 
+                limit(3)
+            );
+             const relatedSnaps = await getDocs(q);
+             const fetchedRelatedBooks = relatedSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+             setRelatedBooks(fetchedRelatedBooks);
+          }
+        } else {
+          console.error("No such document!");
         }
+      } catch (error) {
+        console.error("Error fetching book:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    
+    fetchBookData();
+
   }, [bookId]);
 
   const handleAddToCart = () => {
@@ -68,9 +95,17 @@ export default function BookDetailsPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
+        <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+        <p className="mt-4 text-lg text-muted-foreground">Cargando libro...</p>
+      </div>
+    );
+  }
 
   if (!book) {
-    return <div className="container mx-auto px-4 py-8 text-center">Cargando libro... o libro no encontrado.</div>;
+    return <div className="container mx-auto px-4 py-8 text-center">Libro no encontrado.</div>;
   }
 
   return (
@@ -152,10 +187,7 @@ export default function BookDetailsPage() {
 
         <TabsContent value="reviews">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-xl">Opiniones de Lectores</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="pt-6 space-y-6">
               {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                   <div className="flex items-start space-x-3 mb-2">
@@ -174,17 +206,13 @@ export default function BookDetailsPage() {
               )) : (
                 <p className="text-muted-foreground">Aún no hay reseñas para este libro. ¡Sé el primero!</p>
               )}
-              {/* Add review form could be here */}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="related">
           <Card>
-            <CardHeader>
-              <CardTitle className="font-headline text-xl">También te podría interesar</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {relatedBooks.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {relatedBooks.map((relatedBook) => (

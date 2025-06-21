@@ -37,6 +37,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   }, [cartItems]);
 
   const addToCart = (book: Book, quantity: number = 1) => {
+    if (cartItems.length > 0 && book.libraryId && cartItems[0].libraryId !== book.libraryId) {
+      toast({
+        title: "Acción no permitida",
+        description: "Solo puedes comprar libros de una librería a la vez. Por favor, finaliza tu compra actual para añadir artículos de otra librería.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === book.id);
       if (existingItem) {

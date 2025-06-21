@@ -1,4 +1,3 @@
-
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -27,6 +26,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag, Store, PackageSearch } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import { db } from "@/lib/firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
@@ -93,6 +94,11 @@ export default function CheckoutPage() {
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (cartItems.length === 0) {
+      toast({ title: "Carrito vacío", description: "No puedes pagar un carrito vacío.", variant: "destructive" });
+      return;
+    }
+    
     let hasError = false;
     if (selectedShippingMethod === "delivery") {
       if (!values.shippingAddress?.trim()) {
@@ -114,23 +120,63 @@ export default function CheckoutPage() {
     }
 
     setIsLoading(true);
-    console.log("Checkout form submitted:", {
-      ...values,
-      shippingMethod: selectedShippingMethod,
-      paymentMethod: selectedPaymentMethod,
-    });
-    console.log("Shipping Cost:", currentShippingCost, "Final Total:", finalTotal);
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (!userDataString) {
+      toast({ title: "Inicia sesión", description: "Debes iniciar sesión para completar la compra.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    const { id: buyerId } = JSON.parse(userDataString);
+    const libraryId = cartItems[0].libraryId;
 
-    toast({
-      title: "¡Pedido Realizado con Éxito!",
-      description: "Gracias por tu compra. Hemos recibido tu pedido y lo estamos procesando.",
-    });
-    
-    clearCart();
-    router.push("/dashboard"); 
-    setIsLoading(false);
+    if (!libraryId) {
+       toast({ title: "Error en el pedido", description: "No se pudo determinar la librería para este pedido.", variant: "destructive" });
+       setIsLoading(false);
+       return;
+    }
+
+    try {
+      const newOrderData = {
+        libraryId,
+        buyerId,
+        buyerName: values.buyerName,
+        buyerEmail: values.buyerEmail,
+        buyerPhone: values.buyerPhone,
+        items: cartItems.map(item => ({
+          bookId: item.id,
+          title: item.title,
+          price: item.price,
+          quantity: item.quantity,
+          imageUrl: item.imageUrl,
+        })),
+        totalPrice: finalTotal,
+        status: 'pending' as const,
+        createdAt: serverTimestamp(),
+        shippingMethod: selectedShippingMethod,
+        paymentMethod: selectedPaymentMethod,
+        shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería',
+        orderNotes: values.orderNotes || '',
+      };
+
+      if (!db) {
+        throw new Error("La conexión con la base de datos no está disponible.");
+      }
+
+      await addDoc(collection(db, "orders"), newOrderData);
+
+      toast({
+        title: "¡Pedido Realizado con Éxito!",
+        description: "Gracias por tu compra. Hemos recibido tu pedido y lo estamos procesando.",
+      });
+      
+      clearCart();
+      router.push("/dashboard");
+    } catch (error: any) {
+        toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   if (itemCount === 0 && typeof window !== 'undefined' && !isLoading) { 
