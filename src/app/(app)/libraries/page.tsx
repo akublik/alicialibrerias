@@ -46,12 +46,18 @@ export default function LibrariesPage() {
 
   const filteredLibraries = useMemo(() => {
     return allLibraries.filter((library) => {
+      const name = library.name || "";
+      const description = library.description || "";
+      const location = library.location || "";
+      
       const matchesSearchTerm =
-        library.name.toLowerCase().includes(searchTerm) ||
-        (library.description && library.description.toLowerCase().includes(searchTerm)) ||
-        library.location.toLowerCase().includes(searchTerm);
+        name.toLowerCase().includes(searchTerm) ||
+        description.toLowerCase().includes(searchTerm) ||
+        location.toLowerCase().includes(searchTerm);
+      
       const matchesLocation =
-        selectedLocation === "Todas" || library.location.includes(selectedLocation);
+        selectedLocation === "Todas" || location.includes(selectedLocation);
+      
       return matchesSearchTerm && matchesLocation;
     });
   }, [searchTerm, selectedLocation, allLibraries]);
