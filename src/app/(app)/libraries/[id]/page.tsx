@@ -7,7 +7,7 @@ import type { Library, Book } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2 } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -159,7 +159,7 @@ export default function LibraryDetailsPage() {
       </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
-        <div className="md:col-span-1">
+        <div className="md:col-span-1 space-y-8">
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="font-headline text-xl">Información de Contacto</CardTitle>
@@ -194,6 +194,27 @@ export default function LibraryDetailsPage() {
                   {tiktok && <Button asChild variant="outline" size="icon"><a href={tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokIcon className="h-5 w-5" /></a></Button>}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl">Ubicación en el Mapa</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="relative w-full aspect-video rounded-b-lg overflow-hidden">
+                    <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&q=${encodeURIComponent(address || name)}`}
+                        title={`Ubicación de ${name}`}
+                        aria-label={`Ubicación de ${name}`}
+                    ></iframe>
+                </div>
             </CardContent>
           </Card>
         </div>
