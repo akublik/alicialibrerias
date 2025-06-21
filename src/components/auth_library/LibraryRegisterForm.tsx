@@ -16,13 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 
 const libraryRegisterFormSchema = z.object({
   adminName: z.string().min(2, { message: "El nombre del administrador debe tener al menos 2 caracteres." }),
@@ -65,6 +65,8 @@ export function LibraryRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -87,11 +89,35 @@ export function LibraryRegisterForm() {
     },
   });
 
+  const testFirebaseConnection = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+        const testDocRef = doc(db, "testCollection", "testDoc");
+        await withTimeout(getDoc(testDocRef), 8000, "La conexión tardó demasiado. Revisa tu configuración de Firebase y las reglas de seguridad.");
+        
+        const successMsg = "¡Conexión Exitosa! Tu configuración de Firebase parece correcta. Si el registro aún falla, el problema podría estar en las reglas de seguridad de las colecciones 'users' o 'libraries'.";
+        setTestResult(successMsg);
+        toast({ title: "Prueba de Conexión Exitosa", description: "Firebase responde correctamente." });
+    } catch (error: any) {
+        let errorMessage = `Falló la conexión a Firebase. Error: ${error.message}.`;
+        if (error.code === 'permission-denied' || error.message.includes('permission-denied')) {
+            errorMessage = "¡Permiso denegado! Revisa tus reglas de seguridad en la consola de Firebase. Asegúrate de que permitan la lectura/escritura pública para desarrollo.";
+        } else if (error.message.includes('Failed to fetch')) {
+             errorMessage = "Error de red. ¿Están tus variables de entorno (NEXT_PUBLIC_FIREBASE_...) configuradas correctamente?";
+        }
+        setTestResult(errorMessage);
+        toast({ title: "Error de Conexión", description: errorMessage, variant: "destructive", duration: 10000 });
+    } finally {
+        setIsTesting(false);
+    }
+  };
+
+
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
     
     try {
-      // 1. Verificar si el usuario ya existe, con un timeout.
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", values.adminEmail));
       const getDocsPromise = getDocs(q);
@@ -103,11 +129,10 @@ export function LibraryRegisterForm() {
           description: "Ya existe un usuario con este correo electrónico.",
           variant: "destructive",
         });
-        setIsLoading(false); // Detener explícitamente y retornar
+        setIsLoading(false);
         return;
       }
 
-      // 2. Crear el documento de la librería, con un timeout.
       const newLibraryData = {
         name: values.libraryName,
         address: values.libraryAddress,
@@ -122,7 +147,6 @@ export function LibraryRegisterForm() {
       const addLibraryPromise = addDoc(collection(db, "libraries"), newLibraryData);
       const libraryDocRef = await withTimeout(addLibraryPromise, 8000, "La creación de la librería tardó demasiado.");
 
-      // 3. Crear el documento del usuario, con un timeout.
       const newUserData = {
         name: values.adminName,
         email: values.adminEmail,
@@ -134,7 +158,6 @@ export function LibraryRegisterForm() {
       const addUserPromise = addDoc(collection(db, "users"), newUserData);
       const userDocRef = await withTimeout(addUserPromise, 8000, "La creación del usuario tardó demasiado.");
 
-      // 4. Si todo es exitoso, guardar en localStorage y navegar.
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
       localStorage.setItem("aliciaLibros_user", JSON.stringify({
           id: userDocRef.id,
@@ -165,7 +188,7 @@ export function LibraryRegisterForm() {
     } catch (error: any) {
       toast({
         title: "Error de Registro",
-        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, verifica la conexión y las reglas de seguridad de Firebase.`,
+        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, usa la herramienta de diagnóstico y revisa las reglas de seguridad de Firebase.`,
         variant: "destructive",
         duration: 10000,
       });
@@ -182,6 +205,31 @@ export function LibraryRegisterForm() {
         <CardDescription>Únete a la red de Alicia Libros y llega a más lectores.</CardDescription>
       </CardHeader>
       <CardContent>
+         {/* Diagnostic Tool */}
+        <Card className="mb-6 bg-muted/40 border-primary/20">
+          <CardHeader className="flex-row items-center gap-4 space-y-0">
+            <AlertTriangle className="w-8 h-8 text-primary" />
+            <div>
+              <CardTitle className="text-lg font-headline">¿Problemas con el registro?</CardTitle>
+              <CardDescription className="text-xs">
+                  Si el formulario se queda "pensando", puede ser un problema de conexión o permisos con Firebase. Usa este botón para diagnosticar.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+              <Button type="button" variant="outline" className="w-full" onClick={testFirebaseConnection} disabled={isTesting}>
+                  {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Probar Conexión con Firebase
+              </Button>
+              {testResult && (
+                  <div className={`mt-4 text-sm p-3 rounded-md ${testResult.toLowerCase().includes('exitosa') ? 'bg-green-100 text-green-900 border border-green-200' : 'bg-red-100 text-red-900 border border-red-200'}`}>
+                      <p className="font-bold">{testResult.toLowerCase().includes('exitosa') ? 'Resultado: Éxito' : 'Resultado: Error'}</p>
+                      <p>{testResult}</p>
+                  </div>
+              )}
+          </CardContent>
+        </Card>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <h3 className="font-headline text-lg text-foreground border-b pb-2 mb-4">Información del Administrador</h3>
