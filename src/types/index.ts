@@ -10,6 +10,7 @@ export interface Book {
   tags?: string[];
   imageUrl: string;
   dataAiHint?: string;
+  libraryId?: string; // ID of the library that owns this book
 }
 
 export interface Library {
