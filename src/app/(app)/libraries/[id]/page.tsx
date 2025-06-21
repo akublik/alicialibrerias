@@ -1,3 +1,4 @@
+
 // src/app/(app)/libraries/[id]/page.tsx
 "use client";
 
@@ -14,6 +15,8 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
+
+const googleMapsApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 
 // SVG Icons for social media
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -203,7 +206,7 @@ export default function LibraryDetailsPage() {
             </CardHeader>
             <CardContent className="p-0">
                 <div className="relative w-full aspect-video rounded-b-lg overflow-hidden bg-muted">
-                    {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? (
+                    {googleMapsApiKey ? (
                         <iframe
                             width="100%"
                             height="100%"
@@ -211,7 +214,7 @@ export default function LibraryDetailsPage() {
                             loading="lazy"
                             allowFullScreen
                             referrerPolicy="no-referrer-when-downgrade"
-                            src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&q=${encodeURIComponent(address || name)}`}
+                            src={`https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(address || name)}`}
                             title={`Ubicación de ${name}`}
                             aria-label={`Ubicación de ${name}`}
                         ></iframe>
