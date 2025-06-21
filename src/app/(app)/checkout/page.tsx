@@ -73,6 +73,7 @@ export default function CheckoutPage() {
     },
   });
   
+  // This effect runs once on mount to check auth status and pre-fill form data if available.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
@@ -83,17 +84,19 @@ export default function CheckoutPage() {
               const user = JSON.parse(userDataString);
               form.reset({
                   ...form.getValues(),
-                  buyerName: user.name,
-                  buyerEmail: user.email,
+                  buyerName: user.name || "",
+                  buyerEmail: user.email || "",
               });
           } catch (e) {
               console.error("Error parsing user data from localStorage", e);
           }
       }
     }
-  }, [form]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   useEffect(() => {
+    // This effect runs after the authentication status has been determined.
     if (isAuthenticated !== null && itemCount === 0 && !isLoading) {
       toast({
         title: "Carrito Vacío",
@@ -116,6 +119,10 @@ export default function CheckoutPage() {
   const finalTotal = totalPrice + currentShippingCost;
 
   async function onSubmit(values: CheckoutFormValues) {
+    if (!isAuthenticated) {
+        toast({ title: "Acción Requerida", description: "Por favor, inicia sesión para realizar tu pedido.", variant: "destructive" });
+        return;
+    }
     if (cartItems.length === 0) {
       toast({ title: "Carrito vacío", description: "No puedes pagar un carrito vacío.", variant: "destructive" });
       return;
@@ -205,7 +212,7 @@ export default function CheckoutPage() {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-          <p className="mt-4 text-lg text-muted-foreground">Cargando...</p>
+          <p className="mt-4 text-lg text-muted-foreground">Verificando sesión...</p>
         </div>
       );
   }
@@ -218,13 +225,6 @@ export default function CheckoutPage() {
         </div>
       );
   }
-
-  const RealizarPedidoButton = () => (
-     <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading || !isAuthenticated}>
-      {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
-      {isAuthenticated ? 'Realizar Pedido' : 'Inicia sesión para pedir'}
-    </Button>
-  );
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -239,7 +239,7 @@ export default function CheckoutPage() {
         <Card className="mb-8 shadow-md border-primary/50">
            <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center"><UserCircle className="mr-3 h-8 w-8 text-primary"/>¡Casi listo! Inicia sesión para continuar</CardTitle>
-              <CardDescription>Inicia sesión para autocompletar tus datos y guardar este pedido en tu historial de compras. Es rápido y seguro.</CardDescription>
+              <CardDescription>Inicia sesión o crea una cuenta para autocompletar tus datos, guardar este pedido en tu historial de compras y acumular puntos de lealtad.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row gap-4 justify-start">
               <Link href="/login?redirect=/checkout" className="w-full sm:w-auto">
@@ -414,16 +414,24 @@ export default function CheckoutPage() {
                  {!isAuthenticated ? (
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger className="w-full">
-                        <RealizarPedidoButton />
+                      <TooltipTrigger asChild>
+                        <span className="w-full" tabIndex={0}>
+                          <Button size="lg" className="w-full font-body text-base" disabled={true}>
+                              <CreditCard className="mr-2 h-5 w-5" />
+                              Inicia sesión para pedir
+                          </Button>
+                        </span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Debes iniciar sesión para realizar el pedido.</p>
+                        <p>Debes iniciar sesión o crear una cuenta para realizar el pedido.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
-                  <RealizarPedidoButton />
+                  <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                    Realizar Pedido
+                  </Button>
                 )}
               </CardFooter>
             </Card>
