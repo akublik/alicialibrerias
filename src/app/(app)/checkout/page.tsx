@@ -44,19 +44,15 @@ const checkoutFormSchema = z.object({
 });
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
-interface UserData {
-  name: string;
-  email: string;
-  id: string;
-}
 
 export default function CheckoutPage() {
   const { cartItems, totalPrice, itemCount, clearCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  
+  // We'll determine auth status on the client side
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [user, setUser] = useState<UserData | null>(null);
   
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
@@ -78,6 +74,7 @@ export default function CheckoutPage() {
     },
   });
   
+  // This effect runs once on the client to check authentication status.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
@@ -86,32 +83,33 @@ export default function CheckoutPage() {
         const userDataString = localStorage.getItem("aliciaLibros_user");
         if (userDataString) {
             try {
-                setUser(JSON.parse(userDataString));
+                const user = JSON.parse(userDataString);
+                // Pre-fill the form with user data
+                form.reset({
+                    ...form.getValues(),
+                    buyerName: user.name,
+                    buyerEmail: user.email,
+                });
             } catch (e) {
                 console.error("Error parsing user data from localStorage", e);
             }
         }
     }
+  }, [form]); // Rerun if form instance changes, though it shouldn't.
 
-    if (itemCount === 0 && !isLoading && typeof window !== 'undefined') {
+  // This effect handles redirecting if the cart is empty.
+  useEffect(() => {
+    // Wait until authentication check is complete before checking the cart
+    if (isAuthenticated !== null && itemCount === 0 && !isLoading) {
       toast({
         title: "Carrito Vacío",
-        description: "No puedes proceder al pago con un carrito vacío.",
+        description: "No puedes proceder al pago con un carrito vacío. Redirigiendo...",
         variant: "destructive"
       });
       router.push("/cart");
     }
-  }, [itemCount, router, toast, isLoading]);
+  }, [itemCount, isAuthenticated, isLoading, router, toast]);
 
-  useEffect(() => {
-      if (user) {
-          form.reset({
-              ...form.getValues(),
-              buyerName: user.name,
-              buyerEmail: user.email,
-          });
-      }
-  }, [user, form]);
 
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
@@ -210,6 +208,8 @@ export default function CheckoutPage() {
     }
   }
 
+  // If auth status is not yet determined, show a loading spinner.
+  // This prevents a flash of the "login prompt" before the check is done.
   if (isAuthenticated === null) {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
@@ -219,6 +219,7 @@ export default function CheckoutPage() {
       );
   }
 
+  // If not authenticated, show the login prompt.
   if (!isAuthenticated) {
       return (
           <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -257,14 +258,17 @@ export default function CheckoutPage() {
           </div>
       );
   }
-
-  if (itemCount === 0 && typeof window !== 'undefined' && !isLoading) { 
-     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <p>Tu carrito está vacío. Redirigiendo...</p>
-      </div>
-    );
+  
+  // The cart check might redirect, so we must not render the form until we know we don't need to.
+  if (itemCount === 0) {
+      return (
+        <div className="container mx-auto px-4 py-8 text-center">
+          <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+          <p className="mt-4 text-lg text-muted-foreground">Tu carrito está vacío. Redirigiendo...</p>
+        </div>
+      );
   }
+
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
