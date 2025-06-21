@@ -3,66 +3,58 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { LibraryCard } from "@/components/LibraryCard";
-import { placeholderLibraries } from "@/lib/placeholders";
 import type { Library } from "@/types";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
 const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
-
-const NEW_LIBRARY_LOCALSTORAGE_KEY = "newly-registered-library-details-temp";
 
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
-  // Initialize with placeholders. localStorage will be merged in useEffect.
-  const [allLibraries, setAllLibraries] = useState<Library[]>(placeholderLibraries);
+  const [allLibraries, setAllLibraries] = useState<Library[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // This effect runs only on the client-side after hydration
-    if (typeof window !== "undefined") {
-      const storedLibraryData = localStorage.getItem(NEW_LIBRARY_LOCALSTORAGE_KEY);
-      if (storedLibraryData) {
-        try {
-          const newLibrary: Library = JSON.parse(storedLibraryData);
-          console.log("LibrariesPage useEffect: Found new library in localStorage:", newLibrary);
-          
-          // Add the new library from localStorage, ensuring it's at the top and no duplicates by ID
-          setAllLibraries(prevLibraries => {
-            const existingLibraryIndex = prevLibraries.findIndex(lib => lib.id === newLibrary.id);
-            if (existingLibraryIndex !== -1) {
-              // If it exists (e.g. from a previous load or if placeholder had same ID), update it
-              const updatedLibraries = [...prevLibraries];
-              updatedLibraries[existingLibraryIndex] = newLibrary;
-              return updatedLibraries;
-            } else {
-              // If it doesn't exist, add it to the beginning
-              return [newLibrary, ...prevLibraries];
-            }
-          });
-        } catch (e) {
-          console.error("LibrariesPage useEffect: Error parsing registered library data:", e);
-        }
-      } else {
-        console.log("LibrariesPage useEffect: No new library found in localStorage for key:", NEW_LIBRARY_LOCALSTORAGE_KEY);
-        // Si no hay nada en localStorage con esa clave, nos aseguramos de que `allLibraries`
-        // no contenga una librería con el ID que se podría haber usado para una librería temporal
-        // (esto es más una medida de limpieza por si acaso)
-        setAllLibraries(prev => prev.filter(lib => lib.id !== "newly-registered-library")); // Assuming 'newly-registered-library' was a temp ID
-      }
-    }
-  }, []); // Empty dependency array ensures this runs once on mount
+    const fetchLibraries = async () => {
+      setIsLoading(true);
+      try {
+        const librariesCollection = collection(db, "libraries");
+        const q = query(librariesCollection, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
 
+        const librariesFromFirestore: Library[] = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.libraryName || "Nombre no disponible",
+            location: `${data.city || 'Ciudad'}, ${data.country || 'País'}`,
+            imageUrl: data.logoUrl || 'https://placehold.co/100x100.png',
+            dataAiHint: 'library logo',
+            description: data.description || "Sin descripción.",
+          };
+        });
+
+        setAllLibraries(librariesFromFirestore);
+      } catch (error) {
+        console.error("Error fetching libraries from Firestore: ", error);
+        // Aquí podrías usar un toast para notificar al usuario del error
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLibraries();
+  }, []);
 
   const handleSearch = (term: string) => {
     setSearchTerm(term.toLowerCase());
   };
 
   const filteredLibraries = useMemo(() => {
-    // A futuro, aquí se leerían las librerías de Firestore y se combinarían con la de localStorage si existe.
-    console.log("Filtering libraries. Current allLibraries count:", allLibraries.length, "First item ID:", allLibraries[0]?.id);
     return allLibraries.filter((library) => {
       const matchesSearchTerm =
         library.name.toLowerCase().includes(searchTerm) ||
@@ -74,6 +66,15 @@ export default function LibrariesPage() {
     });
   }, [searchTerm, selectedLocation, allLibraries]);
 
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 md:py-12 text-center flex flex-col justify-center items-center min-h-[60vh]">
+        <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+        <p className="mt-4 text-lg text-muted-foreground">Cargando librerías desde la base de datos...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
       <header className="mb-12 text-center">
@@ -82,7 +83,6 @@ export default function LibrariesPage() {
         </h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
           Explora nuestra red de librerías independientes en Ecuador y Latinoamérica. Encuentra tu próximo tesoro literario.
-          (Nota: Actualmente mostrando datos de prueba y librerías recién registradas desde el almacenamiento local.)
         </p>
       </header>
 
@@ -95,7 +95,7 @@ export default function LibrariesPage() {
                 id="search-library"
                 type="text"
                 placeholder="Ej: El Gato Lector, libros infantiles..."
-                value={searchTerm} // Controlled input
+                value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
                 className="flex-grow text-base md:text-sm"
                 aria-label="Buscar librería"
@@ -132,7 +132,7 @@ export default function LibrariesPage() {
           <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="font-headline text-2xl font-semibold text-foreground mb-2">No se encontraron librerías</h3>
           <p className="text-muted-foreground">
-            Intenta ajustar tus filtros o ampliar tu búsqueda.
+            No hay librerías registradas o ninguna coincide con tu búsqueda. ¡Registra una!
           </p>
         </div>
       )}
