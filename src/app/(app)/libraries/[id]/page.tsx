@@ -187,9 +187,6 @@ export default function LibraryDetailsPage() {
                 </a>
               </div>
               }
-               <Button variant="outline" className="w-full mt-4 font-body">
-                  <ExternalLink className="mr-2 h-4 w-4" /> Visitar Sitio Web {/* Placeholder */}
-              </Button>
               {hasSocials && (
                 <div className="flex items-center space-x-2 pt-4 border-t">
                   {instagram && <Button asChild variant="outline" size="icon"><a href={instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon className="h-5 w-5" /></a></Button>}
