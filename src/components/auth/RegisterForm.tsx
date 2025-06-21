@@ -57,6 +57,12 @@ export function RegisterForm() {
   async function onSubmit(values: RegisterFormValues) {
     setIsLoading(true);
     
+    if (!db) {
+        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     try {
       // Check if user already exists
       const usersRef = collection(db, "users");

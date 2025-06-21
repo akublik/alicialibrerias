@@ -50,7 +50,9 @@ export default function CheckoutPage() {
   const { cartItems, totalPrice, itemCount, clearCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // null = checking, true = logged in, false = not logged in
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
@@ -73,7 +75,7 @@ export default function CheckoutPage() {
     },
   });
   
-  // This effect runs once on mount to check auth status and pre-fill form data if available.
+  // This effect runs ONCE on mount to check auth status and pre-fill form data if available.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
@@ -95,9 +97,10 @@ export default function CheckoutPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
+  // This effect redirects if the cart is empty. It runs only when itemCount or isAuthenticated status changes.
   useEffect(() => {
-    // This effect runs after the authentication status has been determined.
-    if (isAuthenticated !== null && itemCount === 0 && !isLoading) {
+    // Wait until auth check is complete before checking for cart emptiness
+    if (isAuthenticated !== null && itemCount === 0 && !isSubmitting) {
       toast({
         title: "Carrito Vacío",
         description: "No puedes proceder al pago con un carrito vacío. Redirigiendo...",
@@ -105,7 +108,7 @@ export default function CheckoutPage() {
       });
       router.push("/cart");
     }
-  }, [itemCount, isAuthenticated, isLoading, router, toast]);
+  }, [itemCount, isAuthenticated, isSubmitting, router, toast]);
 
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
@@ -148,12 +151,12 @@ export default function CheckoutPage() {
       }
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (!userDataString) {
       toast({ title: "Inicia sesión", description: "Debes iniciar sesión para completar la compra.", variant: "destructive" });
-      setIsLoading(false);
+      setIsSubmitting(false);
       return;
     }
     const { id: buyerId } = JSON.parse(userDataString);
@@ -161,7 +164,7 @@ export default function CheckoutPage() {
 
     if (!libraryId) {
        toast({ title: "Error en el pedido", description: "No se pudo determinar la librería para este pedido.", variant: "destructive" });
-       setIsLoading(false);
+       setIsSubmitting(false);
        return;
     }
 
@@ -204,7 +207,7 @@ export default function CheckoutPage() {
     } catch (error: any) {
         toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive" });
     } finally {
-        setIsLoading(false);
+        setIsSubmitting(false);
     }
   }
 
@@ -428,8 +431,8 @@ export default function CheckoutPage() {
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
-                  <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                  <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                     Realizar Pedido
                   </Button>
                 )}

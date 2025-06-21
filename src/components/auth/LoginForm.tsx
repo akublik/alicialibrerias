@@ -47,10 +47,14 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
+    if (!db) {
+        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
     try {
       const usersRef = collection(db, "users");
-      // IMPORTANT: In a real app, you would not query by password. This is for simulation.
-      // You would fetch the user by email and then compare the hashed password on a server.
       const q = query(usersRef, where("email", "==", values.email), where("password", "==", values.password));
       const querySnapshot = await getDocs(q);
 
