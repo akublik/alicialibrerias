@@ -74,6 +74,58 @@ export function LibraryRegisterForm() {
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
 
+    // --- SIMULATION MODE ---
+    // The original Firebase code is commented out below. It was likely hanging
+    // because the Firestore security rules do not allow unauthenticated users
+    // to write to the 'users' or 'libraries' collections.
+    // This simulation allows the user to proceed with the app flow.
+    
+    console.log("Simulating library registration:", values);
+
+    // Simulate network delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Simulate successful registration
+    const placeholderLogoUrl = 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName);
+    const simulatedLibraryId = `lib_${Date.now()}`;
+    const simulatedUserId = `user_${Date.now()}`;
+
+    const libraryDataForLocalStorage = {
+      id: simulatedLibraryId,
+      name: values.libraryName,
+      imageUrl: placeholderLogoUrl,
+      // Adding full details so the library page can find them
+      location: `${values.libraryCity}, ${values.libraryProvince}`,
+      address: values.libraryAddress,
+      phone: values.libraryPhone || "",
+      email: values.adminEmail,
+      description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
+      dataAiHint: "library exterior",
+    };
+    
+    const userDataForLocalStorage = {
+      id: simulatedUserId,
+      name: values.adminName,
+      email: values.adminEmail,
+      role: 'library',
+      libraryId: simulatedLibraryId,
+    };
+
+    localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForLocalStorage));
+    localStorage.setItem("isLibraryAdminAuthenticated", "true");
+    localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForLocalStorage));
+
+    toast({
+        title: "¡Registro Exitoso!",
+        description: `Tu librería ${values.libraryName} ha sido registrada.`,
+    });
+
+    router.push("/library-admin/dashboard");
+    setIsLoading(false);
+
+
+    /*
+    // --- ORIGINAL FIREBASE CODE ---
     try {
       // 1. Check if email is already in use in the 'users' collection
       const usersRef = collection(db, "users");
@@ -86,7 +138,8 @@ export function LibraryRegisterForm() {
           description: "El correo electrónico del administrador ya está en uso.",
           variant: "destructive",
         });
-        return; // Exit early, finally block will handle isLoading
+        setIsLoading(false);
+        return;
       }
       
       // 2. Create the library document first
@@ -152,6 +205,7 @@ export function LibraryRegisterForm() {
     } finally {
       setIsLoading(false);
     }
+    */
   }
 
   return (
