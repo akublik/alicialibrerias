@@ -7,8 +7,9 @@ import { placeholderReviews } from '@/lib/placeholders';
 import type { Book, Review } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2 } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -151,9 +152,38 @@ export default function BookDetailsPage() {
             </div>
           )}
 
+          <Separator className="my-4" />
+          <h3 className="font-headline text-xl font-semibold text-foreground mb-3">Ficha Técnica</h3>
           <div className="space-y-2 text-sm">
-            {book.isbn && <p><span className="font-semibold text-foreground">ISBN:</span> <span className="text-muted-foreground">{book.isbn}</span></p>}
-            {book.categories && book.categories.length > 0 && (
+             {book.publisher && (
+              <p className="flex items-center">
+                <Building2 className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                <span className="font-semibold text-foreground mr-1">Editorial:</span>
+                <span className="text-muted-foreground">{book.publisher}</span>
+              </p>
+            )}
+             {book.coverType && (
+              <p className="flex items-center">
+                <BookCopy className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                <span className="font-semibold text-foreground mr-1">Tapa:</span>
+                <span className="text-muted-foreground">{book.coverType}</span>
+              </p>
+            )}
+            {book.pageCount && (
+              <p className="flex items-center">
+                <FileText className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                <span className="font-semibold text-foreground mr-1">Páginas:</span>
+                <span className="text-muted-foreground">{book.pageCount}</span>
+              </p>
+            )}
+             {book.isbn && (
+              <p className="flex items-center">
+                <span className="font-mono text-xs mr-2 h-4 w-4 flex items-center justify-center text-foreground flex-shrink-0">#</span>
+                <span className="font-semibold text-foreground mr-1">ISBN:</span>
+                <span className="text-muted-foreground">{book.isbn}</span>
+              </p>
+            )}
+             {book.categories && book.categories.length > 0 && (
               <p className="flex items-start">
                 <BookOpenCheck className="mr-2 h-4 w-4 mt-0.5 text-foreground flex-shrink-0" />
                 <span className="font-semibold text-foreground mr-1">Categorías:</span> 

@@ -13,6 +13,9 @@ export interface Book {
   libraryId?: string; // ID of the library that owns this book
   status?: 'published' | 'unpublished';
   isFeatured?: boolean;
+  pageCount?: number | null;
+  coverType?: string | null;
+  publisher?: string | null;
 }
 
 export interface Library {

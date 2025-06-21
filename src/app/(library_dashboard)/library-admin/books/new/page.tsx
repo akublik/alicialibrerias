@@ -32,6 +32,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
 import { generateAutomaticTags } from '@/ai/flows/generate-automatic-tags';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -44,6 +45,9 @@ const bookFormSchema = z.object({
   tags: z.array(z.string()).optional(),
   coverImage: z.any().optional(),
   isFeatured: z.boolean().default(false),
+  pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
+  coverType: z.string().optional(),
+  publisher: z.string().optional(),
 });
 
 type BookFormValues = z.infer<typeof bookFormSchema>;
@@ -69,6 +73,9 @@ export default function NewBookPage() {
       tags: [],
       coverImage: undefined,
       isFeatured: false,
+      pageCount: '',
+      coverType: '',
+      publisher: '',
     },
   });
 
@@ -153,8 +160,11 @@ export default function NewBookPage() {
             imageUrl,
             dataAiHint,
             libraryId,
-            status: 'published',
+            status: 'published' as const,
             isFeatured: values.isFeatured,
+            pageCount: values.pageCount ? Number(values.pageCount) : null,
+            coverType: values.coverType || null,
+            publisher: values.publisher || null,
         };
 
         await addDoc(collection(db, "books"), newBookData);
@@ -228,6 +238,33 @@ export default function NewBookPage() {
                     <FormField control={form.control} name="price" render={({ field }) => ( <FormItem><FormLabel>Precio</FormLabel><FormControl><Input type="number" step="0.01" placeholder="15.99" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={form.control} name="stock" render={({ field }) => ( <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" placeholder="10" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                  </div>
+                
+                <h4 className="font-headline text-lg text-foreground border-b pb-2 pt-4">Ficha Técnica (Opcional)</h4>
+                <div className="grid sm:grid-cols-3 gap-4">
+                    <FormField control={form.control} name="pageCount" render={({ field }) => ( <FormItem><FormLabel>Nº de Páginas</FormLabel><FormControl><Input type="number" placeholder="320" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField
+                        control={form.control}
+                        name="coverType"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Tipo de Tapa</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecciona un tipo" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="Tapa Blanda">Tapa Blanda</SelectItem>
+                                        <SelectItem value="Tapa Dura">Tapa Dura</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField control={form.control} name="publisher" render={({ field }) => ( <FormItem><FormLabel>Editorial</FormLabel><FormControl><Input placeholder="Ej: Planeta" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                </div>
 
                 <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} /></FormControl><FormMessage /></FormItem> )} />
 
