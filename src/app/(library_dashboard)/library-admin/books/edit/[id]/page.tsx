@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -29,6 +30,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Book } from "@/types";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
+import { Switch } from "@/components/ui/switch";
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -40,6 +42,7 @@ const bookFormSchema = z.object({
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
   coverImage: z.any().optional(),
+  isFeatured: z.boolean().default(false),
 });
 
 type BookFormValues = z.infer<typeof bookFormSchema>;
@@ -66,6 +69,7 @@ export default function EditBookPage() {
       categories: [],
       tags: [],
       coverImage: undefined,
+      isFeatured: false,
     },
   });
 
@@ -92,6 +96,7 @@ export default function EditBookPage() {
             categories: bookData.categories || [],
             tags: bookData.tags || [],
             coverImage: undefined,
+            isFeatured: bookData.isFeatured || false,
           };
           form.reset(formValues);
 
@@ -135,6 +140,7 @@ export default function EditBookPage() {
           categories: values.categories || [],
           tags: values.tags || [],
           imageUrl,
+          isFeatured: values.isFeatured,
       };
 
       await updateDoc(bookRef, updatedData);
@@ -241,6 +247,26 @@ export default function EditBookPage() {
                     )}
                   />
               </div>
+               <FormField
+                  control={form.control}
+                  name="isFeatured"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 mt-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Destacar Libro</FormLabel>
+                        <FormDescription>
+                          Si se activa, este libro aparecerá en un lugar destacado en la página de tu librería.
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
             </CardContent>
           </Card>
 

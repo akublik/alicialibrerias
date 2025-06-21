@@ -12,6 +12,7 @@ export interface Book {
   dataAiHint?: string;
   libraryId?: string; // ID of the library that owns this book
   status?: 'published' | 'unpublished';
+  isFeatured?: boolean;
 }
 
 export interface Library {

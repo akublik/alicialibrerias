@@ -10,11 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Book } from "@/types";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function LibraryBooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -180,7 +181,23 @@ export default function LibraryBooksPage() {
                             data-ai-hint={book.dataAiHint || 'book cover'}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{book.title}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {book.isFeatured && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Libro Destacado</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                            <span>{book.title}</span>
+                          </div>
+                        </TableCell>
                         <TableCell className="line-clamp-2">{book.authors.join(', ')}</TableCell>
                         <TableCell>
                           <Badge variant={status === 'published' ? "secondary" : "destructive"}>
