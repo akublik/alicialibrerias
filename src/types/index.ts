@@ -76,4 +76,6 @@ export interface Order {
   paymentMethod: string;
   shippingAddress?: string;
   orderNotes?: string;
+  needsInvoice?: boolean;
+  taxId?: string;
 }

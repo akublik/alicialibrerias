@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,15 +21,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
 import Image from "next/image";
-import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, LogIn, UserPlus, UserCircle } from "lucide-react";
+import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
@@ -42,7 +42,18 @@ const checkoutFormSchema = z.object({
   shippingPostalCode: z.string().optional(),
   shippingCountry: z.string().optional(),
   orderNotes: z.string().optional(),
+  needsInvoice: z.boolean().default(false).optional(),
+  taxId: z.string().optional(),
+}).refine(data => {
+    if (data.needsInvoice && (!data.taxId || data.taxId.trim() === '')) {
+        return false;
+    }
+    return true;
+}, {
+    message: "El RUC/Cédula es requerido si solicitas factura.",
+    path: ["taxId"],
 });
+
 
 type CheckoutFormValues = z.infer<typeof checkoutFormSchema>;
 
@@ -51,9 +62,7 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // null = checking, true = logged in, false = not logged in
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
@@ -72,45 +81,48 @@ export default function CheckoutPage() {
       shippingPostalCode: "",
       shippingCountry: "Ecuador",
       orderNotes: "",
+      needsInvoice: false,
+      taxId: "",
     },
   });
+
+  const needsInvoice = form.watch("needsInvoice");
   
-  // This effect runs ONCE on mount to check auth status and pre-fill form data if available.
+  // This effect runs to check auth status and pre-fill form data if available.
   useEffect(() => {
-    // We need to check on the client side if the user is authenticated.
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
-    if (authStatus) {
-      const userDataString = localStorage.getItem("aliciaLibros_user");
-      if (userDataString) {
-          try {
-              const user = JSON.parse(userDataString);
-              form.reset({
-                  ...form.getValues(),
-                  buyerName: user.name || "",
-                  buyerEmail: user.email || "",
-              });
-          } catch (e) {
-              console.error("Error parsing user data from localStorage", e);
-          }
-      }
+
+    if (!authStatus) {
+      router.replace('/pre-checkout');
+      return;
     }
-  // The empty dependency array ensures this effect runs only once on mount.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
-  // This effect redirects if the cart is empty. It runs only when itemCount or isAuthenticated status changes.
-  useEffect(() => {
-    // Wait until auth check is complete before checking for cart emptiness
-    if (isAuthenticated !== null && itemCount === 0 && !isSubmitting) {
+    
+    if (itemCount === 0 && !isSubmitting) {
       toast({
         title: "Carrito Vacío",
         description: "No puedes proceder al pago con un carrito vacío. Redirigiendo...",
         variant: "destructive"
       });
       router.push("/cart");
+      return;
     }
-  }, [itemCount, isAuthenticated, isSubmitting, router, toast]);
+
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (userDataString) {
+        try {
+            const user = JSON.parse(userDataString);
+            form.reset({
+                ...form.getValues(),
+                buyerName: user.name || "",
+                buyerEmail: user.email || "",
+            });
+        } catch (e) {
+            console.error("Error parsing user data from localStorage", e);
+        }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemCount, isSubmitting, router, toast]);
 
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
@@ -127,10 +139,6 @@ export default function CheckoutPage() {
     if (!isAuthenticated) {
         toast({ title: "Acción Requerida", description: "Por favor, inicia sesión para realizar tu pedido.", variant: "destructive" });
         return;
-    }
-    if (cartItems.length === 0) {
-      toast({ title: "Carrito vacío", description: "No puedes pagar un carrito vacío.", variant: "destructive" });
-      return;
     }
     
     let hasError = false;
@@ -191,6 +199,8 @@ export default function CheckoutPage() {
         paymentMethod: selectedPaymentMethod,
         shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería',
         orderNotes: values.orderNotes || '',
+        needsInvoice: values.needsInvoice || false,
+        taxId: values.needsInvoice ? values.taxId || '' : '',
       };
 
       if (!db) {
@@ -213,20 +223,11 @@ export default function CheckoutPage() {
     }
   }
 
-  if (isAuthenticated === null) {
+  if (!isAuthenticated) {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-          <p className="mt-4 text-lg text-muted-foreground">Verificando sesión...</p>
-        </div>
-      );
-  }
-  
-  if (itemCount === 0 && isAuthenticated !== null) {
-      return (
-        <div className="container mx-auto px-4 py-8 text-center">
-          <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-          <p className="mt-4 text-lg text-muted-foreground">Tu carrito está vacío. Redirigiendo...</p>
+          <p className="mt-4 text-lg text-muted-foreground">Redirigiendo...</p>
         </div>
       );
   }
@@ -239,29 +240,6 @@ export default function CheckoutPage() {
           Finalizar Compra
         </h1>
       </header>
-      
-      {!isAuthenticated && (
-        <Card className="mb-8 shadow-md border-primary/50">
-           <CardHeader>
-              <CardTitle className="font-headline text-2xl flex items-center"><UserCircle className="mr-3 h-8 w-8 text-primary"/>¡Casi listo! Inicia sesión para continuar</CardTitle>
-              <CardDescription>Inicia sesión o crea una cuenta para autocompletar tus datos, guardar este pedido en tu historial de compras y acumular puntos de lealtad.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col sm:flex-row gap-4 justify-start">
-              <Link href="/login?redirect=/checkout" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full font-body">
-                      <LogIn className="mr-2 h-5 w-5" />
-                      Tengo una cuenta
-                  </Button>
-              </Link>
-              <Link href="/register?redirect=/checkout" className="w-full sm:w-auto">
-                  <Button size="lg" variant="outline" className="w-full font-body">
-                      <UserPlus className="mr-2 h-5 w-5" />
-                      Crear Cuenta Nueva
-                  </Button>
-              </Link>
-          </CardContent>
-        </Card>
-      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -376,6 +354,50 @@ export default function CheckoutPage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card className="shadow-md">
+              <CardHeader>
+                  <CardTitle className="font-headline text-xl flex items-center"><FileText className="mr-2 h-5 w-5 text-primary"/>Facturación</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                  <FormField
+                      control={form.control}
+                      name="needsInvoice"
+                      render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                          <FormLabel className="text-base">¿Necesitas Factura?</FormLabel>
+                          <FormDescription>
+                              Activa esta opción si requieres una factura con RUC o Cédula.
+                          </FormDescription>
+                          </div>
+                          <FormControl>
+                          <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                          />
+                          </FormControl>
+                      </FormItem>
+                      )}
+                  />
+                  {needsInvoice && (
+                      <FormField
+                          control={form.control}
+                          name="taxId"
+                          render={({ field }) => (
+                              <FormItem className="animate-fadeIn">
+                                  <FormLabel>Cédula / RUC</FormLabel>
+                                  <FormControl>
+                                      <Input placeholder="Ingresa tu número de identificación" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                  )}
+              </CardContent>
+            </Card>
+
              <Card className="shadow-md">
               <CardHeader><CardTitle className="font-headline text-xl">Notas Adicionales (Opcional)</CardTitle></CardHeader>
               <CardContent>
@@ -416,28 +438,10 @@ export default function CheckoutPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                 {!isAuthenticated ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="w-full" tabIndex={0}>
-                          <Button size="lg" className="w-full font-body text-base" disabled={true}>
-                              <CreditCard className="mr-2 h-5 w-5" />
-                              Inicia sesión para pedir
-                          </Button>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Debes iniciar sesión o crear una cuenta para realizar el pedido.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : (
                   <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isSubmitting}>
                     {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
                     Realizar Pedido
                   </Button>
-                )}
               </CardFooter>
             </Card>
           </div>
@@ -446,5 +450,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-    
