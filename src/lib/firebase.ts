@@ -15,16 +15,48 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Verificación de variables de entorno para diagnóstico
+const missingConfigKeys = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => key);
+
+if (missingConfigKeys.length > 0) {
+  const errorMessage = `
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !!! ERROR DE CONFIGURACIÓN DE FIREBASE !!!
+    
+    Faltan las siguientes variables de entorno: ${missingConfigKeys.join(', ')}
+    
+    Asegúrate de que tu archivo .env o la configuración de entorno de Firebase Studio
+    contengan estas claves con los valores de tu proyecto de Firebase.
+    
+    El registro no funcionará hasta que esto se corrija.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  `;
+  console.error(errorMessage);
+}
+
+
 // Inicializar Firebase
 let app;
 if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
+  // Solo intenta inicializar si la configuración está completa
+  if (missingConfigKeys.length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = null; // No inicializar si falta configuración
+  }
 } else {
   app = getApp();
 }
 
-const db = getFirestore(app);
-// const auth = getAuth(app); // Descomenta si usas Firebase Authentication
-// const storage = getStorage(app); // Descomenta si usas Firebase Storage
+// Solo exportar 'db' si la aplicación se inicializó correctamente
+// Esto evita errores en cascada en otras partes de la aplicación
+const db = app ? getFirestore(app) : null;
+
+if (!db) {
+    console.error("ERROR: No se pudo inicializar Firestore. Revisa los errores de configuración de Firebase de más arriba.");
+}
+
 
 export { db /*, auth, storage */ }; // Exporta lo que necesites
