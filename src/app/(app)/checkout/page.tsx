@@ -74,28 +74,31 @@ export default function CheckoutPage() {
     },
   });
   
-  // This effect runs once on the client to check authentication status.
+  // This effect runs ONLY ONCE on mount to check authentication status.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
+  }, []); // Empty dependency array ensures this runs only once.
 
-    if (authStatus) {
-        const userDataString = localStorage.getItem("aliciaLibros_user");
-        if (userDataString) {
-            try {
-                const user = JSON.parse(userDataString);
-                // Pre-fill the form with user data
-                form.reset({
-                    ...form.getValues(),
-                    buyerName: user.name,
-                    buyerEmail: user.email,
-                });
-            } catch (e) {
-                console.error("Error parsing user data from localStorage", e);
-            }
-        }
+  // This effect runs when authentication status is determined, to pre-fill the form.
+  useEffect(() => {
+    if (isAuthenticated) {
+      const userDataString = localStorage.getItem("aliciaLibros_user");
+      if (userDataString) {
+          try {
+              const user = JSON.parse(userDataString);
+              form.reset({
+                  ...form.getValues(),
+                  buyerName: user.name,
+                  buyerEmail: user.email,
+              });
+          } catch (e) {
+              console.error("Error parsing user data from localStorage", e);
+          }
+      }
     }
-  }, [form]); // Rerun if form instance changes, though it shouldn't.
+  }, [isAuthenticated, form]); // Reruns when isAuthenticated changes.
+  
 
   // This effect handles redirecting if the cart is empty.
   useEffect(() => {
