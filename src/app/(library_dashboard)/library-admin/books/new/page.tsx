@@ -21,6 +21,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { db, storage } from "@/lib/firebase";
+import { addDoc, collection } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { v4 as uuidv4 } from 'uuid';
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -60,18 +64,73 @@ export default function NewBookPage() {
 
   async function onManualSubmit(values: BookFormValues) {
     setIsSubmittingManual(true);
-    console.log("Manual Book Submission:", values);
     
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    toast({
-      title: "Libro Añadido",
-      description: `El libro "${values.title}" ha sido añadido a tu inventario.`,
-    });
-    
-    router.push("/library-admin/books");
-    setIsSubmittingManual(false);
-  }
+    if (!db || !storage) {
+        toast({ title: "Error de configuración", description: "La base de datos o el almacenamiento no están disponibles.", variant: "destructive" });
+        setIsSubmittingManual(false);
+        return;
+    }
+
+    try {
+        const userDataString = localStorage.getItem("aliciaLibros_user");
+        if (!userDataString) {
+            toast({ title: "Error de autenticación", description: "No se pudo encontrar la información del usuario.", variant: "destructive" });
+            setIsSubmittingManual(false);
+            return;
+        }
+        const userData = JSON.parse(userDataString);
+        const libraryId = userData.libraryId;
+        if (!libraryId) {
+            toast({ title: "Error de librería", description: "Tu cuenta no está asociada a una librería.", variant: "destructive" });
+            setIsSubmittingManual(false);
+            return;
+        }
+        
+        let imageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
+        let dataAiHint = "book cover";
+
+        const imageFile = values.coverImage?.[0];
+        if (imageFile) {
+            const imageRef = ref(storage, `book-covers/${libraryId}/${uuidv4()}-${imageFile.name}`);
+            await uploadBytes(imageRef, imageFile);
+            imageUrl = await getDownloadURL(imageRef);
+            dataAiHint = "custom book cover";
+        }
+
+        const newBookData = {
+            title: values.title,
+            authors: values.authors.split(',').map(a => a.trim()),
+            isbn: values.isbn || '',
+            price: values.price,
+            stock: values.stock,
+            description: values.description || '',
+            categories: values.categories ? values.categories.split(',').map(c => c.trim()) : [],
+            tags: values.tags ? values.tags.split(',').map(t => t.trim()) : [],
+            imageUrl,
+            dataAiHint,
+            libraryId,
+        };
+
+        await addDoc(collection(db, "books"), newBookData);
+
+        toast({
+            title: "Libro Añadido con Éxito",
+            description: `El libro "${values.title}" ha sido guardado en la base de datos.`,
+        });
+
+        router.push("/library-admin/books");
+
+    } catch (error: any) {
+        console.error("Error al guardar el libro:", error);
+        toast({
+            title: "Error al Guardar",
+            description: `No se pudo guardar el libro. Error: ${error.message}`,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmittingManual(false);
+    }
+}
 
   async function onFileImport() {
     if (!importFile) {
@@ -79,16 +138,17 @@ export default function NewBookPage() {
         return;
     }
     setIsSubmittingFile(true);
-    console.log("Importing file:", importFile.name);
-
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
+    // Logic for file import will be implemented in the next step
     toast({
-      title: "Importación Iniciada",
-      description: `El archivo "${importFile.name}" se está procesando.`,
+      title: "Función no implementada",
+      description: "La importación de archivos se implementará próximamente.",
+      variant: "destructive"
     });
+    console.log("Attempted to import file:", importFile.name);
     
-    router.push("/library-admin/books");
+    // Simulate some work
+    // await new Promise(resolve => setTimeout(resolve, 2500));
+    
     setIsSubmittingFile(false);
   }
 
@@ -140,7 +200,7 @@ export default function NewBookPage() {
                         <Input 
                             type="file" 
                             accept="image/*"
-                            onChange={(e) => field.onChange(e.target.files ? e.target.files[0] : null)}
+                            onChange={(e) => field.onChange(e.target.files)}
                         />
                       </FormControl>
                       <FormMessage />

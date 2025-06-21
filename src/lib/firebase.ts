@@ -1,8 +1,7 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-// import { getAuth } from 'firebase/auth'; // Importa getAuth si vas a usar Firebase Authentication
-// import { getStorage } from 'firebase/storage'; // Importa getStorage si vas a usar Firebase Storage
+import { getStorage } from 'firebase/storage';
 
 // Tu configuración de Firebase (obtenida de la consola de Firebase)
 // Deberías almacenar estos valores en variables de entorno (e.g., .env.local)
@@ -27,10 +26,10 @@ if (missingConfigKeys.length > 0) {
     
     Faltan las siguientes variables de entorno: ${missingConfigKeys.join(', ')}
     
-    Asegúrate de que tu archivo .env o la configuración de entorno de Firebase Studio
+    Asegúrate de que tu archivo .env.local o la configuración de entorno de Firebase Studio
     contengan estas claves con los valores de tu proyecto de Firebase.
     
-    El registro no funcionará hasta que esto se corrija.
+    La aplicación no podrá conectarse a Firebase hasta que esto se corrija.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   `;
   // Using console.warn to avoid the Next.js error overlay while still providing a clear warning.
@@ -43,7 +42,12 @@ let app;
 if (!getApps().length) {
   // Solo intenta inicializar si la configuración está completa
   if (missingConfigKeys.length === 0) {
-    app = initializeApp(firebaseConfig);
+    try {
+        app = initializeApp(firebaseConfig);
+    } catch (e) {
+        console.error("Error al inicializar Firebase. Revisa tu 'firebaseConfig'.", e);
+        app = null;
+    }
   } else {
     app = null; // No inicializar si falta configuración
   }
@@ -51,13 +55,16 @@ if (!getApps().length) {
   app = getApp();
 }
 
-// Solo exportar 'db' si la aplicación se inicializó correctamente
-// Esto evita errores en cascada en otras partes de la aplicación
+// Solo exportar los servicios si la aplicación se inicializó correctamente
 const db = app ? getFirestore(app) : null;
+const storage = app ? getStorage(app) : null;
 
 if (!db) {
     console.warn("ADVERTENCIA: No se pudo inicializar Firestore. Revisa los mensajes de configuración de Firebase en la consola.");
 }
+if (!storage) {
+    console.warn("ADVERTENCIA: No se pudo inicializar Firebase Storage. Revisa los mensajes de configuración de Firebase en la consola.");
+}
 
 
-export { db /*, auth, storage */ }; // Exporta lo que necesites
+export { db, storage };
