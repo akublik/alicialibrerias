@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 
 const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
 
@@ -23,8 +23,8 @@ export default function LibrariesPage() {
       setIsLoading(true);
       try {
         const librariesCollection = collection(db, "libraries");
-        const q = query(librariesCollection, orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
+        // Se eliminó orderBy para evitar errores de índice de Firestore. El ordenamiento se puede volver a agregar más tarde.
+        const querySnapshot = await getDocs(librariesCollection);
 
         const librariesFromFirestore: Library[] = querySnapshot.docs.map(doc => {
           const data = doc.data();
