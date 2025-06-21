@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, BookPlus, FileUp, ImagePlus } from "lucide-react";
@@ -226,19 +227,17 @@ export default function NewBookPage() {
             <p className="text-xs text-muted-foreground">
               Asegúrate de que tu archivo tenga las columnas: `title`, `authors`, `isbn`, `price`, `stock`, `description`, `categories`, `tags`.
             </p>
-            <FormItem>
-                <FormLabel>Seleccionar archivo</FormLabel>
-                <FormControl>
-                    <Input 
-                        id="file-upload" 
-                        type="file" 
-                        onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
-                        accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
-                        disabled={isSubmittingFile || isSubmittingManual}
-                    />
-                </FormControl>
+            <div className="space-y-2">
+                <Label htmlFor="file-upload">Seleccionar archivo</Label>
+                <Input 
+                    id="file-upload" 
+                    type="file" 
+                    onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
+                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+                    disabled={isSubmittingFile || isSubmittingManual}
+                />
                 {importFile && <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {importFile.name}</p>}
-            </FormItem>
+            </div>
             <Button onClick={onFileImport} disabled={!importFile || isSubmittingFile || isSubmittingManual} className="w-full">
                 {isSubmittingFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileUp className="mr-2 h-4 w-4" />}
                 {isSubmittingFile ? 'Importando...' : 'Importar Archivo'}
