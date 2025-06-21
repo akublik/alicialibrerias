@@ -1,0 +1,47 @@
+// src/lib/options.ts
+import type { Option } from '@/components/ui/multi-select';
+
+export const bookCategories: Option[] = [
+  { value: 'ficcion', label: 'Ficción' },
+  { value: 'novela', label: 'Novela' },
+  { value: 'cuento', label: 'Cuento' },
+  { value: 'poesia', label: 'Poesía' },
+  { value: 'teatro', label: 'Teatro' },
+  { value: 'ensayo', label: 'Ensayo' },
+  { value: 'biografia', label: 'Biografía' },
+  { value: 'historia', label: 'Historia' },
+  { value: 'ciencia-ficcion', label: 'Ciencia Ficción' },
+  { value: 'fantasia', label: 'Fantasía' },
+  { value: 'misterio', label: 'Misterio' },
+  { value: 'thriller', label: 'Thriller' },
+  { value: 'romance', label: 'Romance' },
+  { value: 'infantil', label: 'Infantil' },
+  { value: 'juvenil', label: 'Juvenil' },
+  { value: 'autoayuda', label: 'Autoayuda' },
+  { value: 'cocina', label: 'Cocina' },
+  { value: 'viajes', label: 'Viajes' },
+  { value: 'ciencia', label: 'Ciencia' },
+  { value: 'tecnologia', label: 'Tecnología' },
+  { value: 'arte', label: 'Arte' },
+  { value: 'realismo-magico', label: 'Realismo Mágico' },
+  { value: 'literatura-ecuatoriana', label: 'Literatura Ecuatoriana' },
+  { value: 'literatura-latinoamericana', label: 'Literatura Latinoamericana' },
+  { value: 'clasico', label: 'Clásico' },
+];
+
+export const bookTags: Option[] = [
+  { value: 'aventura', label: 'Aventura' },
+  { value: 'humor', label: 'Humor' },
+  { value: 'drama', label: 'Drama' },
+  { value: 'saga-familiar', label: 'Saga Familiar' },
+  { value: 'distopia', label: 'Distopía' },
+  { value: 'feminismo', label: 'Feminismo' },
+  { value: 'politica', label: 'Política' },
+  { value: 'psicologia', label: 'Psicología' },
+  { value: 'filosofia', label: 'Filosofía' },
+  { value: 'epoca-victoriana', label: 'Época Victoriana' },
+  { value: 'siglo-xx', label: 'Siglo XX' },
+  { value: 'basado-en-hechos-reales', label: 'Basado en hechos reales' },
+  { value: 'ganador-premio', label: 'Ganador de Premio' },
+  { value: 'bestseller', label: 'Bestseller' },
+];

@@ -27,6 +27,8 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from 'uuid';
 import type { Book } from "@/types";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { bookCategories, bookTags } from "@/lib/options";
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -35,8 +37,8 @@ const bookFormSchema = z.object({
   price: z.coerce.number().positive({ message: "El precio debe ser un número positivo." }),
   stock: z.coerce.number().int().min(0, { message: "El stock no puede ser negativo." }),
   description: z.string().optional(),
-  categories: z.string().optional(),
-  tags: z.string().optional(),
+  categories: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
   coverImage: z.any().optional(),
 });
 
@@ -61,8 +63,8 @@ export default function EditBookPage() {
       price: 0,
       stock: 0,
       description: "",
-      categories: "",
-      tags: "",
+      categories: [],
+      tags: [],
       coverImage: undefined,
     },
   });
@@ -87,8 +89,8 @@ export default function EditBookPage() {
             price: bookData.price,
             stock: bookData.stock,
             description: bookData.description || '',
-            categories: bookData.categories?.join(', ') || '',
-            tags: bookData.tags?.join(', ') || '',
+            categories: bookData.categories || [],
+            tags: bookData.tags || [],
             coverImage: undefined,
           };
           form.reset(formValues);
@@ -130,8 +132,8 @@ export default function EditBookPage() {
           price: values.price,
           stock: values.stock,
           description: values.description || '',
-          categories: values.categories ? values.categories.split(',').map(c => c.trim()) : [],
-          tags: values.tags ? values.tags.split(',').map(t => t.trim()) : [],
+          categories: values.categories || [],
+          tags: values.tags || [],
           imageUrl,
       };
 
@@ -202,8 +204,42 @@ export default function EditBookPage() {
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} rows={6} /></FormControl><FormMessage /></FormItem> )} />
 
               <div className="grid sm:grid-cols-2 gap-4">
-                 <FormField control={form.control} name="categories" render={({ field }) => ( <FormItem><FormLabel>Categorías (separadas por coma)</FormLabel><FormControl><Input placeholder="Realismo Mágico, Novela" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="tags" render={({ field }) => ( <FormItem><FormLabel>Etiquetas (separadas por coma)</FormLabel><FormControl><Input placeholder="Clásico, Colombia, Saga" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField
+                    control={form.control}
+                    name="categories"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categorías</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            placeholder="Selecciona categorías..."
+                            options={bookCategories}
+                            value={field.value || []}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="tags"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Etiquetas</FormLabel>
+                        <FormControl>
+                          <MultiSelect
+                            placeholder="Selecciona etiquetas..."
+                            options={bookTags}
+                            value={field.value || []}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
             </CardContent>
           </Card>
