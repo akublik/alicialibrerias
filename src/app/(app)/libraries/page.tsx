@@ -3,11 +3,12 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { LibraryCard } from "@/components/LibraryCard";
-import { placeholderLibraries } from "@/lib/placeholders";
 import type { Library } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query } from "firebase/firestore";
 
 const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
 
@@ -18,23 +19,25 @@ export default function LibrariesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate loading and then check localStorage for any newly registered library
-    setIsLoading(true);
-    let libraries = [...placeholderLibraries];
-    const registeredLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
-    if (registeredLibraryData) {
-      try {
-        const newLibrary: Library = JSON.parse(registeredLibraryData);
-        // Avoid adding duplicates
-        if (!libraries.find(lib => lib.id === newLibrary.id)) {
-            libraries = [newLibrary, ...libraries];
+    const fetchLibraries = async () => {
+        if (!db) {
+            setIsLoading(false);
+            return;
         }
-      } catch (e) {
-        console.error("Error parsing registered library from localStorage", e);
-      }
-    }
-    setAllLibraries(libraries);
-    setIsLoading(false);
+        setIsLoading(true);
+        try {
+            const librariesRef = collection(db, "libraries");
+            const q = query(librariesRef);
+            const querySnapshot = await getDocs(q);
+            const libraries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
+            setAllLibraries(libraries);
+        } catch (error) {
+            console.error("Error fetching libraries:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    fetchLibraries();
   }, []);
 
   const handleSearch = (term: string) => {
@@ -52,15 +55,6 @@ export default function LibrariesPage() {
       return matchesSearchTerm && matchesLocation;
     });
   }, [searchTerm, selectedLocation, allLibraries]);
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8 md:py-12 text-center flex flex-col justify-center items-center min-h-[60vh]">
-        <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-        <p className="mt-4 text-lg text-muted-foreground">Cargando librerías...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -107,8 +101,13 @@ export default function LibrariesPage() {
           </div>
         </div>
       </div>
-
-      {filteredLibraries.length > 0 ? (
+      
+      {isLoading ? (
+        <div className="container mx-auto px-4 py-8 md:py-12 text-center flex flex-col justify-center items-center min-h-[40vh]">
+            <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+            <p className="mt-4 text-lg text-muted-foreground">Cargando librerías...</p>
+        </div>
+      ) : filteredLibraries.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {filteredLibraries.map((library) => (
             <LibraryCard key={library.id} library={library} />

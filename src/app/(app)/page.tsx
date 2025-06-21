@@ -3,42 +3,49 @@
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
 import { SearchBar } from "@/components/SearchBar";
-import { ecuadorianAuthors, placeholderLibraries } from "@/lib/placeholders";
+import { ecuadorianAuthors } from "@/lib/placeholders";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState } from "react";
-import type { Book } from "@/types";
+import type { Book, Library } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query } from "firebase/firestore";
 
 export default function HomePage() {
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
+  const [featuredLibraries, setFeaturedLibraries] = useState<Library[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchBooks = async () => {
+    const fetchData = async () => {
       if (!db) {
         setIsLoading(false);
         return;
       }
       try {
+        // Fetch Books
         const booksRef = collection(db, "books");
-        const q = query(booksRef, limit(4));
-        const querySnapshot = await getDocs(q);
-        const books: Book[] = [];
-        querySnapshot.forEach((doc) => {
-          books.push({ id: doc.id, ...doc.data() } as Book);
-        });
+        const booksQuery = query(booksRef, limit(4));
+        const booksSnapshot = await getDocs(booksQuery);
+        const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
         setFeaturedBooks(books);
+
+        // Fetch Libraries
+        const librariesRef = collection(db, "libraries");
+        const librariesQuery = query(librariesRef, limit(3));
+        const librariesSnapshot = await getDocs(librariesQuery);
+        const libraries: Library[] = librariesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
+        setFeaturedLibraries(libraries);
+
       } catch (error) {
-        console.error("Error fetching featured books:", error);
+        console.error("Error fetching featured data:", error);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchBooks();
+    fetchData();
   }, []);
 
   const handleSearch = (term: string) => {
@@ -84,7 +91,7 @@ export default function HomePage() {
       {/* 2. Libros Más Vendidos de la Semana */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Más Vendidos de la Semana</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Destacados</h2>
           {isLoading ? (
             <div className="flex justify-center items-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -109,7 +116,7 @@ export default function HomePage() {
       </section>
 
       {/* 3. Autores Ecuatorianos */}
-      <section className="py-16 bg-background">
+      <section className="py-16 bg-primary/5">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Autores Ecuatorianos</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
@@ -133,21 +140,25 @@ export default function HomePage() {
       </section>
 
       {/* 4. Buscador Librerías */}
-      <section className="py-16 bg-primary/5">
+      <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">Encuentra tu Librería</h2>
           <p className="text-center text-lg text-foreground/70 mb-8 max-w-xl mx-auto">
             Busca entre decenas de librerías independientes y descubre tu próximo rincón literario favorito.
           </p>
           <SearchBar onSearch={handleSearch} className="max-w-2xl mx-auto" />
-           <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {placeholderLibraries.slice(0,3).map(library => (
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+                <div className="sm:col-span-2 lg:col-span-3 flex justify-center items-center py-10">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            ) : featuredLibraries.map(library => (
               <LibraryCard key={library.id} library={library} />
             ))}
           </div>
         </div>
       </section>
-
+      
       {/* 5. Explicación de la plataforma */}
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
@@ -155,13 +166,6 @@ export default function HomePage() {
           <p className="text-center text-lg text-foreground/70 mb-12 max-w-3xl mx-auto">
             Alicia Libros es un marketplace que conecta a lectores apasionados con la riqueza y diversidad de las librerías independientes de Ecuador y Latinoamérica. Fomentamos la lectura, apoyamos la cultura local y te ayudamos a descubrir tu próxima gran aventura literaria.
           </p>
-        </div>
-      </section>
-
-      {/* 6. Beneficios */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Descubre los Beneficios</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {platformBenefits.map(benefit => (
               <div key={benefit.title} className="text-center p-6 bg-card rounded-lg shadow-sm hover:shadow-lg transition-shadow">

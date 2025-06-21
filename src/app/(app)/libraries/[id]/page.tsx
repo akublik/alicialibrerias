@@ -3,7 +3,6 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { placeholderBooks, placeholderLibraries } from '@/lib/placeholders';
 import type { Library, Book } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,75 +11,58 @@ import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, 
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 
-// Define a new type for the extended library object we will use in this page
-type LibraryDetails = Library & {
-  address?: string;
-  phone?: string;
-  email?: string;
-};
 
 export default function LibraryDetailsPage() {
   const params = useParams();
   const libraryId = params.id as string;
 
-  const [library, setLibrary] = useState<LibraryDetails | null>(null);
+  const [library, setLibrary] = useState<Library | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [books, setBooks] = useState<Book[]>([]); 
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    if (!libraryId) {
+    if (!libraryId || !db) {
       setIsLoading(false);
       return;
     };
     
-    setIsLoading(true);
-    let foundLibrary: LibraryDetails | null = null;
-    
-    // Check localStorage first for the newly registered library
-    const registeredLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
-    if (registeredLibraryData) {
-      try {
-        const newLibrary: LibraryDetails = JSON.parse(registeredLibraryData);
-        if (newLibrary.id === libraryId) {
-          foundLibrary = {
-            ...newLibrary,
-            address: newLibrary.address || "Dirección no disponible",
-            phone: newLibrary.phone || "Teléfono no disponible",
-            email: newLibrary.email || "Email no disponible",
-          };
+    const fetchLibraryData = async () => {
+        setIsLoading(true);
+        try {
+            // Fetch library details
+            const libraryRef = doc(db, "libraries", libraryId);
+            const librarySnap = await getDoc(libraryRef);
+
+            if (librarySnap.exists()) {
+                const foundLibrary = { id: librarySnap.id, ...librarySnap.data() } as Library;
+                setLibrary(foundLibrary);
+                
+                // Fetch books for this library
+                const booksRef = collection(db, "books");
+                const q = query(booksRef, where("libraryId", "==", libraryId));
+                const booksSnapshot = await getDocs(q);
+                const libraryBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+                setBooks(libraryBooks);
+
+                // Check favorite status from localStorage
+                if (typeof window !== "undefined") {
+                    setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+                }
+            } else {
+                console.error("No such library document!");
+            }
+        } catch (error) {
+            console.error("Error fetching library data:", error);
+        } finally {
+            setIsLoading(false);
         }
-      } catch (e) {
-        console.error("Error parsing registered library from localStorage", e);
-      }
-    }
+    };
     
-    // If not found in localStorage, check placeholder data
-    if (!foundLibrary) {
-      const placeholder = placeholderLibraries.find(l => l.id === libraryId);
-      if (placeholder) {
-        foundLibrary = {
-          ...placeholder,
-          address: "Dirección de ejemplo",
-          phone: "123-456-7890",
-          email: "ejemplo@libreria.com"
-        };
-      }
-    }
-
-    setLibrary(foundLibrary);
-
-    if (foundLibrary) {
-      // Mock books for this library
-      setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
-      
-      if (typeof window !== "undefined") {
-        setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
-      }
-    }
-
-    setIsLoading(false);
+    fetchLibraryData();
   }, [libraryId]);
   
   const toggleFavorite = () => {
@@ -89,10 +71,11 @@ export default function LibraryDetailsPage() {
       setIsFavorite(newFavStatus);
       if (newFavStatus) {
         localStorage.setItem(`fav-lib-${library.id}`, 'true');
+        toast({ title: "Añadida a Favoritos", description: `${library.name} ha sido añadida a tus librerías favoritas.` });
       } else {
         localStorage.removeItem(`fav-lib-${library.id}`);
+        toast({ title: "Eliminada de Favoritos", description: `${library.name} ha sido eliminada de tus librerías favoritas.` });
       }
-      alert(newFavStatus ? `${library.name} añadida a favoritos.` : `${library.name} eliminada de favoritos.`);
     }
   };
 
@@ -125,7 +108,7 @@ export default function LibraryDetailsPage() {
             layout="fill"
             objectFit="cover"
             priority
-            data-ai-hint={dataAiHint}
+            data-ai-hint={dataAiHint || 'library exterior'}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
         </div>
@@ -157,24 +140,28 @@ export default function LibraryDetailsPage() {
               <CardTitle className="font-headline text-xl">Información de Contacto</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center">
-                <MapPin className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
+              <div className="flex items-start">
+                <MapPin className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <span className="text-foreground/80">{address} - <a href={`https://maps.google.com/?q=${encodeURIComponent(address || '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver en mapa</a></span>
               </div>
               <div className="flex items-center">
                 <Clock className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
                 <span className="text-foreground/80">Lunes a Sábado: 9am - 7pm</span> {/* Placeholder */}
               </div>
+              {phone && 
               <div className="flex items-center">
                 <Phone className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
                 <a href={`tel:${phone}`} className="text-primary hover:underline">{phone}</a>
               </div>
+              }
+              {email && 
               <div className="flex items-center">
                 <Mail className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
                 <a href={`mailto:${email}`} className="text-primary hover:underline break-all">
                   {email}
                 </a>
               </div>
+              }
                <Button variant="outline" className="w-full mt-4 font-body">
                   <ExternalLink className="mr-2 h-4 w-4" /> Visitar Sitio Web {/* Placeholder */}
               </Button>
@@ -208,7 +195,7 @@ export default function LibraryDetailsPage() {
                   ) : (
                     <div className="text-center py-8">
                        <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                       <p className="text-muted-foreground">No hay libros en el catálogo de esta librería actualmente.</p>
+                       <p className="text-muted-foreground">Esta librería aún no ha publicado libros.</p>
                     </div>
                   )}
                 </CardContent>
