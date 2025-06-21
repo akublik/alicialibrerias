@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ShoppingCart, Loader2, PackageOpen, ArrowLeft, FilterX } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, orderBy, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types";
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -45,7 +45,7 @@ export default function LibraryOrdersPage() {
     }
 
     const ordersRef = collection(db, "orders");
-    const q = query(ordersRef, where("libraryId", "==", libraryId), orderBy("createdAt", "desc"));
+    const q = query(ordersRef, where("libraryId", "==", libraryId));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const libraryOrders: Order[] = [];
@@ -58,6 +58,8 @@ export default function LibraryOrdersPage() {
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
          } as Order);
       });
+      // Sort orders on the client-side
+      libraryOrders.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
       setOrders(libraryOrders);
       setIsLoading(false);
     }, (error) => {
