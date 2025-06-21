@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle, ExternalLink } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle, ExternalLink, Share2 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +38,9 @@ const libraryRegisterFormSchema = z.object({
   libraryPhone: z.string().optional(),
   libraryDescription: z.string().optional(),
   libraryLogo: z.any().optional(),
+  instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
+  facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
+  tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
 }).refine(data => data.adminPassword === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
@@ -86,6 +89,9 @@ export function LibraryRegisterForm() {
       libraryPhone: "",
       libraryDescription: "",
       libraryLogo: undefined,
+      instagram: "",
+      facebook: "",
+      tiktok: "",
     },
   });
 
@@ -142,6 +148,9 @@ export function LibraryRegisterForm() {
         description: values.libraryDescription || "Una nueva y emocionante librería.",
         phone: values.libraryPhone || "",
         email: values.adminEmail,
+        instagram: values.instagram || "",
+        facebook: values.facebook || "",
+        tiktok: values.tiktok || "",
         createdAt: serverTimestamp(),
       };
       const addLibraryPromise = addDoc(collection(db, "libraries"), newLibraryData);
@@ -281,6 +290,11 @@ export function LibraryRegisterForm() {
             <FormField control={form.control} name="libraryPhone" render={({ field }) => ( <FormItem> <FormLabel>Teléfono de la Librería (Opcional)</FormLabel> <FormControl><Input type="tel" placeholder="Ej: 022555888" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
             <FormField control={form.control} name="libraryDescription" render={({ field }) => ( <FormItem> <FormLabel>Descripción Breve (Opcional)</FormLabel> <FormControl><Textarea placeholder="Un rincón acogedor para los amantes de la lectura..." {...field} /></FormControl> <FormMessage /> </FormItem> )} />
             
+            <h3 className="font-headline text-lg text-foreground border-b pb-2 pt-4 mb-4 flex items-center gap-2"><Share2 className="h-5 w-5"/>Redes Sociales (Opcional)</h3>
+            <FormField control={form.control} name="instagram" render={({ field }) => ( <FormItem> <FormLabel>URL de Instagram</FormLabel> <FormControl><Input placeholder="https://instagram.com/tulibreria" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+            <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem> <FormLabel>URL de Facebook</FormLabel> <FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+            <FormField control={form.control} name="tiktok" render={({ field }) => ( <FormItem> <FormLabel>URL de TikTok</FormLabel> <FormControl><Input placeholder="https://tiktok.com/@tulibreria" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+
             <Button type="submit" className="w-full font-body text-base" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
               Registrar Librería

@@ -15,6 +15,27 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 
+// SVG Icons for social media
+const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
+  </svg>
+);
+
+const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+    </svg>
+);
+
+const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M21 8v5a5 5 0 0 1-5 5H8.5a4.5 4.5 0 0 1 0-9H13v5a2 2 0 0 0 2 2h3"></path>
+  </svg>
+);
+
 
 export default function LibraryDetailsPage() {
   const params = useParams();
@@ -94,7 +115,9 @@ export default function LibraryDetailsPage() {
     return <div className="container mx-auto px-4 py-8 text-center">No se pudo encontrar la librería. Por favor, verifica el enlace o vuelve al directorio.</div>;
   }
 
-  const { name, location, description, address, phone, email, imageUrl, dataAiHint } = library;
+  const { name, location, description, address, phone, email, imageUrl, dataAiHint, instagram, facebook, tiktok } = library;
+
+  const hasSocials = instagram || facebook || tiktok;
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -167,6 +190,13 @@ export default function LibraryDetailsPage() {
                <Button variant="outline" className="w-full mt-4 font-body">
                   <ExternalLink className="mr-2 h-4 w-4" /> Visitar Sitio Web {/* Placeholder */}
               </Button>
+              {hasSocials && (
+                <div className="flex items-center space-x-2 pt-4 border-t">
+                  {instagram && <Button asChild variant="outline" size="icon"><a href={instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><InstagramIcon className="h-5 w-5" /></a></Button>}
+                  {facebook && <Button asChild variant="outline" size="icon"><a href={facebook} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><FacebookIcon className="h-5 w-5" /></a></Button>}
+                  {tiktok && <Button asChild variant="outline" size="icon"><a href={tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokIcon className="h-5 w-5" /></a></Button>}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

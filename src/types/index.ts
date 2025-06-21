@@ -28,6 +28,9 @@ export interface Library {
   address?: string;
   phone?: string;
   email?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
 }
 
 export interface User {

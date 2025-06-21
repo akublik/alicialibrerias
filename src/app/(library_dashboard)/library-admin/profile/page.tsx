@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Store, Save, ImagePlus, AlertTriangle, ExternalLink } from "lucide-react";
+import { Loader2, Store, Save, ImagePlus, AlertTriangle, ExternalLink, Share2 } from "lucide-react";
 import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,9 @@ const profileFormSchema = z.object({
   city: z.string().min(2, { message: "La ciudad es requerida." }),
   province: z.string().min(2, { message: "La provincia es requerida." }),
   logoImage: z.any().optional(),
+  instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
+  facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
+  tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -73,6 +76,9 @@ export default function LibraryProfilePage() {
       city: "",
       province: "",
       logoImage: undefined,
+      instagram: "",
+      facebook: "",
+      tiktok: "",
     },
   });
 
@@ -112,6 +118,9 @@ export default function LibraryProfilePage() {
             address: libraryData.address || '',
             city,
             province,
+            instagram: libraryData.instagram || '',
+            facebook: libraryData.facebook || '',
+            tiktok: libraryData.tiktok || '',
           });
         } else {
           toast({ title: "Error", description: "No se encontró el perfil de la librería.", variant: "destructive" });
@@ -181,6 +190,9 @@ export default function LibraryProfilePage() {
           address: values.address,
           location: `${values.city}, ${values.province}`,
           imageUrl,
+          instagram: values.instagram || '',
+          facebook: values.facebook || '',
+          tiktok: values.tiktok || '',
       };
 
       const updatePromise = updateDoc(libraryRef, updatedData);
@@ -260,6 +272,18 @@ export default function LibraryProfilePage() {
                     <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input placeholder="Quito" {...field} /></FormControl><FormMessage /></FormItem> )} />
                     <FormField control={form.control} name="province" render={({ field }) => ( <FormItem><FormLabel>Provincia</FormLabel><FormControl><Input placeholder="Pichincha" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Share2 className="h-5 w-5"/>Redes Sociales</CardTitle>
+                <CardDescription>Añade los enlaces a tus perfiles sociales para que los clientes puedan encontrarte.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField control={form.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>URL de Instagram</FormLabel><FormControl><Input placeholder="https://instagram.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>URL de Facebook</FormLabel><FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>URL de TikTok</FormLabel><FormControl><Input placeholder="https://tiktok.com/@tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               </CardContent>
             </Card>
             
