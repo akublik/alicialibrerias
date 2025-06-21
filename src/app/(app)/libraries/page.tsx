@@ -21,10 +21,12 @@ export default function LibrariesPage() {
   useEffect(() => {
     const fetchLibraries = async () => {
       setIsLoading(true);
+      console.log("Fetching libraries from Firestore...");
       try {
         const librariesCollection = collection(db, "libraries");
-        // Se eliminó orderBy para evitar errores de índice de Firestore. El ordenamiento se puede volver a agregar más tarde.
         const querySnapshot = await getDocs(librariesCollection);
+        
+        console.log(`Found ${querySnapshot.docs.length} libraries.`);
 
         const librariesFromFirestore: Library[] = querySnapshot.docs.map(doc => {
           const data = doc.data();

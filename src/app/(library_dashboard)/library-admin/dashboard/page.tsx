@@ -1,4 +1,3 @@
-
 // src/app/(library_dashboard)/library-admin/dashboard/page.tsx
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,22 +26,9 @@ export default function LibraryAdminDashboardPage() {
                   setLibraryImageUrl(libDetails.imageUrl);
                   console.log("Dashboard: Library image URL set to:", libDetails.imageUrl);
                 }
-              } else {
-                const oldName = localStorage.getItem("mockRegisteredLibraryName");
-                if (oldName) setLibraryName(oldName);
               }
           } catch (e) {
               console.error("Error parsing registered library data for dashboard:", e);
-              const oldName = localStorage.getItem("mockRegisteredLibraryName");
-              if (oldName) setLibraryName(oldName);
-          }
-      } else {
-          const oldName = localStorage.getItem("mockRegisteredLibraryName");
-          if (oldName) {
-            setLibraryName(oldName);
-            console.log("Dashboard: Using fallback library name:", oldName);
-          } else {
-            console.log("Dashboard: No library name found in localStorage.");
           }
       }
     }
