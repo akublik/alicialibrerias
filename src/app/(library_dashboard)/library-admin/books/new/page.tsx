@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, BookPlus, FileUp, ImagePlus } from "lucide-react";
+import { Loader2, ArrowLeft, BookPlus, FileUp, ImagePlus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
+import { generateAutomaticTags } from '@/ai/flows/generate-automatic-tags';
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -51,6 +52,7 @@ export default function NewBookPage() {
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [isSubmittingFile, setIsSubmittingFile] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -69,6 +71,40 @@ export default function NewBookPage() {
       isFeatured: false,
     },
   });
+
+  const handleGenerateTags = async () => {
+    const description = form.getValues("description");
+    if (!description || description.trim().length < 20) {
+        toast({
+            title: "Descripción muy corta",
+            description: "Por favor, escribe una descripción de al menos 20 caracteres para generar etiquetas.",
+            variant: "destructive",
+        });
+        return;
+    }
+
+    setIsGeneratingTags(true);
+    try {
+        const result = await generateAutomaticTags({ description });
+        const currentTags = form.getValues("tags") || [];
+        const newTags = new Set([...currentTags, ...result.tags]);
+        form.setValue("tags", Array.from(newTags), { shouldValidate: true });
+        toast({
+            title: "Etiquetas Sugeridas",
+            description: "Se han añadido nuevas etiquetas basadas en la descripción.",
+        });
+    } catch (error) {
+        console.error("Error generating tags:", error);
+        toast({
+            title: "Error de IA",
+            description: "No se pudieron generar las etiquetas. Inténtalo de nuevo.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsGeneratingTags(false);
+    }
+  };
+
 
   async function onManualSubmit(values: BookFormValues) {
     setIsSubmittingManual(true);
@@ -219,7 +255,13 @@ export default function NewBookPage() {
                       name="tags"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Etiquetas</FormLabel>
+                          <div className="flex items-center justify-between mb-1">
+                            <FormLabel>Etiquetas</FormLabel>
+                            <Button type="button" variant="outline" size="sm" onClick={handleGenerateTags} disabled={isGeneratingTags}>
+                                {isGeneratingTags ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}
+                                Sugerir con IA
+                            </Button>
+                          </div>
                           <FormControl>
                             <MultiSelect
                               placeholder="Selecciona etiquetas..."
