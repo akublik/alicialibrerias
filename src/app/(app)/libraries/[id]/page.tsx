@@ -3,70 +3,81 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { placeholderLibraries, placeholderBooks } from '@/lib/placeholders';
+import { placeholderBooks } from '@/lib/placeholders';
 import type { Library, Book } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2 } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-// const NEWLY_REGISTERED_LIBRARY_ID = "newly-registered-library"; // ID usado para localStorage
-const NEW_LIBRARY_ID_LOCALSTORAGE_KEY = "newly-registered-library-details-temp";
+// Define a new type for the extended library object we will use in this page
+type LibraryDetails = Library & {
+  address?: string;
+  phone?: string;
+  email?: string;
+};
 
 export default function LibraryDetailsPage() {
   const params = useParams();
   const libraryId = params.id as string;
 
-  const [library, setLibrary] = useState<Library | null>(null);
+  const [library, setLibrary] = useState<LibraryDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [books, setBooks] = useState<Book[]>([]); 
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
-    console.log("LibraryDetailsPage: loading for ID:", libraryId);
-    if (libraryId) {
-      let foundLibrary: Library | null = null;
-      // Intenta cargar desde localStorage si el ID coincide con el que usamos para el registro temporal
-      // Esto es principalmente para la UX inmediata post-registro.
-      // Para librerías ya persistidas, se debería cargar desde Firestore.
-      if (typeof window !== "undefined") {
-        const storedLibraryData = localStorage.getItem(NEW_LIBRARY_ID_LOCALSTORAGE_KEY);
-        if (storedLibraryData) {
-          try {
-            const tempRegisteredLib = JSON.parse(storedLibraryData) as Library;
-            if (tempRegisteredLib.id === libraryId) { // Comparamos el ID guardado con el ID de la URL
-              foundLibrary = tempRegisteredLib;
-              console.log("LibraryDetailsPage: Loaded library from localStorage (temp post-register):", foundLibrary);
-            }
-          } catch (e) {
-            console.error("LibraryDetailsPage: Error parsing registered library data for details page:", e);
-          }
-        }
-      }
-      
-      // Si no se encontró en localStorage (o el ID no coincide), busca en los placeholders
-      // A futuro, aquí se haría una consulta a Firestore con el libraryId
-      if (!foundLibrary) {
-        foundLibrary = placeholderLibraries.find(l => l.id === libraryId) || null;
-        if (foundLibrary) {
-          console.log("LibraryDetailsPage: Found library in placeholders:", foundLibrary);
-        }
-      }
-      
-      setLibrary(foundLibrary);
+    if (!libraryId) {
+      setIsLoading(false);
+      return;
+    };
 
-      if (foundLibrary) {
-        // Mock books para esta librería (a futuro, se cargarían desde Firestore)
-        setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
-        if (typeof window !== "undefined") {
-          setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+    const fetchLibrary = async () => {
+      setIsLoading(true);
+      try {
+        const docRef = doc(db, "libraries", libraryId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const foundLibrary: LibraryDetails = {
+            id: docSnap.id,
+            name: data.libraryName || "Nombre no disponible",
+            location: `${data.city || 'Ciudad'}, ${data.country || 'País'}`,
+            imageUrl: data.logoUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(data.libraryName || 'Librería')}`,
+            dataAiHint: 'library detail view',
+            description: data.description || "Sin descripción.",
+            address: data.address || "Dirección no proporcionada",
+            phone: data.phone || "Teléfono no proporcionado",
+            email: data.adminEmail || "Email no proporcionado",
+          };
+          setLibrary(foundLibrary);
+
+          // Mock books para esta librería (a futuro, se cargarían desde Firestore)
+          setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
+          
+          if (typeof window !== "undefined") {
+            setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+          }
+
+        } else {
+          console.log("No se encontró la librería en Firestore:", libraryId);
+          setLibrary(null);
         }
-      } else {
-         console.log("LibraryDetailsPage: Library not found for ID:", libraryId);
+      } catch (error) {
+        console.error("Error al obtener la librería de Firestore:", error);
+        setLibrary(null);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+
+    fetchLibrary();
   }, [libraryId]);
   
   const toggleFavorite = () => {
@@ -83,18 +94,20 @@ export default function LibraryDetailsPage() {
     }
   };
 
-  if (!library) {
-    return <div className="container mx-auto px-4 py-8 text-center">Cargando librería... o librería no encontrada para el ID: {libraryId}. (Nota: Las librerías nuevas se guardan en Firestore, esta página aún carga principalmente de placeholders o localStorage temporal).</div>;
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
+        <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+        <p className="mt-4 text-lg text-muted-foreground">Cargando detalles de la librería...</p>
+      </div>
+    );
   }
 
-  const { name, location, description } = library;
-  const imageUrl = library.imageUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(name)}`;
-  const dataAiHint = library.dataAiHint || 'library large view';
-  const libraryAddress = (library as any).address || location; 
-  const libraryPhone = (library as any).phone || "No disponible";
-  const libraryEmailDomain = name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/gi, '');
-  const libraryEmail = (library as any).email || `info@${libraryEmailDomain || 'libreria'}.com`;
+  if (!library) {
+    return <div className="container mx-auto px-4 py-8 text-center">No se pudo encontrar la librería. Por favor, verifica el enlace o vuelve al directorio.</div>;
+  }
 
+  const { name, location, description, address, phone, email, imageUrl, dataAiHint } = library;
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -105,7 +118,7 @@ export default function LibraryDetailsPage() {
       <Card className="mb-8 md:mb-12 shadow-xl overflow-hidden">
         <div className="relative h-64 md:h-96 w-full">
           <Image
-            src={imageUrl}
+            src={imageUrl!}
             alt={`Imagen de ${name}`}
             layout="fill"
             objectFit="cover"
@@ -144,7 +157,7 @@ export default function LibraryDetailsPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-center">
                 <MapPin className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
-                <span className="text-foreground/80">{libraryAddress} - <a href={`https://maps.google.com/?q=${encodeURIComponent(libraryAddress)}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver en mapa</a></span>
+                <span className="text-foreground/80">{address} - <a href={`https://maps.google.com/?q=${encodeURIComponent(address || '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver en mapa</a></span>
               </div>
               <div className="flex items-center">
                 <Clock className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
@@ -152,12 +165,12 @@ export default function LibraryDetailsPage() {
               </div>
               <div className="flex items-center">
                 <Phone className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
-                <a href={`tel:${libraryPhone}`} className="text-primary hover:underline">{libraryPhone}</a>
+                <a href={`tel:${phone}`} className="text-primary hover:underline">{phone}</a>
               </div>
               <div className="flex items-center">
                 <Mail className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
-                <a href={`mailto:${libraryEmail}`} className="text-primary hover:underline break-all">
-                  {libraryEmail}
+                <a href={`mailto:${email}`} className="text-primary hover:underline break-all">
+                  {email}
                 </a>
               </div>
                <Button variant="outline" className="w-full mt-4 font-body">
