@@ -45,6 +45,22 @@ const libraryRegisterFormSchema = z.object({
 
 type LibraryRegisterFormValues = z.infer<typeof libraryRegisterFormSchema>;
 
+// Función de ayuda para añadir un timeout a una promesa
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
+  });
+}
+
 export function LibraryRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -75,10 +91,11 @@ export function LibraryRegisterForm() {
     setIsLoading(true);
     
     try {
-      // 1. Check if a user with this email already exists.
+      // 1. Verificar si el usuario ya existe, con un timeout.
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", values.adminEmail));
-      const querySnapshot = await getDocs(q);
+      const getDocsPromise = getDocs(q);
+      const querySnapshot = await withTimeout(getDocsPromise, 8000, "La verificación de usuario tardó demasiado.");
       
       if (!querySnapshot.empty) {
         toast({
@@ -86,11 +103,11 @@ export function LibraryRegisterForm() {
           description: "Ya existe un usuario con este correo electrónico.",
           variant: "destructive",
         });
-        setIsLoading(false);
+        setIsLoading(false); // Detener explícitamente y retornar
         return;
       }
 
-      // 2. Create the library document first to get its ID.
+      // 2. Crear el documento de la librería, con un timeout.
       const newLibraryData = {
         name: values.libraryName,
         address: values.libraryAddress,
@@ -102,9 +119,10 @@ export function LibraryRegisterForm() {
         email: values.adminEmail,
         createdAt: serverTimestamp(),
       };
-      const libraryDocRef = await addDoc(collection(db, "libraries"), newLibraryData);
+      const addLibraryPromise = addDoc(collection(db, "libraries"), newLibraryData);
+      const libraryDocRef = await withTimeout(addLibraryPromise, 8000, "La creación de la librería tardó demasiado.");
 
-      // 3. Create the user document and link it to the new library.
+      // 3. Crear el documento del usuario, con un timeout.
       const newUserData = {
         name: values.adminName,
         email: values.adminEmail,
@@ -113,9 +131,10 @@ export function LibraryRegisterForm() {
         libraryId: libraryDocRef.id,
         createdAt: serverTimestamp(),
       };
-      const userDocRef = await addDoc(collection(db, "users"), newUserData);
+      const addUserPromise = addDoc(collection(db, "users"), newUserData);
+      const userDocRef = await withTimeout(addUserPromise, 8000, "La creación del usuario tardó demasiado.");
 
-      // 4. If all writes succeed, update the local state and navigate.
+      // 4. Si todo es exitoso, guardar en localStorage y navegar.
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
       localStorage.setItem("aliciaLibros_user", JSON.stringify({
           id: userDocRef.id,
@@ -143,11 +162,11 @@ export function LibraryRegisterForm() {
       
       router.push("/library-admin/dashboard");
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al registrar la librería:", error);
       toast({
         title: "Error de Registro",
-        description: "No se pudo escribir en la base de datos. Por favor, revisa las reglas de seguridad de tu proyecto en Firebase.",
+        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, verifica la conexión y las reglas de seguridad de Firebase.`,
         variant: "destructive",
         duration: 10000,
       });
