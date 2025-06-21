@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Store, Save, ImagePlus } from "lucide-react";
+import { Loader2, Store, Save, ImagePlus, AlertTriangle, ExternalLink } from "lucide-react";
 import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -58,6 +58,8 @@ export default function LibraryProfilePage() {
   const [library, setLibrary] = useState<Library | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [storageTestResult, setStorageTestResult] = useState<string | null>(null);
+  const [isTestingStorage, setIsTestingStorage] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -123,6 +125,37 @@ export default function LibraryProfilePage() {
 
     fetchLibraryProfile();
   }, [form, router, toast]);
+
+  const testStorageConnection = async () => {
+    if (!storage || !library) {
+        toast({ title: "Error", description: "Storage o librería no disponibles para la prueba.", variant: "destructive"});
+        return;
+    }
+    setIsTestingStorage(true);
+    setStorageTestResult(null);
+
+    const testRef = ref(storage, `test-uploads/${library.id}/test-connection.txt`);
+    const testBlob = new Blob(["test"], { type: "text/plain" });
+
+    try {
+        await withTimeout(uploadBytes(testRef, testBlob), 10000, "La subida de prueba tardó demasiado. Esto puede ser un problema de CORS o de reglas de seguridad muy lentas.");
+        const successMsg = "¡Conexión de Storage exitosa! Se pudo subir un archivo de prueba. Si las subidas aún fallan, verifica que el tamaño del archivo no exceda los límites y que la ruta `library-logos/` sea correcta en tus reglas.";
+        setStorageTestResult(successMsg);
+        toast({ title: "Prueba de Storage Exitosa", description: "La conexión con Firebase Storage funciona."});
+    } catch (error: any) {
+        let errorMessage = `Falló la subida de prueba a Storage. Error: ${error.message}.`;
+        if (error.code === 'storage/unauthorized' || error.message.includes('permission-denied')) {
+            errorMessage = "¡Permiso Denegado! Revisa tus reglas de seguridad de Firebase Storage. Deben permitir la escritura en la ruta `library-logos/` para el usuario autenticado. Error completo: " + error.message;
+        } else if (error.code === 'storage/canceled' || error.message.includes('CORS')) {
+            errorMessage = "¡Error de CORS! El servidor de Storage rechazó la solicitud. Debes configurar CORS en tu bucket de Google Cloud Storage para permitir solicitudes desde el dominio de tu aplicación. Error completo: " + error.message;
+        }
+        setStorageTestResult(errorMessage);
+        toast({ title: "Error de Conexión a Storage", description: errorMessage, variant: "destructive", duration: 15000 });
+    } finally {
+        setIsTestingStorage(false);
+    }
+  };
+
 
   async function onSubmit(values: ProfileFormValues) {
     if (!library || !db || !storage) return;
@@ -211,23 +244,59 @@ export default function LibraryProfilePage() {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <Card className="lg:col-span-2 shadow-lg">
-            <CardHeader>
-              <CardTitle>Información General</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre de la Librería</FormLabel><FormControl><Input placeholder="El Gato Lector" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve descripción de tu librería..." {...field} rows={4} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><Input type="tel" placeholder="02-255-5888" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              
-              <h4 className="font-headline text-lg text-foreground border-b pb-2 pt-4">Ubicación</h4>
-              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Dirección (Calle Principal, Número, Secundaria)</FormLabel><FormControl><Input placeholder="Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <div className="grid sm:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input placeholder="Quito" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="province" render={({ field }) => ( <FormItem><FormLabel>Provincia</FormLabel><FormControl><Input placeholder="Pichincha" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              </div>
-            </CardContent>
-          </Card>
+          <div className="lg:col-span-2 space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>Información General</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre de la Librería</FormLabel><FormControl><Input placeholder="El Gato Lector" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve descripción de tu librería..." {...field} rows={4} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Teléfono de Contacto</FormLabel><FormControl><Input type="tel" placeholder="02-255-5888" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                
+                <h4 className="font-headline text-lg text-foreground border-b pb-2 pt-4">Ubicación</h4>
+                <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Dirección (Calle Principal, Número, Secundaria)</FormLabel><FormControl><Input placeholder="Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <div className="grid sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ciudad</FormLabel><FormControl><Input placeholder="Quito" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="province" render={({ field }) => ( <FormItem><FormLabel>Provincia</FormLabel><FormControl><Input placeholder="Pichincha" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg bg-yellow-50 border-yellow-300">
+              <CardHeader className="flex-row items-center gap-4 space-y-0">
+                <AlertTriangle className="w-10 h-10 text-yellow-600 flex-shrink-0" />
+                <div>
+                  <CardTitle className="text-lg font-headline text-yellow-800">Diagnóstico de Subida de Imagen</CardTitle>
+                  <CardDescription className="text-yellow-700 text-xs">
+                    Si el formulario se queda "Guardando..." al subir una imagen, el problema suele ser la configuración de Firebase Storage (Reglas o CORS). Usa este botón para diagnosticar.
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent>
+                  <Button type="button" variant="outline" className="w-full bg-white" onClick={testStorageConnection} disabled={isTestingStorage}>
+                      {isTestingStorage ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Probar Subida a Firebase Storage
+                  </Button>
+                  {storageTestResult && (
+                      <div className={`mt-4 text-sm p-3 rounded-md whitespace-pre-wrap ${storageTestResult.toLowerCase().includes('exitosa') ? 'bg-green-100 text-green-900 border border-green-200' : 'bg-red-100 text-red-900 border border-red-200'}`}>
+                          <p className="font-bold">{storageTestResult.toLowerCase().includes('exitosa') ? 'Resultado: Éxito' : 'Resultado: Error'}</p>
+                          <p>{storageTestResult}</p>
+                          {!storageTestResult.toLowerCase().includes('exitosa') && (
+                            <div className="mt-2 flex flex-col space-y-1">
+                              <a href="https://firebase.google.com/docs/storage/web/secure-files?hl=es-419" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center font-semibold">
+                                Ver docs de Reglas de Storage <ExternalLink className="ml-1 h-4 w-4"/>
+                              </a>
+                              <a href="https://firebase.google.com/docs/storage/web/cors?hl=es-419" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline inline-flex items-center font-semibold">
+                                Ver docs de Configuración CORS <ExternalLink className="ml-1 h-4 w-4"/>
+                              </a>
+                            </div>
+                          )}
+                      </div>
+                  )}
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="space-y-6">
             <Card className="shadow-lg">
