@@ -19,7 +19,7 @@ import { Eye, EyeOff, LogIn, Loader2 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -33,6 +33,8 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,7 +71,7 @@ export function LoginForm() {
           title: "Inicio de Sesión Exitoso",
           description: `Bienvenido/a de nuevo, ${userData.name}.`,
         });
-        router.push("/dashboard");
+        router.push(redirectUrl);
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);

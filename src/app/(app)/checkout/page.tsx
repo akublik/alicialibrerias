@@ -24,10 +24,11 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { CreditCard, Gift, Truck, Building, Home, Phone, Mail, User, Landmark, Loader2, ShoppingBag, Store, PackageSearch, LogIn, UserPlus } from "lucide-react";
+import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, LogIn, UserPlus, UserCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
@@ -50,8 +51,6 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  
-  // We'll determine auth status on the client side
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
@@ -74,15 +73,10 @@ export default function CheckoutPage() {
     },
   });
   
-  // This effect runs ONLY ONCE on mount to check authentication status.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
-  }, []); // Empty dependency array ensures this runs only once.
-
-  // This effect runs when authentication status is determined, to pre-fill the form.
-  useEffect(() => {
-    if (isAuthenticated) {
+    if (authStatus) {
       const userDataString = localStorage.getItem("aliciaLibros_user");
       if (userDataString) {
           try {
@@ -97,12 +91,9 @@ export default function CheckoutPage() {
           }
       }
     }
-  }, [isAuthenticated, form]); // Reruns when isAuthenticated changes.
+  }, [form]);
   
-
-  // This effect handles redirecting if the cart is empty.
   useEffect(() => {
-    // Wait until authentication check is complete before checking the cart
     if (isAuthenticated !== null && itemCount === 0 && !isLoading) {
       toast({
         title: "Carrito Vacío",
@@ -112,7 +103,6 @@ export default function CheckoutPage() {
       router.push("/cart");
     }
   }, [itemCount, isAuthenticated, isLoading, router, toast]);
-
 
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
@@ -211,58 +201,15 @@ export default function CheckoutPage() {
     }
   }
 
-  // If auth status is not yet determined, show a loading spinner.
-  // This prevents a flash of the "login prompt" before the check is done.
   if (isAuthenticated === null) {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-          <p className="mt-4 text-lg text-muted-foreground">Verificando sesión...</p>
+          <p className="mt-4 text-lg text-muted-foreground">Cargando...</p>
         </div>
       );
   }
-
-  // If not authenticated, show the login prompt.
-  if (!isAuthenticated) {
-      return (
-          <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-              <header className="mb-8 md:mb-12 text-center">
-                  <ShoppingBag className="mx-auto h-16 w-16 text-primary mb-4" />
-                  <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">
-                      Finalizar Compra
-                  </h1>
-              </header>
-              <Card className="max-w-2xl mx-auto text-center shadow-lg">
-                  <CardHeader>
-                      <CardTitle className="font-headline text-2xl">¡Casi listo! Inicia sesión para continuar</CardTitle>
-                      <CardDescription>Para proteger tus datos y guardar tu historial de compras, necesitas una cuenta.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col sm:flex-row gap-4 justify-center">
-                      <Link href="/login" className="w-full sm:w-auto">
-                          <Button size="lg" className="w-full font-body">
-                              <LogIn className="mr-2 h-5 w-5" />
-                              Iniciar Sesión
-                          </Button>
-                      </Link>
-                      <Link href="/register" className="w-full sm:w-auto">
-                          <Button size="lg" variant="outline" className="w-full font-body">
-                              <UserPlus className="mr-2 h-5 w-5" />
-                              Crear Cuenta Nueva
-                          </Button>
-                      </Link>
-                  </CardContent>
-                   <CardFooter className="flex-col pt-6 text-sm text-muted-foreground">
-                      <p>Crear una cuenta es rápido y fácil.</p>
-                      <Link href="/cart">
-                         <Button variant="link" className="mt-4">Volver al carrito</Button>
-                      </Link>
-                  </CardFooter>
-              </Card>
-          </div>
-      );
-  }
   
-  // The cart check might redirect, so we must not render the form until we know we don't need to.
   if (itemCount === 0) {
       return (
         <div className="container mx-auto px-4 py-8 text-center">
@@ -272,6 +219,12 @@ export default function CheckoutPage() {
       );
   }
 
+  const RealizarPedidoButton = () => (
+     <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading || !isAuthenticated}>
+      {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+      {isAuthenticated ? 'Realizar Pedido' : 'Inicia sesión para pedir'}
+    </Button>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -281,13 +234,36 @@ export default function CheckoutPage() {
           Finalizar Compra
         </h1>
       </header>
+      
+      {!isAuthenticated && (
+        <Card className="mb-8 shadow-md border-primary/50">
+           <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center"><UserCircle className="mr-3 h-8 w-8 text-primary"/>¡Casi listo! Inicia sesión para continuar</CardTitle>
+              <CardDescription>Inicia sesión para autocompletar tus datos y guardar este pedido en tu historial de compras. Es rápido y seguro.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col sm:flex-row gap-4 justify-start">
+              <Link href="/login?redirect=/checkout" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full font-body">
+                      <LogIn className="mr-2 h-5 w-5" />
+                      Tengo una cuenta
+                  </Button>
+              </Link>
+              <Link href="/register?redirect=/checkout" className="w-full sm:w-auto">
+                  <Button size="lg" variant="outline" className="w-full font-body">
+                      <UserPlus className="mr-2 h-5 w-5" />
+                      Crear Cuenta Nueva
+                  </Button>
+              </Link>
+          </CardContent>
+        </Card>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <Card className="shadow-md">
               <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center"><User className="mr-2 h-5 w-5 text-primary"/>Información del Comprador</CardTitle>
+                <CardTitle className="font-headline text-xl flex items-center"><UserCircle className="mr-2 h-5 w-5 text-primary"/>Información del Comprador</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="buyerName" render={({ field }) => ( <FormItem> <FormLabel>Nombre Completo</FormLabel> <FormControl><Input placeholder="Ej: Ana Lectora" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
@@ -435,10 +411,20 @@ export default function CheckoutPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
-                  Realizar Pedido
-                </Button>
+                 {!isAuthenticated ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger className="w-full">
+                        <RealizarPedidoButton />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Debes iniciar sesión para realizar el pedido.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <RealizarPedidoButton />
+                )}
               </CardFooter>
             </Card>
           </div>

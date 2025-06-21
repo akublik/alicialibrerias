@@ -19,7 +19,7 @@ import { Eye, EyeOff, UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { db } from "@/lib/firebase"; 
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
@@ -41,6 +41,8 @@ export function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -89,7 +91,7 @@ export function RegisterForm() {
         title: "¡Registro Exitoso!",
         description: `Bienvenido/a, ${values.name}.`,
       });
-      router.push("/dashboard");
+      router.push(redirectUrl);
 
     } catch (error) {
       console.error("Error al registrar el usuario:", error);
