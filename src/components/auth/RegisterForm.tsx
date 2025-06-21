@@ -135,7 +135,7 @@ export function RegisterForm() {
       <CardFooter className="flex justify-center text-sm">
         <p className="text-muted-foreground">
           ¿Ya tienes una cuenta?{' '}
-          <Link href="/login" className="font-medium text-primary hover:underline">
+          <Link href={`/login?redirect=${redirectUrl}`} className="font-medium text-primary hover:underline">
             Ingresa aquí
           </Link>
         </p>
@@ -143,5 +143,3 @@ export function RegisterForm() {
     </Card>
   );
 }
-
-    

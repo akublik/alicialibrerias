@@ -148,7 +148,7 @@ export function LoginForm() {
         </Form>
       </CardContent>
       <CardFooter className="flex flex-col items-center space-y-2 text-sm">
-        <Link href="/register" className="font-medium text-primary hover:underline">
+        <Link href={`/register?redirect=${redirectUrl}`} className="font-medium text-primary hover:underline">
           ¿No tienes una cuenta? Regístrate aquí
         </Link>
         <Link href="/forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
@@ -158,5 +158,3 @@ export function LoginForm() {
     </Card>
   );
 }
-
-    
