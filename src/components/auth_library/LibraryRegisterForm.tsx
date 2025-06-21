@@ -73,58 +73,86 @@ export function LibraryRegisterForm() {
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
-
-    // Simulate a successful registration process to unblock development.
-    // This avoids the Firebase rules issue which is outside of the app's code.
-    console.log("Simulating registration with values:", values);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-
+    
     try {
-        const libraryId = `lib-${Date.now()}`;
-        const userId = `user-${Date.now()}`;
-        const placeholderLogoUrl = 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName);
-
-        const libraryDataForLocalStorage = {
-            id: libraryId,
-            name: values.libraryName,
-            imageUrl: placeholderLogoUrl,
-            location: `${values.libraryCity}, ${values.libraryProvince}`,
-            address: values.libraryAddress,
-            phone: values.libraryPhone || "",
-            email: values.adminEmail,
-            description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
-            dataAiHint: "library exterior",
-        };
-        
-        const userDataForLocalStorage = {
-            id: userId,
-            name: values.adminName,
-            email: values.adminEmail,
-            role: 'library',
-            libraryId: libraryId,
-        };
-
-        // Store the simulated data in localStorage to be used by other pages
-        localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForLocalStorage));
-        localStorage.setItem("isLibraryAdminAuthenticated", "true");
-        localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForLocalStorage));
-
+      // 1. Check if a user with this email already exists.
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", values.adminEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
         toast({
-            title: "¡Registro Simulado Exitoso!",
-            description: `Tu librería ${values.libraryName} ha sido registrada localmente.`,
+          title: "Error de Registro",
+          description: "Ya existe un usuario con este correo electrónico.",
+          variant: "destructive",
         });
-        
-        router.push("/library-admin/dashboard");
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Create the library document first to get its ID.
+      const newLibraryData = {
+        name: values.libraryName,
+        address: values.libraryAddress,
+        location: `${values.libraryCity}, ${values.libraryProvince}`,
+        imageUrl: `https://placehold.co/400x300.png?text=${encodeURIComponent(values.libraryName)}`,
+        dataAiHint: "library exterior",
+        description: values.libraryDescription || "Una nueva y emocionante librería.",
+        phone: values.libraryPhone || "",
+        email: values.adminEmail,
+        createdAt: serverTimestamp(),
+      };
+      const libraryDocRef = await addDoc(collection(db, "libraries"), newLibraryData);
+
+      // 3. Create the user document and link it to the new library.
+      const newUserData = {
+        name: values.adminName,
+        email: values.adminEmail,
+        password: values.adminPassword,
+        role: "library" as const,
+        libraryId: libraryDocRef.id,
+        createdAt: serverTimestamp(),
+      };
+      const userDocRef = await addDoc(collection(db, "users"), newUserData);
+
+      // 4. If all writes succeed, update the local state and navigate.
+      localStorage.setItem("isLibraryAdminAuthenticated", "true");
+      localStorage.setItem("aliciaLibros_user", JSON.stringify({
+          id: userDocRef.id,
+          name: newUserData.name,
+          email: newUserData.email,
+          role: 'library',
+          libraryId: newUserData.libraryId,
+      }));
+      localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({
+          id: libraryDocRef.id,
+          name: newLibraryData.name,
+          imageUrl: newLibraryData.imageUrl,
+          location: newLibraryData.location,
+          address: newLibraryData.address,
+          phone: newLibraryData.phone,
+          email: newLibraryData.email,
+          description: newLibraryData.description,
+          dataAiHint: newLibraryData.dataAiHint,
+      }));
+
+      toast({
+        title: "¡Registro Exitoso!",
+        description: `Tu librería ${values.libraryName} ha sido registrada correctamente.`,
+      });
+      
+      router.push("/library-admin/dashboard");
 
     } catch (error) {
-        console.error("Error durante el registro simulado:", error);
-        toast({
-            title: "Error de Simulación",
-            description: "Ocurrió un error inesperado durante el proceso de simulación.",
-            variant: "destructive",
-        });
+      console.error("Error al registrar la librería:", error);
+      toast({
+        title: "Error de Registro",
+        description: "No se pudo escribir en la base de datos. Por favor, revisa las reglas de seguridad de tu proyecto en Firebase.",
+        variant: "destructive",
+        duration: 10000,
+      });
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }
 
