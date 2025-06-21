@@ -220,7 +220,7 @@ export default function CheckoutPage() {
       );
   }
   
-  if (itemCount === 0) {
+  if (itemCount === 0 && isAuthenticated !== null) {
       return (
         <div className="container mx-auto px-4 py-8 text-center">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
