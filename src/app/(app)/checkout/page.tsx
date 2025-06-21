@@ -77,6 +77,7 @@ export default function CheckoutPage() {
   
   // This effect runs ONCE on mount to check auth status and pre-fill form data if available.
   useEffect(() => {
+    // We need to check on the client side if the user is authenticated.
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
     if (authStatus) {
@@ -94,6 +95,7 @@ export default function CheckoutPage() {
           }
       }
     }
+  // The empty dependency array ensures this effect runs only once on mount.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
@@ -444,3 +446,5 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+    
