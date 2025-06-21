@@ -21,7 +21,8 @@ import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, getDoc, doc } from "firebase/firestore";
+import type { User, Library } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -46,29 +47,65 @@ export function LibraryLoginForm() {
     setIsLoading(true);
     
     try {
-      const librariesRef = collection(db, "libraries");
-      const q = query(librariesRef, where("adminEmail", "==", values.email), where("adminPassword", "==", values.password));
+      // 1. Query the 'users' collection
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, 
+        where("email", "==", values.email), 
+        where("password", "==", values.password),
+        where("role", "==", "library")
+      );
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
         toast({
           title: "Error de Inicio de Sesión",
-          description: "Email o contraseña de administrador incorrectos.",
+          description: "Credenciales de administrador incorrectas o la cuenta no es de tipo librería.",
           variant: "destructive",
         });
-      } else {
-        const libraryDoc = querySnapshot.docs[0];
-        const libraryData = libraryDoc.data();
-        
-        localStorage.setItem("isLibraryAdminAuthenticated", "true");
-        localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDoc.id, name: libraryData.libraryName, imageUrl: libraryData.logoUrl }));
-        
-        toast({
-          title: "Inicio de Sesión Exitoso",
-          description: `Bienvenido al panel de ${libraryData.libraryName}.`,
+        setIsLoading(false);
+        return;
+      } 
+      
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data() as User;
+
+      if (!userData.libraryId) {
+         toast({
+          title: "Error de Cuenta",
+          description: "Esta cuenta de librería no está asociada a ningún registro de librería.",
+          variant: "destructive",
         });
-        router.push("/library-admin/dashboard");
+        setIsLoading(false);
+        return;
       }
+
+      // 2. Fetch the associated library document
+      const libraryDocRef = doc(db, "libraries", userData.libraryId);
+      const libraryDocSnap = await getDoc(libraryDocRef);
+
+      if (!libraryDocSnap.exists()) {
+         toast({
+          title: "Error de Datos",
+          description: `No se pudo encontrar la librería asociada (ID: ${userData.libraryId}).`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const libraryData = libraryDocSnap.data() as Library;
+      
+      // 3. Set localStorage and navigate
+      localStorage.setItem("isLibraryAdminAuthenticated", "true");
+      localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: userDoc.id, ...userData }));
+      localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, name: libraryData.name, imageUrl: libraryData.imageUrl }));
+      
+      toast({
+        title: "Inicio de Sesión Exitoso",
+        description: `Bienvenido al panel de ${libraryData.name}.`,
+      });
+      router.push("/library-admin/dashboard");
+
     } catch (error) {
        console.error("Error al iniciar sesión de librería:", error);
        toast({

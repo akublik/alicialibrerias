@@ -22,7 +22,7 @@ import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
 const libraryRegisterFormSchema = z.object({
   adminName: z.string().min(2, { message: "El nombre del administrador debe tener al menos 2 caracteres." }),
@@ -73,39 +73,69 @@ export function LibraryRegisterForm() {
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
-    console.log("Submitting registration form for:", values.libraryName);
 
     try {
+      // 1. Check if email is already in use in the 'users' collection
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", values.adminEmail));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        toast({
+          title: "Error de Registro",
+          description: "El correo electrónico del administrador ya está en uso.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // 2. Create the library document first
       const placeholderLogoUrl = 'https://placehold.co/400x300.png?text=' + encodeURIComponent(values.libraryName);
-
-      const libraryDataForFirestore = {
-        adminName: values.adminName,
-        adminEmail: values.adminEmail,
-        adminPassword: values.adminPassword, 
-        libraryName: values.libraryName,
+      const libraryData = {
+        name: values.libraryName,
+        location: `${values.libraryCity}, ${values.libraryProvince}`,
         address: values.libraryAddress,
-        city: values.libraryCity,
-        province: values.libraryProvince,
-        country: values.libraryCountry,
-        postalCode: values.libraryPostalCode || "",
         phone: values.libraryPhone || "",
+        email: values.adminEmail, // Using admin email as public contact for now
         description: values.libraryDescription || "Una nueva librería lista para compartir historias.",
-        logoUrl: placeholderLogoUrl,
+        imageUrl: placeholderLogoUrl,
+        dataAiHint: "library exterior",
         createdAt: serverTimestamp(),
       };
-
-      console.log("Attempting to save to Firestore...");
-      const docRef = await addDoc(collection(db, "libraries"), libraryDataForFirestore);
-      console.log("Successfully saved to Firestore with ID:", docRef.id);
       
+      const libraryDocRef = await addDoc(collection(db, "libraries"), libraryData);
+      
+      // 3. Create the user document with a link to the library
+      const userData = {
+        name: values.adminName,
+        email: values.adminEmail,
+        password: values.adminPassword, // This is not secure for production
+        role: 'library',
+        libraryId: libraryDocRef.id, // Link user to the library document
+        createdAt: serverTimestamp(),
+      };
+      
+      const userDocRef = await addDoc(collection(db, "users"), userData);
+
+      // 4. Set localStorage and navigate
       const libraryDataForLocalStorage = {
-        id: docRef.id,
+        id: libraryDocRef.id,
         name: values.libraryName,
         imageUrl: placeholderLogoUrl,
       };
       localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForLocalStorage));
-      
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
+      
+      const userDataForLocalStorage = {
+        id: userDocRef.id,
+        name: values.adminName,
+        email: values.adminEmail,
+        role: 'library',
+        libraryId: libraryDocRef.id,
+      };
+      localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForLocalStorage));
+
 
       toast({
           title: "¡Registro Exitoso!",
@@ -114,10 +144,10 @@ export function LibraryRegisterForm() {
       router.push("/library-admin/dashboard");
 
     } catch (error) {
-      console.error("Error al registrar la librería en Firestore:", error);
+      console.error("Error al registrar la librería:", error);
       toast({
         title: "Error de Registro",
-        description: "No se pudo guardar la librería. Revisa la consola para ver el error de Firestore.",
+        description: "No se pudo guardar la librería. Revisa la consola para ver el error.",
         variant: "destructive",
       });
     } finally {

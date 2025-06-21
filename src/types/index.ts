@@ -30,6 +30,8 @@ export interface User {
   name: string;
   role: 'superadmin' | 'library' | 'reader';
   libraryId?: string; // Only for 'library' role
+  password?: string; // For prototype purposes, would be handled by Auth in production
+  createdAt?: any; // Should be Firestore Timestamp
 }
 
 export interface Review {
