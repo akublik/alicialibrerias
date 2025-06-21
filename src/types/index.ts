@@ -11,6 +11,7 @@ export interface Book {
   imageUrl: string;
   dataAiHint?: string;
   libraryId?: string; // ID of the library that owns this book
+  status?: 'published' | 'unpublished';
 }
 
 export interface Library {

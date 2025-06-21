@@ -111,6 +111,7 @@ export default function NewBookPage() {
             imageUrl,
             dataAiHint,
             libraryId,
+            status: 'published',
         };
 
         await addDoc(collection(db, "books"), newBookData);
