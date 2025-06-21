@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +45,7 @@ const libraryRegisterFormSchema = z.object({
 
 type LibraryRegisterFormValues = z.infer<typeof libraryRegisterFormSchema>;
 
-// Función de ayuda para añadir un timeout a una promesa
+// Helper function to add a timeout to a promise
 function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const timeoutId = setTimeout(() => {
@@ -94,20 +94,20 @@ export function LibraryRegisterForm() {
     setTestResult(null);
     try {
         const testDocRef = doc(db, "testCollection", "testDoc");
-        await withTimeout(getDoc(testDocRef), 8000, "La conexión tardó demasiado. Revisa tu configuración de Firebase y las reglas de seguridad.");
+        await withTimeout(getDoc(testDocRef), 8000, "La conexión tardó demasiado. Esto usualmente indica un problema con las variables de entorno de Firebase (NEXT_PUBLIC_FIREBASE_...) o una regla de seguridad muy restrictiva que causa un timeout.");
         
-        const successMsg = "¡Conexión Exitosa! Tu configuración de Firebase parece correcta. Si el registro aún falla, el problema podría estar en las reglas de seguridad de las colecciones 'users' o 'libraries'.";
+        const successMsg = "¡Conexión Exitosa! Tu configuración de Firebase parece correcta. Si el registro aún falla, el problema podría estar en las reglas de seguridad específicas de las colecciones 'users' o 'libraries'.";
         setTestResult(successMsg);
         toast({ title: "Prueba de Conexión Exitosa", description: "Firebase responde correctamente." });
     } catch (error: any) {
         let errorMessage = `Falló la conexión a Firebase. Error: ${error.message}.`;
         if (error.code === 'permission-denied' || error.message.includes('permission-denied')) {
-            errorMessage = "¡Permiso denegado! Revisa tus reglas de seguridad en la consola de Firebase. Asegúrate de que permitan la lectura/escritura pública para desarrollo.";
-        } else if (error.message.includes('Failed to fetch')) {
-             errorMessage = "Error de red. ¿Están tus variables de entorno (NEXT_PUBLIC_FIREBASE_...) configuradas correctamente?";
+            errorMessage = "¡Permiso denegado! Revisa tus reglas de seguridad en la consola de Firebase. Deben permitir la escritura para poder registrar nuevos usuarios y librerías.";
+        } else if (error.message.includes('Failed to fetch') || error.message.includes('timeout')) {
+             errorMessage = `Error de Red o Timeout. Esto puede ser por: \n1. Variables de entorno (NEXT_PUBLIC_FIREBASE_...) incorrectas o faltantes. \n2. Reglas de seguridad de Firestore que son demasiado lentas o bloquean la solicitud. \nRevisa tu configuración y vuelve a intentarlo.`;
         }
         setTestResult(errorMessage);
-        toast({ title: "Error de Conexión", description: errorMessage, variant: "destructive", duration: 10000 });
+        toast({ title: "Error de Conexión a Firebase", description: errorMessage, variant: "destructive", duration: 15000 });
     } finally {
         setIsTesting(false);
     }
@@ -188,7 +188,7 @@ export function LibraryRegisterForm() {
     } catch (error: any) {
       toast({
         title: "Error de Registro",
-        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, usa la herramienta de diagnóstico y revisa las reglas de seguridad de Firebase.`,
+        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, usa la herramienta de diagnóstico y revisa tus reglas de seguridad de Firebase.`,
         variant: "destructive",
         duration: 10000,
       });
@@ -205,26 +205,31 @@ export function LibraryRegisterForm() {
         <CardDescription>Únete a la red de Alicia Libros y llega a más lectores.</CardDescription>
       </CardHeader>
       <CardContent>
-         {/* Diagnostic Tool */}
-        <Card className="mb-6 bg-muted/40 border-primary/20">
+        {/* Diagnostic Tool */}
+        <Card className="mb-6 bg-yellow-50 border-yellow-300">
           <CardHeader className="flex-row items-center gap-4 space-y-0">
-            <AlertTriangle className="w-8 h-8 text-primary" />
+            <AlertTriangle className="w-10 h-10 text-yellow-600 flex-shrink-0" />
             <div>
-              <CardTitle className="text-lg font-headline">¿Problemas con el registro?</CardTitle>
-              <CardDescription className="text-xs">
-                  Si el formulario se queda "pensando", puede ser un problema de conexión o permisos con Firebase. Usa este botón para diagnosticar.
+              <CardTitle className="text-lg font-headline text-yellow-800">Herramienta de Diagnóstico (¡Importante!)</CardTitle>
+              <CardDescription className="text-yellow-700 text-xs">
+                  Si el formulario se queda "pensando" o muestra error de 'timeout', el problema está en la conexión con Firebase. Usa este botón para saber por qué.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent>
-              <Button type="button" variant="outline" className="w-full" onClick={testFirebaseConnection} disabled={isTesting}>
+              <Button type="button" variant="outline" className="w-full bg-white" onClick={testFirebaseConnection} disabled={isTesting}>
                   {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   Probar Conexión con Firebase
               </Button>
               {testResult && (
-                  <div className={`mt-4 text-sm p-3 rounded-md ${testResult.toLowerCase().includes('exitosa') ? 'bg-green-100 text-green-900 border border-green-200' : 'bg-red-100 text-red-900 border border-red-200'}`}>
+                  <div className={`mt-4 text-sm p-3 rounded-md whitespace-pre-wrap ${testResult.toLowerCase().includes('exitosa') ? 'bg-green-100 text-green-900 border border-green-200' : 'bg-red-100 text-red-900 border border-red-200'}`}>
                       <p className="font-bold">{testResult.toLowerCase().includes('exitosa') ? 'Resultado: Éxito' : 'Resultado: Error'}</p>
                       <p>{testResult}</p>
+                      {!testResult.toLowerCase().includes('exitosa') && (
+                        <a href="https://firebase.google.com/docs/firestore/security/get-started?hl=es-419" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mt-2 inline-flex items-center font-semibold">
+                          Ver documentación de Reglas de Seguridad <ExternalLink className="ml-1 h-4 w-4"/>
+                        </a>
+                      )}
                   </div>
               )}
           </CardContent>
