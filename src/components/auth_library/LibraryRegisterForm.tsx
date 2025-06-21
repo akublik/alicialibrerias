@@ -163,7 +163,6 @@ export function LibraryRegisterForm() {
       router.push("/library-admin/dashboard");
 
     } catch (error: any) {
-      console.error("Error al registrar la librería:", error);
       toast({
         title: "Error de Registro",
         description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, verifica la conexión y las reglas de seguridad de Firebase.`,
