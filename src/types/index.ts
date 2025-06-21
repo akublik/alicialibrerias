@@ -19,16 +19,17 @@ export interface Library {
   imageUrl?: string;
   dataAiHint?: string;
   description?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
 }
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  type: 'librero' | 'lector' | 'admin';
-  libraryId?: string; // Only for 'librero'
-  preferences?: Record<string, any>;
-  // Add other fields as necessary
+  role: 'superadmin' | 'library' | 'reader';
+  libraryId?: string; // Only for 'library' role
 }
 
 export interface Review {

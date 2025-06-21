@@ -14,7 +14,7 @@ import { useCart } from "@/context/CartContext";
 const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   React.useEffect(() => {
-    // Simulate checking auth status for regular users
+    // This effect runs only on the client after hydration
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
   }, []);
@@ -137,7 +137,7 @@ export function Navbar() {
                       <span>Mi Cuenta Lector</span>
                    </Link>
                 ) : (
-                  <Link href="/login">
+                  <Link href="/register">
                      <Button variant="default" className="w-full font-body mb-2">
                         <LogIn className="mr-2 h-4 w-4" />
                         Ingresar / Registrarse

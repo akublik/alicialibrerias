@@ -9,50 +9,72 @@ import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, UserCircle, Edit3, LogOut } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 
-// Mock user data
-const mockUser = {
-  name: "Ana Lectora",
-  email: "ana.lectora@example.com",
-  joinDate: "Enero 2023",
-  avatarUrl: "https://placehold.co/150x150.png",
-  dataAiHint: "woman smiling"
-};
-
-// Mock purchases
-const mockPurchases: Book[] = placeholderBooks.slice(0, 2).map(b => ({...b, id: b.id + "-purchase"}));
-const mockFavoriteLibraries: Library[] = placeholderLibraries.slice(0, 2).map(l => ({...l, id: l.id + "-fav"}));
-const mockAiRecommendations: Book[] = placeholderBooks.slice(2, 4).map(b => ({...b, id: b.id + "-airec"}));
-
+interface UserData {
+  name: string;
+  email: string;
+  joinDate?: string;
+  avatarUrl?: string;
+  dataAiHint?: string;
+}
 
 export default function DashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    // Simulate checking auth status
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
-    if (!authStatus && typeof window !== "undefined") {
-       // Temporarily disable redirect for easier testing if login page not fully ready
-       // window.location.href = "/login";
-       console.log("User not authenticated, would redirect to login.");
+
+    if (authStatus) {
+      const userDataString = localStorage.getItem("aliciaLibros_user");
+      if (userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          setUser({
+            name: userData.name || "Usuario",
+            email: userData.email || "email@desconocido.com",
+            joinDate: "Enero 2024", // Placeholder
+            avatarUrl: userData.avatarUrl || "https://placehold.co/150x150.png",
+            dataAiHint: userData.dataAiHint || "user avatar",
+          });
+        } catch (e) {
+          console.error("Error parsing user data from localStorage", e);
+          setUser({ name: "Usuario", email: "error@example.com" });
+        }
+      } else {
+        setUser({ name: "Usuario", email: "no-data@example.com" });
+      }
+    } else {
+      if (typeof window !== "undefined") {
+        router.push("/login");
+      }
     }
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("aliciaLibros_user");
     setIsAuthenticated(false);
+    setUser(null);
     if (typeof window !== "undefined") {
-      window.location.href = "/";
+      router.push("/");
     }
   };
-  
-  // if (!isAuthenticated) {
-  //   return <div className="container mx-auto px-4 py-8 text-center">Cargando...</div>;
-  // }
+
+  if (!isAuthenticated || !user) {
+    return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
+  }
+
+  // Mock purchases
+  const mockPurchases: Book[] = placeholderBooks.slice(0, 2).map(b => ({...b, id: b.id + "-purchase"}));
+  const mockFavoriteLibraries: Library[] = placeholderLibraries.slice(0, 2).map(l => ({...l, id: l.id + "-fav"}));
+  const mockAiRecommendations: Book[] = placeholderBooks.slice(2, 4).map(b => ({...b, id: b.id + "-airec"}));
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -61,7 +83,7 @@ export default function DashboardPage() {
           Mi Espacio Lector
         </h1>
         <p className="text-lg text-foreground/80">
-          Bienvenida de nuevo, {mockUser.name}. Aquí puedes gestionar tu actividad en Alicia Libros.
+          Bienvenido/a de nuevo, {user.name}. Aquí puedes gestionar tu actividad en Alicia Libros.
         </p>
       </header>
 
@@ -71,16 +93,16 @@ export default function DashboardPage() {
           <Card className="shadow-lg">
             <CardHeader className="text-center">
               <Image
-                src={mockUser.avatarUrl}
-                alt={mockUser.name}
+                src={user.avatarUrl!}
+                alt={user.name}
                 width={120}
                 height={120}
                 className="rounded-full mx-auto mb-4 border-4 border-primary/30"
-                data-ai-hint={mockUser.dataAiHint}
+                data-ai-hint={user.dataAiHint}
               />
-              <CardTitle className="font-headline text-2xl">{mockUser.name}</CardTitle>
-              <CardDescription>{mockUser.email}</CardDescription>
-              <CardDescription>Miembro desde: {mockUser.joinDate}</CardDescription>
+              <CardTitle className="font-headline text-2xl">{user.name}</CardTitle>
+              <CardDescription>{user.email}</CardDescription>
+              <CardDescription>Miembro desde: {user.joinDate}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button variant="outline" className="w-full font-body">

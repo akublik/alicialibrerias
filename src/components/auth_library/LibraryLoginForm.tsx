@@ -20,6 +20,8 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -42,39 +44,41 @@ export function LibraryLoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
-    console.log("Library Login values:", values);
+    
+    try {
+      const librariesRef = collection(db, "libraries");
+      const q = query(librariesRef, where("adminEmail", "==", values.email), where("adminPassword", "==", values.password));
+      const querySnapshot = await getDocs(q);
 
-    const registeredEmail = localStorage.getItem("mockRegisteredLibraryAdminEmail");
-    const registeredPassword = localStorage.getItem("mockRegisteredLibraryAdminPassword");
-
-    let loggedIn = false;
-
-    if (registeredEmail && registeredPassword && values.email === registeredEmail && values.password === registeredPassword) {
-      loggedIn = true;
-    } else if (values.email === "libreria@example.com" && values.password === "password") {
-      // Fallback to hardcoded default credentials
-      loggedIn = true;
-      if (!registeredEmail) { 
-           console.log("Logging in with default credentials. No dynamic registration found in localStorage.");
+      if (querySnapshot.empty) {
+        toast({
+          title: "Error de Inicio de Sesión",
+          description: "Email o contraseña de administrador incorrectos.",
+          variant: "destructive",
+        });
+      } else {
+        const libraryDoc = querySnapshot.docs[0];
+        const libraryData = libraryDoc.data();
+        
+        localStorage.setItem("isLibraryAdminAuthenticated", "true");
+        localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDoc.id, name: libraryData.libraryName, imageUrl: libraryData.logoUrl }));
+        
+        toast({
+          title: "Inicio de Sesión Exitoso",
+          description: `Bienvenido al panel de ${libraryData.libraryName}.`,
+        });
+        router.push("/library-admin/dashboard");
       }
-    }
-
-    if (loggedIn) {
-      localStorage.setItem("isLibraryAdminAuthenticated", "true");
-      toast({
-        title: "Inicio de Sesión Exitoso",
-        description: "Bienvenido al panel de tu librería.",
-      });
-      router.push("/library-admin/dashboard");
-    } else {
-      toast({
+    } catch (error) {
+       console.error("Error al iniciar sesión de librería:", error);
+       toast({
         title: "Error de Inicio de Sesión",
-        description: "Email o contraseña incorrectos.",
+        description: "Hubo un problema al intentar iniciar sesión. Revisa la consola para más detalles.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }
 
   return (
@@ -141,15 +145,10 @@ export function LibraryLoginForm() {
         <Link href="/library-register" className="font-medium text-primary hover:underline">
           ¿No tienes una cuenta? Registra tu librería
         </Link>
-        {/* Link to forgot password removed
         <Link href="/library-forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
           ¿Olvidaste tu contraseña?
         </Link>
-        */}
       </CardFooter>
     </Card>
   );
 }
-
-// Placeholder for Loader2 if not already globally available or in a shared component
-// const Loader2 = ({ className }: { className?: string }) => ( /* ...SVG... */ );
