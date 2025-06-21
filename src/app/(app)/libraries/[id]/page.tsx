@@ -3,7 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { placeholderBooks } from '@/lib/placeholders';
+import { placeholderBooks, placeholderLibraries } from '@/lib/placeholders';
 import type { Library, Book } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,8 +12,6 @@ import { MapPin, Clock, Phone, Mail, ExternalLink, Search, BookOpen, ArrowLeft, 
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 
 // Define a new type for the extended library object we will use in this page
 type LibraryDetails = Library & {
@@ -36,48 +34,53 @@ export default function LibraryDetailsPage() {
       setIsLoading(false);
       return;
     };
-
-    const fetchLibrary = async () => {
-      setIsLoading(true);
+    
+    setIsLoading(true);
+    let foundLibrary: LibraryDetails | null = null;
+    
+    // Check localStorage first for the newly registered library
+    const registeredLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (registeredLibraryData) {
       try {
-        const docRef = doc(db, "libraries", libraryId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const foundLibrary: LibraryDetails = {
-            id: docSnap.id,
-            name: data.libraryName || "Nombre no disponible",
-            location: `${data.city || 'Ciudad'}, ${data.country || 'País'}`,
-            imageUrl: data.logoUrl || `https://placehold.co/800x400.png?text=${encodeURIComponent(data.libraryName || 'Librería')}`,
-            dataAiHint: 'library detail view',
-            description: data.description || "Sin descripción.",
-            address: data.address || "Dirección no proporcionada",
-            phone: data.phone || "Teléfono no proporcionado",
-            email: data.adminEmail || "Email no proporcionado",
+        const newLibrary: LibraryDetails = JSON.parse(registeredLibraryData);
+        if (newLibrary.id === libraryId) {
+          foundLibrary = {
+            ...newLibrary,
+            address: newLibrary.address || "Dirección no disponible",
+            phone: newLibrary.phone || "Teléfono no disponible",
+            email: newLibrary.email || "Email no disponible",
           };
-          setLibrary(foundLibrary);
-
-          // Mock books para esta librería (a futuro, se cargarían desde Firestore)
-          setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
-          
-          if (typeof window !== "undefined") {
-            setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
-          }
-
-        } else {
-          console.log("No se encontró la librería en Firestore:", libraryId);
-          setLibrary(null);
         }
-      } catch (error) {
-        console.error("Error al obtener la librería de Firestore:", error);
-        setLibrary(null);
-      } finally {
-        setIsLoading(false);
+      } catch (e) {
+        console.error("Error parsing registered library from localStorage", e);
       }
-    };
+    }
+    
+    // If not found in localStorage, check placeholder data
+    if (!foundLibrary) {
+      const placeholder = placeholderLibraries.find(l => l.id === libraryId);
+      if (placeholder) {
+        foundLibrary = {
+          ...placeholder,
+          address: "Dirección de ejemplo",
+          phone: "123-456-7890",
+          email: "ejemplo@libreria.com"
+        };
+      }
+    }
 
-    fetchLibrary();
+    setLibrary(foundLibrary);
+
+    if (foundLibrary) {
+      // Mock books for this library
+      setBooks(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0, 6).map(b => ({...b, id: `${b.id}-lib-${foundLibrary?.id}`})));
+      
+      if (typeof window !== "undefined") {
+        setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+      }
+    }
+
+    setIsLoading(false);
   }, [libraryId]);
   
   const toggleFavorite = () => {
@@ -89,7 +92,6 @@ export default function LibraryDetailsPage() {
       } else {
         localStorage.removeItem(`fav-lib-${library.id}`);
       }
-      // Simple toast feedback, can be enhanced
       alert(newFavStatus ? `${library.name} añadida a favoritos.` : `${library.name} eliminada de favoritos.`);
     }
   };

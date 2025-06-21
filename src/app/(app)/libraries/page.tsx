@@ -3,12 +3,11 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { LibraryCard } from "@/components/LibraryCard";
+import { placeholderLibraries } from "@/lib/placeholders";
 import type { Library } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
 
 const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
 
@@ -19,37 +18,23 @@ export default function LibrariesPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLibraries = async () => {
-      setIsLoading(true);
-      console.log("Fetching libraries from Firestore...");
+    // Simulate loading and then check localStorage for any newly registered library
+    setIsLoading(true);
+    let libraries = [...placeholderLibraries];
+    const registeredLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (registeredLibraryData) {
       try {
-        const librariesCollection = collection(db, "libraries");
-        const querySnapshot = await getDocs(librariesCollection);
-        
-        console.log(`Found ${querySnapshot.docs.length} libraries.`);
-
-        const librariesFromFirestore: Library[] = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.libraryName || "Nombre no disponible",
-            location: `${data.city || 'Ciudad'}, ${data.country || 'País'}`,
-            imageUrl: data.logoUrl || 'https://placehold.co/100x100.png',
-            dataAiHint: 'library logo',
-            description: data.description || "Sin descripción.",
-          };
-        });
-
-        setAllLibraries(librariesFromFirestore);
-      } catch (error) {
-        console.error("Error fetching libraries from Firestore: ", error);
-        // Aquí podrías usar un toast para notificar al usuario del error
-      } finally {
-        setIsLoading(false);
+        const newLibrary: Library = JSON.parse(registeredLibraryData);
+        // Avoid adding duplicates
+        if (!libraries.find(lib => lib.id === newLibrary.id)) {
+            libraries = [newLibrary, ...libraries];
+        }
+      } catch (e) {
+        console.error("Error parsing registered library from localStorage", e);
       }
-    };
-
-    fetchLibraries();
+    }
+    setAllLibraries(libraries);
+    setIsLoading(false);
   }, []);
 
   const handleSearch = (term: string) => {
@@ -72,7 +57,7 @@ export default function LibrariesPage() {
     return (
       <div className="container mx-auto px-4 py-8 md:py-12 text-center flex flex-col justify-center items-center min-h-[60vh]">
         <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-        <p className="mt-4 text-lg text-muted-foreground">Cargando librerías desde la base de datos...</p>
+        <p className="mt-4 text-lg text-muted-foreground">Cargando librerías...</p>
       </div>
     );
   }
