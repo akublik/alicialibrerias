@@ -13,11 +13,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { useToast } from "@/hooks/use-toast";
 
 
 export default function LibraryDetailsPage() {
   const params = useParams();
   const libraryId = params.id as string;
+  const { toast } = useToast();
 
   const [library, setLibrary] = useState<Library | null>(null);
   const [isLoading, setIsLoading] = useState(true);
