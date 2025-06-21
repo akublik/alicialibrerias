@@ -86,8 +86,7 @@ export function LibraryRegisterForm() {
           description: "El correo electrónico del administrador ya está en uso.",
           variant: "destructive",
         });
-        setIsLoading(false);
-        return;
+        return; // Exit early, finally block will handle isLoading
       }
       
       // 2. Create the library document first
