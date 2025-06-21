@@ -202,18 +202,28 @@ export default function LibraryDetailsPage() {
               <CardTitle className="font-headline text-xl">Ubicación en el Mapa</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-                <div className="relative w-full aspect-video rounded-b-lg overflow-hidden">
-                    <iframe
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        allowFullScreen
-                        referrerPolicy="no-referrer-when-downgrade"
-                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&q=${encodeURIComponent(address || name)}`}
-                        title={`Ubicación de ${name}`}
-                        aria-label={`Ubicación de ${name}`}
-                    ></iframe>
+                <div className="relative w-full aspect-video rounded-b-lg overflow-hidden bg-muted">
+                    {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? (
+                        <iframe
+                            width="100%"
+                            height="100%"
+                            style={{ border: 0 }}
+                            loading="lazy"
+                            allowFullScreen
+                            referrerPolicy="no-referrer-when-downgrade"
+                            src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}&q=${encodeURIComponent(address || name)}`}
+                            title={`Ubicación de ${name}`}
+                            aria-label={`Ubicación de ${name}`}
+                        ></iframe>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                            <MapPin className="h-10 w-10 text-muted-foreground mb-2" />
+                            <p className="text-sm font-semibold text-foreground">Mapa no disponible</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                La clave de API para Google Maps no está configurada.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </CardContent>
           </Card>
