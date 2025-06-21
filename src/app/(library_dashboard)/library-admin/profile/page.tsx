@@ -39,6 +39,21 @@ const profileFormSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
+  });
+}
+
 export default function LibraryProfilePage() {
   const [library, setLibrary] = useState<Library | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -120,7 +135,8 @@ export default function LibraryProfilePage() {
 
       if (imageFile) {
         const imageRef = ref(storage, `library-logos/${library.id}/${uuidv4()}-${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
+        const uploadPromise = uploadBytes(imageRef, imageFile);
+        await withTimeout(uploadPromise, 15000, "La subida de la imagen tardó demasiado. Verifica tu conexión y las reglas de almacenamiento de Firebase.");
         imageUrl = await getDownloadURL(imageRef);
       }
 
@@ -134,7 +150,8 @@ export default function LibraryProfilePage() {
           imageUrl,
       };
 
-      await updateDoc(libraryRef, updatedData);
+      const updatePromise = updateDoc(libraryRef, updatedData);
+      await withTimeout(updatePromise, 8000, "La actualización de la base de datos tardó demasiado. Verifica tus reglas de seguridad de Firestore.");
       
       const oldLibraryData = JSON.parse(localStorage.getItem("aliciaLibros_registeredLibrary") || "{}");
       localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({
@@ -148,15 +165,22 @@ export default function LibraryProfilePage() {
           title: "Perfil Actualizado",
           description: "La información de tu librería ha sido guardada.",
       });
-      // Optionally trigger a re-render or reload if the layout needs to update
-      router.refresh(); 
+      // Force a re-render of the layout by navigating to the same page
+      router.push('/library-admin/dashboard');
+      setTimeout(() => router.push('/library-admin/profile'), 50);
+
 
     } catch (error: any) {
       console.error("Error al actualizar el perfil:", error);
+      let description = `No se pudo actualizar el perfil. Error: ${error.message}`;
+      if (error.code === 'permission-denied') {
+        description = "Permiso denegado. Revisa tus reglas de seguridad de Firestore para permitir la actualización de la colección 'libraries'.";
+      }
       toast({
           title: "Error al Guardar",
-          description: `No se pudo actualizar el perfil. Error: ${error.message}`,
+          description: description,
           variant: "destructive",
+          duration: 10000,
       });
     } finally {
       setIsSubmitting(false);
