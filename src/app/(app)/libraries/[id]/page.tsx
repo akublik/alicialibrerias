@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 
-const googleMapsApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 // SVG Icons for social media
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
