@@ -47,13 +47,6 @@ export const placeholderBooks: Book[] = [
   },
 ];
 
-export const ecuadorianAuthors = [
-  { id: '1', name: 'Jorge Icaza', imageUrl: 'https://placehold.co/200x200.png', dataAiHint: 'writer portrait', bio: 'Autor de Huasipungo, figura clave del indigenismo.' },
-  { id: '2', name: 'Alicia Yánez Cossío', imageUrl: 'https://placehold.co/200x200.png', dataAiHint: 'author photo', bio: 'Reconocida novelista y cuentista ecuatoriana.' },
-  { id: '3', name: 'Juan Montalvo', imageUrl: 'https://placehold.co/200x200.png', dataAiHint: 'historical figure', bio: 'Ensayista y novelista del siglo XIX.' },
-  { id: '4', name: 'Medardo Ángel Silva', imageUrl: 'https://placehold.co/200x200.png', dataAiHint: 'poet picture', bio: 'Poeta de la Generación Decapitada.' },
-];
-
 export const placeholderLibraries: Library[] = [
   {
     id: '1',

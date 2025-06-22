@@ -3,19 +3,27 @@
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
 import { SearchBar } from "@/components/SearchBar";
-import { ecuadorianAuthors } from "@/lib/placeholders";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState } from "react";
-import type { Book, Library } from "@/types";
+import type { Book, Library, Author } from "@/types";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, limit, query } from "firebase/firestore";
+import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
+
+interface BannerData {
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  dataAiHint: string;
+}
 
 export default function HomePage() {
+  const [bannerData, setBannerData] = useState<BannerData | null>(null);
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
   const [featuredLibraries, setFeaturedLibraries] = useState<Library[]>([]);
+  const [featuredAuthors, setFeaturedAuthors] = useState<Author[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -25,14 +33,59 @@ export default function HomePage() {
         return;
       }
       try {
-        // Fetch Books
-        const booksRef = collection(db, "books");
-        const booksQuery = query(booksRef, limit(4));
-        const booksSnapshot = await getDocs(booksQuery);
-        const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-        setFeaturedBooks(books);
+        // --- Fetch Homepage Content ---
+        const contentDocRef = doc(db, "homepage_content", "sections");
+        const contentDocSnap = await getDoc(contentDocRef);
+        
+        let featuredBookIds: string[] = [];
 
-        // Fetch Libraries
+        if (contentDocSnap.exists()) {
+          const contentData = contentDocSnap.data();
+          setBannerData({
+            title: contentData.bannerTitle || "Bienvenido a Alicia Libros",
+            subtitle: contentData.bannerSubtitle || "Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.",
+            imageUrl: contentData.bannerImageUrl || "https://placehold.co/1920x1080.png",
+            dataAiHint: contentData.bannerDataAiHint || "library pattern"
+          });
+          if (contentData.featuredBookIds && contentData.featuredBookIds.length > 0) {
+            featuredBookIds = contentData.featuredBookIds;
+          }
+        } else {
+           // Default banner if content doc doesn't exist
+           setBannerData({
+             title: "Bienvenido a Alicia Libros",
+             subtitle: "Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.",
+             imageUrl: "https://placehold.co/1920x1080.png",
+             dataAiHint: "library pattern"
+           });
+        }
+
+        // --- Fetch Featured Books ---
+        if (featuredBookIds.length > 0) {
+          const booksRef = collection(db, "books");
+          // Firestore 'in' query is limited to 30 elements, but we only need 4.
+          const booksQuery = query(booksRef, where(documentId(), "in", featuredBookIds));
+          const booksSnapshot = await getDocs(booksQuery);
+          const books = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+          // Preserve order from featuredBookIds
+          const orderedBooks = featuredBookIds.map(id => books.find(b => b.id === id)).filter(Boolean) as Book[];
+          setFeaturedBooks(orderedBooks);
+        } else {
+           // Fallback if no featured books are set
+           const fallbackBooksQuery = query(collection(db, "books"), limit(4));
+           const booksSnapshot = await getDocs(fallbackBooksQuery);
+           const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+           setFeaturedBooks(books);
+        }
+
+        // Fetch Authors
+        const authorsRef = collection(db, "authors");
+        const authorsQuery = query(authorsRef, limit(4));
+        const authorsSnapshot = await getDocs(authorsQuery);
+        const authors: Author[] = authorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Author));
+        setFeaturedAuthors(authors);
+
+        // Fetch Libraries (remains the same)
         const librariesRef = collection(db, "libraries");
         const librariesQuery = query(librariesRef, limit(3));
         const librariesSnapshot = await getDocs(librariesQuery);
@@ -40,7 +93,7 @@ export default function HomePage() {
         setFeaturedLibraries(libraries);
 
       } catch (error) {
-        console.error("Error fetching featured data:", error);
+        console.error("Error fetching homepage data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -63,32 +116,40 @@ export default function HomePage() {
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
       <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: "url('https://placehold.co/1920x1080.png?text=Alicia+Libros+Background')", backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint="library pattern"></div>
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
-            Bienvenido a Alicia Libros
-          </h1>
-          <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-            Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <Link href="/libraries">
-              <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                Explorar Librerías
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link href="/recommendations">
-              <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                Obtener Recomendaciones
-                <Sparkles className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
+        {bannerData ? (
+          <>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${bannerData.imageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={bannerData.dataAiHint}></div>
+            <div className="container mx-auto px-4 text-center relative z-10">
+              <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
+                {bannerData.title}
+              </h1>
+              <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
+                {bannerData.subtitle}
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="container mx-auto px-4 text-center relative z-10">
+            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           </div>
+        )}
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 mt-8 relative z-10">
+          <Link href="/libraries">
+            <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+              Explorar Librerías
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
+          <Link href="/recommendations">
+            <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+              Obtener Recomendaciones
+              <Sparkles className="ml-2 h-5 w-5" />
+            </Button>
+          </Link>
         </div>
       </section>
 
-      {/* 2. Libros Más Vendidos de la Semana */}
+      {/* 2. Libros Destacados */}
       <section className="py-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Destacados</h2>
@@ -103,7 +164,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <p className="text-center text-muted-foreground">No hay libros destacados en este momento. ¡Añade algunos desde el panel de tu librería!</p>
+            <p className="text-center text-muted-foreground">No hay libros destacados en este momento.</p>
           )}
           <div className="text-center mt-10">
             <Link href="/books">
@@ -115,27 +176,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. Autores Ecuatorianos */}
+      {/* 3. Autores Destacados */}
       <section className="py-16 bg-primary/5">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Autores Ecuatorianos</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-            {ecuadorianAuthors.map((author) => (
-              <div key={author.id} className="text-center group">
-                <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden shadow-lg mb-4 border-4 border-primary/20 group-hover:border-primary transition-colors">
-                  <Image
-                    src={author.imageUrl}
-                    alt={author.name}
-                    layout="fill"
-                    objectFit="cover"
-                    data-ai-hint={author.dataAiHint}
-                  />
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Autores Destacados</h2>
+          {isLoading ? (
+             <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : featuredAuthors.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+              {featuredAuthors.map((author) => (
+                <div key={author.id} className="text-center group">
+                  <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden shadow-lg mb-4 border-4 border-primary/20 group-hover:border-primary transition-colors">
+                    <Image
+                      src={author.imageUrl}
+                      alt={author.name}
+                      layout="fill"
+                      objectFit="cover"
+                      data-ai-hint={author.dataAiHint}
+                    />
+                  </div>
+                  <h3 className="font-headline text-lg font-medium text-foreground group-hover:text-primary transition-colors">{author.name}</h3>
+                  <p className="text-xs text-muted-foreground px-2 line-clamp-2">{author.bio}</p>
                 </div>
-                <h3 className="font-headline text-lg font-medium text-foreground group-hover:text-primary transition-colors">{author.name}</h3>
-                <p className="text-xs text-muted-foreground px-2 line-clamp-2">{author.bio}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+             <p className="text-center text-muted-foreground">No hay autores destacados para mostrar.</p>
+          )}
         </div>
       </section>
 

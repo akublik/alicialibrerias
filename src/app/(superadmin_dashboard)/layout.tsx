@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Users, Store, Settings } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
@@ -17,7 +17,8 @@ const useSuperAdminAuthStatus = () => {
     let userRole = '';
     if (userDataString) {
         try {
-            userRole = JSON.parse(userDataString).role;
+            const userData = JSON.parse(userDataString);
+            userRole = userData.role || userData.rol;
         } catch (e) {
             console.error(e);
         }
@@ -71,7 +72,7 @@ export default function SuperAdminDashboardLayout({
     { title: "Dashboard", href: "/superadmin/dashboard", icon: LayoutDashboard },
     { title: "Gestionar Usuarios", href: "/superadmin/users", icon: Users },
     { title: "Gestionar Librerías", href: "/superadmin/libraries", icon: Store },
-    // { title: "Contenido Homepage", href: "/superadmin/content", icon: Settings },
+    { title: "Contenido Homepage", href: "/superadmin/content", icon: FilePenLine },
   ];
 
   return (

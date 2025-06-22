@@ -114,3 +114,11 @@ export interface UserFavorite {
   libraryId: string;
   createdAt: any; // Firestore Timestamp
 }
+
+export interface Author {
+  id: string;
+  name: string;
+  bio: string;
+  imageUrl: string;
+  dataAiHint?: string;
+}
