@@ -221,9 +221,12 @@ export default function LibraryDetailsPage() {
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full p-4 text-center">
                             <MapPin className="h-10 w-10 text-muted-foreground mb-2" />
-                            <p className="text-sm font-semibold text-foreground">Mapa no disponible</p>
+                            <p className="text-sm font-semibold text-foreground">Error al cargar el mapa</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                La clave de API para Google Maps no está configurada.
+                                Verifica que la clave de API de Google Maps sea válida y no tenga restricciones.
+                            </p>
+                             <p className="text-xs text-muted-foreground mt-2">
+                                Abre la consola del navegador (F12) para ver errores específicos.
                             </p>
                         </div>
                     )}
@@ -284,3 +287,5 @@ export default function LibraryDetailsPage() {
     </div>
   );
 }
+
+    
