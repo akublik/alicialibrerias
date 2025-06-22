@@ -56,8 +56,21 @@ export default function ManageContentPage() {
 
     const { toast } = useToast();
 
-    const homepageForm = useForm<HomepageContentFormValues>({ resolver: zodResolver(homepageContentFormSchema) });
-    const authorForm = useForm<AuthorFormValues>({ resolver: zodResolver(authorFormSchema) });
+    const homepageForm = useForm<HomepageContentFormValues>({
+        resolver: zodResolver(homepageContentFormSchema),
+        defaultValues: {
+            bannerTitle: "",
+            bannerSubtitle: "",
+            featuredBookIds: [],
+        }
+    });
+    const authorForm = useForm<AuthorFormValues>({
+        resolver: zodResolver(authorFormSchema),
+        defaultValues: {
+            name: "",
+            bio: "",
+        }
+    });
 
     useEffect(() => {
         const fetchInitialData = async () => {
