@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Users, Loader2, CalendarDays } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, doc, getDoc, orderBy } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import type { LibraryEvent, EventRegistration } from "@/types";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -46,7 +46,9 @@ export default function EventAttendeesPage() {
 
         // Fetch attendees
         const attendeesRef = collection(db, "eventRegistrations");
-        const q = query(attendeesRef, where("eventId", "==", eventId), orderBy("createdAt", "asc"));
+        // We removed orderBy from the query to avoid needing a composite index.
+        // We will sort the results on the client side instead.
+        const q = query(attendeesRef, where("eventId", "==", eventId));
         const querySnapshot = await getDocs(q);
         const attendeesList: EventRegistration[] = querySnapshot.docs.map(doc => {
             const data = doc.data();
@@ -56,6 +58,10 @@ export default function EventAttendeesPage() {
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
             } as EventRegistration;
         });
+
+        // Sort attendees by creation date on the client
+        attendeesList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
         setAttendees(attendeesList);
 
       } catch (error: any) {
