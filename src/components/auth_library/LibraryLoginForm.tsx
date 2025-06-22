@@ -52,7 +52,7 @@ export function LibraryLoginForm() {
       const q = query(usersRef, 
         where("email", "==", values.email), 
         where("password", "==", values.password),
-        where("role", "==", "library")
+        where("role", "in", ["library", "superadmin"])
       );
       const querySnapshot = await getDocs(q);
 
@@ -67,7 +67,25 @@ export function LibraryLoginForm() {
       } 
       
       const userDoc = querySnapshot.docs[0];
-      const userData = userDoc.data() as User;
+      const userData = { id: userDoc.id, ...userDoc.data() } as User;
+
+      if (userData.isActive === false) {
+         toast({
+          title: "Cuenta Desactivada",
+          description: "La cuenta de este administrador ha sido desactivada.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (userData.role === 'superadmin') {
+         localStorage.setItem("isAuthenticated", "true");
+         localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+         toast({ title: "Acceso de Superadmin", description: `Bienvenido, ${userData.name}.` });
+         router.push("/superadmin/dashboard");
+         return;
+      }
 
       if (!userData.libraryId) {
          toast({
@@ -94,10 +112,20 @@ export function LibraryLoginForm() {
       }
 
       const libraryData = libraryDocSnap.data() as Library;
+
+      if (libraryData.isActive === false) {
+        toast({
+          title: "Librería Desactivada",
+          description: "Esta librería ha sido desactivada por un administrador.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
       
       // 3. Set localStorage and navigate
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
-      localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: userDoc.id, ...userData }));
+      localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
       localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, name: libraryData.name, imageUrl: libraryData.imageUrl }));
       
       toast({

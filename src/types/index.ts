@@ -31,6 +31,7 @@ export interface Library {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+  isActive?: boolean;
 }
 
 export interface User {
@@ -41,6 +42,7 @@ export interface User {
   libraryId?: string; // Only for 'library' role
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
+  isActive?: boolean;
 }
 
 export interface Review {

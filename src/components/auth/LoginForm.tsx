@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import type { User } from "@/types";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -66,16 +67,31 @@ export function LoginForm() {
         });
       } else {
         const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
+        const userData = { id: userDoc.id, ...userDoc.data() } as User;
+
+        if (userData.isActive === false) {
+          toast({
+            title: "Cuenta Desactivada",
+            description: "Tu cuenta ha sido desactivada. Por favor, contacta con el soporte.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
         
         localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: userDoc.id, name: userData.name, email: userData.email, role: userData.role }));
+        localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
         
         toast({
           title: "Inicio de Sesión Exitoso",
           description: `Bienvenido/a de nuevo, ${userData.name}.`,
         });
-        router.push(redirectUrl);
+
+        if (userData.role === 'superadmin') {
+          router.push('/superadmin/dashboard');
+        } else {
+          router.push(redirectUrl);
+        }
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
