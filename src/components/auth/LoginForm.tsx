@@ -69,6 +69,16 @@ export function LoginForm() {
         const userDoc = querySnapshot.docs[0];
         const userData = { id: userDoc.id, ...userDoc.data() } as User;
 
+        if (userData.role !== 'reader') {
+           toast({
+              title: "Acceso Incorrecto",
+              description: "Esta es una cuenta de administrador. Por favor, usa el portal de acceso para librerías o superadministradores.",
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+        }
+
         if (userData.isActive === false) {
           toast({
             title: "Cuenta Desactivada",
@@ -87,11 +97,7 @@ export function LoginForm() {
           description: `Bienvenido/a de nuevo, ${userData.name}.`,
         });
 
-        if (userData.role === 'superadmin') {
-          router.push('/superadmin/dashboard');
-        } else {
-          router.push(redirectUrl);
-        }
+        router.push(redirectUrl);
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);

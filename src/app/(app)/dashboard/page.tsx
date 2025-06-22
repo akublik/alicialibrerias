@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
-import type { Book, Library } from "@/types";
+import type { Book, Library, User } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut } from "lucide-react";
@@ -29,33 +29,53 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
-    setIsAuthenticated(authStatus);
 
-    if (authStatus) {
-      const userDataString = localStorage.getItem("aliciaLibros_user");
-      if (userDataString) {
-        try {
-          const userData = JSON.parse(userDataString);
-          setUser({
-            name: userData.name || "Usuario",
-            email: userData.email || "email@desconocido.com",
-            joinDate: "Enero 2024", // Placeholder
-            avatarUrl: userData.avatarUrl || "https://placehold.co/150x150.png",
-            dataAiHint: userData.dataAiHint || "user avatar",
-          });
-        } catch (e) {
-          console.error("Error parsing user data from localStorage", e);
-          setUser({ name: "Usuario", email: "error@example.com" });
-        }
-      } else {
-        setUser({ name: "Usuario", email: "no-data@example.com" });
-      }
-    } else {
+    if (!authStatus) {
       if (typeof window !== "undefined") {
         router.push("/login");
       }
+      return;
+    }
+
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (userDataString) {
+      try {
+        const userData: User = JSON.parse(userDataString);
+
+        // Role-based redirection to prevent wrong dashboard access
+        if (userData.role === 'library') {
+            router.replace('/library-admin/dashboard');
+            return;
+        }
+        if (userData.role === 'superadmin') {
+            router.replace('/superadmin/dashboard');
+            return;
+        }
+        
+        // If we are here, role is 'reader', so we set the state
+        setUser({
+          name: userData.name || "Usuario",
+          email: userData.email || "email@desconocido.com",
+          joinDate: "Enero 2024", // Placeholder
+          avatarUrl: (userData as any).avatarUrl || "https://placehold.co/150x150.png",
+          dataAiHint: (userData as any).dataAiHint || "user avatar",
+        });
+        setIsAuthenticated(true);
+
+      } catch (e) {
+        console.error("Error parsing user data from localStorage", e);
+        // If data is corrupted, log out
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("aliciaLibros_user");
+        router.push("/login");
+      }
+    } else {
+      // If auth status is true but no user data, it's an inconsistent state. Log out.
+      localStorage.removeItem("isAuthenticated");
+      router.push("/login");
     }
   }, [router]);
+
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
