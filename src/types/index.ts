@@ -105,3 +105,10 @@ export interface EventRegistration {
   whatsapp: string;
   createdAt: string; // ISO string from Firestore Timestamp
 }
+
+export interface UserFavorite {
+  id?: string; // Firestore doc ID
+  userId: string;
+  libraryId: string;
+  createdAt: any; // Firestore Timestamp
+}

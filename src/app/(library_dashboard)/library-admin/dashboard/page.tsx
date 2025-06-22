@@ -13,7 +13,7 @@ interface Stats {
   bookCount: number;
   pendingOrders: number;
   monthlySales: number;
-  favoriteCount: number; // This will be a placeholder
+  favoriteCount: number;
 }
 
 const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean, description?: string }) => {
@@ -82,6 +82,7 @@ export default function LibraryAdminDashboardPage() {
     }
 
     // --- Set up Firestore listeners ---
+    let unsubscribes: (() => void)[] = [];
 
     // Listener for books count
     const booksRef = collection(db, "books");
@@ -90,6 +91,7 @@ export default function LibraryAdminDashboardPage() {
       setStats(prevStats => ({ ...prevStats, bookCount: snapshot.size }));
       setIsLoading(false);
     }, () => setIsLoading(false));
+    unsubscribes.push(unsubscribeBooks);
 
     // Listener for orders
     const ordersRef = collection(db, "orders");
@@ -120,15 +122,18 @@ export default function LibraryAdminDashboardPage() {
         monthlySales: sales
       }));
     });
+    unsubscribes.push(unsubscribeOrders);
     
-    // Placeholder for favorites. A real implementation would require storing favorites in Firestore.
-    const mockFavorites = Math.floor(Math.random() * (75 - 5 + 1) + 5);
-    setStats(prevStats => ({ ...prevStats, favoriteCount: mockFavorites }));
+    // Listener for favorites count
+    const favoritesQuery = query(collection(db, "userFavorites"), where("libraryId", "==", libraryId));
+    const unsubscribeFavorites = onSnapshot(favoritesQuery, (snapshot) => {
+      setStats(prevStats => ({ ...prevStats, favoriteCount: snapshot.size }));
+    });
+    unsubscribes.push(unsubscribeFavorites);
 
 
     return () => {
-      unsubscribeBooks();
-      unsubscribeOrders();
+      unsubscribes.forEach(unsub => unsub());
     };
   }, []);
 
@@ -179,8 +184,8 @@ export default function LibraryAdminDashboardPage() {
             title="Seguidores" 
             value={stats.favoriteCount} 
             icon={Heart} 
-            description="Lectores que te han marcado como favorito (simulado)." 
-            isLoading={false}
+            description="Lectores que te han marcado como favorito." 
+            isLoading={isLoading}
           />
       </div>
 

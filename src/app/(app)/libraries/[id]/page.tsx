@@ -3,7 +3,7 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import type { Library, Book, LibraryEvent } from '@/types';
+import type { Library, Book, LibraryEvent, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +12,7 @@ import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -55,6 +55,9 @@ export default function LibraryDetailsPage() {
   const [books, setBooks] = useState<Book[]>([]); 
   const [events, setEvents] = useState<LibraryEvent[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [favoriteDocId, setFavoriteDocId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+
 
   // State for event registration dialog
   const [selectedEvent, setSelectedEvent] = useState<LibraryEvent | null>(null);
@@ -67,6 +70,12 @@ export default function LibraryDetailsPage() {
       setIsLoading(false);
       return;
     };
+
+    // Get user from localStorage
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (userDataString) {
+        setUser(JSON.parse(userDataString));
+    }
     
     const fetchLibraryData = async () => {
         setIsLoading(true);
@@ -99,9 +108,17 @@ export default function LibraryDetailsPage() {
                 libraryEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 setEvents(libraryEvents);
 
-                // Check favorite status from localStorage
-                if (typeof window !== "undefined") {
-                    setIsFavorite(localStorage.getItem(`fav-lib-${foundLibrary.id}`) === 'true');
+                // Check favorite status from Firestore if user is logged in
+                const currentUserData = localStorage.getItem("aliciaLibros_user");
+                if (currentUserData) {
+                    const currentUser = JSON.parse(currentUserData);
+                    const favRef = collection(db, 'userFavorites');
+                    const qFav = query(favRef, where('userId', '==', currentUser.id), where('libraryId', '==', libraryId), limit(1));
+                    const favSnapshot = await getDocs(qFav);
+                    if (!favSnapshot.empty) {
+                        setIsFavorite(true);
+                        setFavoriteDocId(favSnapshot.docs[0].id);
+                    }
                 }
             } else {
                 console.error("No such library document!");
@@ -116,17 +133,33 @@ export default function LibraryDetailsPage() {
     fetchLibraryData();
   }, [libraryId]);
   
-  const toggleFavorite = () => {
-    if (library && typeof window !== "undefined") {
-      const newFavStatus = !isFavorite;
-      setIsFavorite(newFavStatus);
-      if (newFavStatus) {
-        localStorage.setItem(`fav-lib-${library.id}`, 'true');
-        toast({ title: "Añadida a Favoritos", description: `${library.name} ha sido añadida a tus librerías favoritas.` });
-      } else {
-        localStorage.removeItem(`fav-lib-${library.id}`);
-        toast({ title: "Eliminada de Favoritos", description: `${library.name} ha sido eliminada de tus librerías favoritas.` });
-      }
+  const toggleFavorite = async () => {
+    if (!user) {
+        toast({
+            title: "Inicia sesión para añadir favoritos",
+            description: "Solo los usuarios registrados pueden guardar librerías como favoritas.",
+            variant: "destructive",
+        });
+        return;
+    }
+    if (!library || !db) return;
+
+    if (isFavorite && favoriteDocId) {
+      // Unfavorite
+      await deleteDoc(doc(db, 'userFavorites', favoriteDocId));
+      setIsFavorite(false);
+      setFavoriteDocId(null);
+      toast({ title: "Eliminada de Favoritos", description: `${library.name} ha sido eliminada de tus librerías favoritas.` });
+    } else {
+      // Favorite
+      const favRef = await addDoc(collection(db, 'userFavorites'), {
+        userId: user.id,
+        libraryId: library.id,
+        createdAt: serverTimestamp(),
+      });
+      setIsFavorite(true);
+      setFavoriteDocId(favRef.id);
+      toast({ title: "Añadida a Favoritos", description: `${library.name} ha sido añadida a tus librerías favoritas.` });
     }
   };
 
