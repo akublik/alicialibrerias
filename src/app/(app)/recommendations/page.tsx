@@ -61,12 +61,18 @@ export default function RecommendationsPage() {
       }).slice(0, 6); // Limit to 6 recommendations for display
       
       setRecommendations(recommendedBooks);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error getting recommendations:", error);
+      let errorMessage = "No pudimos generar recomendaciones en este momento. Inténtalo de nuevo.";
+      // Check for the specific API key error message
+      if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
+        errorMessage = "La clave de API para la IA no está configurada. Por favor, asegúrate de que la variable de entorno GOOGLE_API_KEY esté definida en el servidor.";
+      }
       toast({
         title: "Error de Recomendación",
-        description: "No pudimos generar recomendaciones en este momento. Inténtalo de nuevo.",
+        description: errorMessage,
         variant: "destructive",
+        duration: 9000,
       });
       // Fallback to placeholders if AI fails
       setRecommendations(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0,3).map(book => ({...book, id: book.id + '-fallback'})));
@@ -147,9 +153,9 @@ export default function RecommendationsPage() {
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">
             {isLoading ? "Buscando tus próximos libros favoritos..." : "Libros Recomendados para Ti"}
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
             {recommendations.map((book) => (
-              <BookCard key={book.id} book={book} />
+              <BookCard key={book.id} book={book} size="small" />
             ))}
           </div>
         </div>
