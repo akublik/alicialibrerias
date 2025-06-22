@@ -1,10 +1,9 @@
-
 // src/app/(app)/libraries/[id]/page.tsx
 "use client";
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import type { Library, Book } from '@/types';
+import type { Library, Book, LibraryEvent } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +15,8 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -49,6 +50,7 @@ export default function LibraryDetailsPage() {
   const [library, setLibrary] = useState<Library | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [books, setBooks] = useState<Book[]>([]); 
+  const [events, setEvents] = useState<LibraryEvent[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
 
   useEffect(() => {
@@ -70,10 +72,23 @@ export default function LibraryDetailsPage() {
                 
                 // Fetch books for this library
                 const booksRef = collection(db, "books");
-                const q = query(booksRef, where("libraryId", "==", libraryId));
-                const booksSnapshot = await getDocs(q);
+                const qBooks = query(booksRef, where("libraryId", "==", libraryId));
+                const booksSnapshot = await getDocs(qBooks);
                 const libraryBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
                 setBooks(libraryBooks);
+                
+                // Fetch events for this library
+                const eventsRef = collection(db, "events");
+                const qEvents = query(eventsRef, where("libraryId", "==", libraryId));
+                const eventsSnapshot = await getDocs(qEvents);
+                const libraryEvents = eventsSnapshot.docs.map(doc => ({ 
+                  id: doc.id, 
+                  ...doc.data(),
+                  date: doc.data().date?.toDate ? doc.data().date.toDate().toISOString() : doc.data().date,
+                } as LibraryEvent));
+                // Sort events by date, future events first
+                libraryEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                setEvents(libraryEvents);
 
                 // Check favorite status from localStorage
                 if (typeof window !== "undefined") {
@@ -249,7 +264,7 @@ export default function LibraryDetailsPage() {
                 <BookOpen className="mr-2 h-5 w-5" /> Catálogo de Libros ({books.length})
               </TabsTrigger>
               <TabsTrigger value="events" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <CalendarDaysIcon className="mr-2 h-5 w-5" /> Próximos Eventos
+                <CalendarDaysIcon className="mr-2 h-5 w-5" /> Próximos Eventos ({events.length})
               </TabsTrigger>
             </TabsList>
 
@@ -280,11 +295,31 @@ export default function LibraryDetailsPage() {
                 <CardHeader>
                   <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
                 </CardHeader>
-                <CardContent className="text-center py-12">
-                  <CalendarDaysIcon className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    No hay eventos programados próximamente. ¡Visítanos pronto para novedades!
-                  </p>
+                <CardContent className="space-y-6">
+                  {events.length > 0 ? (
+                    events.map((event) => (
+                      <Card key={event.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
+                        <div className="relative md:col-span-1 w-full aspect-video md:aspect-square">
+                          <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint={event.dataAiHint || 'event promo'}/>
+                        </div>
+                        <div className="md:col-span-2 p-4">
+                          <h3 className="font-headline text-lg font-semibold text-primary">{event.title}</h3>
+                          <p className="text-sm text-muted-foreground font-medium mb-2 flex items-center">
+                            <CalendarDaysIcon className="mr-2 h-4 w-4" />
+                            {format(new Date(event.date), "PPP 'a las' p", { locale: es })}
+                          </p>
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap">{event.description}</p>
+                        </div>
+                      </Card>
+                    ))
+                  ) : (
+                    <div className="text-center py-12">
+                      <CalendarDaysIcon className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">
+                        No hay eventos programados próximamente. ¡Visítanos pronto para novedades!
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

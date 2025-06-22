@@ -85,3 +85,14 @@ export interface Order {
   needsInvoice?: boolean;
   taxId?: string;
 }
+
+export interface LibraryEvent {
+  id: string;
+  libraryId: string;
+  title: string;
+  description: string;
+  date: string; // ISO string for the event date/time
+  imageUrl: string;
+  dataAiHint?: string;
+  createdAt: any; // Firestore Timestamp
+}
