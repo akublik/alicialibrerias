@@ -42,6 +42,23 @@ type AuthorFormValues = z.infer<typeof authorFormSchema>;
 
 const contentDocRef = doc(db, "homepage_content", "sections");
 
+// Helper function to add a timeout to a promise
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, ms);
+
+    promise
+      .then(resolve)
+      .catch(reject)
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
+  });
+}
+
+
 export default function ManageContentPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingHomepage, setIsSavingHomepage] = useState(false);
@@ -81,11 +98,11 @@ export default function ManageContentPage() {
                 if (contentSnap.exists()) {
                     const data = contentSnap.data();
                     homepageForm.reset({
-                        bannerTitle: data.bannerTitle,
-                        bannerSubtitle: data.bannerSubtitle,
+                        bannerTitle: data.bannerTitle || "",
+                        bannerSubtitle: data.bannerSubtitle || "",
                         featuredBookIds: data.featuredBookIds || [],
                     });
-                    setCurrentBannerImageUrl(data.bannerImageUrl);
+                    setCurrentBannerImageUrl(data.bannerImageUrl || "");
                 }
 
                 // Fetch all books for multiselect
@@ -125,20 +142,32 @@ export default function ManageContentPage() {
 
             if (imageFile) {
                 const imageRef = ref(storage, `homepage/banner/${uuidv4()}`);
-                await uploadBytes(imageRef, imageFile);
+                const uploadPromise = uploadBytes(imageRef, imageFile);
+                await withTimeout(uploadPromise, 15000, "La subida de la imagen tardó demasiado. Verifica tu conexión y las reglas de almacenamiento de Firebase.");
+                
                 imageUrl = await getDownloadURL(imageRef);
+                setCurrentBannerImageUrl(imageUrl); // Update state to show new image
             }
 
-            await setDoc(contentDocRef, {
+            const dataToSave = {
                 bannerTitle: values.bannerTitle,
                 bannerSubtitle: values.bannerSubtitle,
                 bannerImageUrl: imageUrl,
                 featuredBookIds: values.featuredBookIds || [],
-            }, { merge: true });
+            };
+            
+            const setDocPromise = setDoc(contentDocRef, dataToSave, { merge: true });
+            await withTimeout(setDocPromise, 8000, "La escritura en la base de datos tardó demasiado. Verifica tus reglas de seguridad de Firestore.");
 
             toast({ title: "Contenido de Homepage Guardado" });
         } catch (error: any) {
-            toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
+            let description = `No se pudo guardar. Error: ${error.message}`;
+            if (error.code === 'storage/unauthorized' || error.message.includes('permission-denied')) {
+              description = "Permiso denegado. Revisa tus reglas de seguridad de Firebase Storage/Firestore.";
+            } else if (error.message.includes('timeout')) {
+                description = error.message; // Use the timeout message directly
+            }
+            toast({ title: "Error al guardar", description: description, variant: "destructive", duration: 10000 });
         } finally {
             setIsSavingHomepage(false);
         }
@@ -199,13 +228,11 @@ export default function ManageContentPage() {
     const handleDeleteAuthor = async () => {
         if (!authorToDelete) return;
         try {
-            // Optional: delete image from storage
             if (authorToDelete.imageUrl) {
                 try {
                     const imageRef = ref(storage, authorToDelete.imageUrl);
                     await deleteObject(imageRef);
                 } catch (storageError: any) {
-                    // Log error but don't block deletion if image not found
                     if (storageError.code !== 'storage/object-not-found') {
                         console.warn("Could not delete author image from storage:", storageError);
                     }
@@ -241,7 +268,6 @@ export default function ManageContentPage() {
                     <TabsTrigger value="games" disabled>Juegos (Próximamente)</TabsTrigger>
                 </TabsList>
                 
-                {/* HOMEPAGE CONTENT FORM */}
                 <Form {...homepageForm}>
                     <form onSubmit={homepageForm.handleSubmit(onHomepageSubmit)} className="space-y-6">
                         <TabsContent value="banner">
@@ -323,7 +349,6 @@ export default function ManageContentPage() {
                 </TabsContent>
             </Tabs>
             
-            {/* Author Dialog */}
             <Dialog open={isAuthorDialogOpen} onOpenChange={setIsAuthorDialogOpen}>
                 <DialogContent>
                     <DialogHeader>
@@ -347,7 +372,6 @@ export default function ManageContentPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Author Dialog */}
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
