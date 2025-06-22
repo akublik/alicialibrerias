@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from '@/lib/utils';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -128,38 +129,44 @@ export default function LibraryDetailsPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Volver al directorio
       </Link>
 
-      <Card className="mb-8 md:mb-12 shadow-xl overflow-hidden">
-        <div className="relative h-64 md:h-96 w-full">
-          {imageUrl && <Image
-            src={imageUrl}
-            alt={`Imagen de ${name}`}
-            layout="fill"
-            objectFit="cover"
-            priority
-            data-ai-hint={dataAiHint || 'library exterior'}
-          />}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
-        </div>
-        <CardHeader className={"relative -mt-24 md:-mt-32 z-10 p-6 md:p-8 bg-background/80 backdrop-blur-sm rounded-t-lg m-4 md:m-6"}>
-          <div className="flex flex-col sm:flex-row justify-between items-start">
-            <div>
-              <CardTitle className="font-headline text-3xl md:text-4xl font-bold text-primary mb-1">{name}</CardTitle>
-              <CardDescription className="text-lg text-foreground/80 flex items-center">
-                <MapPin className="mr-2 h-5 w-5" /> {location}
-              </CardDescription>
-            </div>
-             <Button onClick={toggleFavorite} variant={isFavorite ? "default" : "outline"} size="lg" className="mt-4 sm:mt-0 shrink-0 font-body">
-                <Heart className={`mr-2 h-5 w-5 ${isFavorite ? 'fill-current text-destructive' : ''}`} />
-                {isFavorite ? 'Favorita' : 'Agregar a Favoritos'}
-            </Button>
+      <header className="mb-8 md:mb-12">
+        <div className="flex flex-col sm:flex-row items-center gap-6">
+          <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shadow-md border-4 border-primary/20 flex-shrink-0">
+            {imageUrl && (
+              <Image
+                src={imageUrl}
+                alt={`Logo de ${name}`}
+                layout="fill"
+                objectFit="cover"
+                priority
+                data-ai-hint={dataAiHint || 'library logo'}
+              />
+            )}
           </div>
-        </CardHeader>
-        {description && (
-          <CardContent className="p-6 md:p-8 pt-0 md:pt-0">
+          <div className="flex-grow text-center sm:text-left w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary mb-1">{name}</h1>
+                <p className="text-lg text-foreground/80 flex items-center justify-center sm:justify-start">
+                  <MapPin className="mr-2 h-5 w-5" /> {location}
+                </p>
+              </div>
+              <Button onClick={toggleFavorite} variant="outline" size="lg" className="shrink-0 font-body">
+                <Heart className={cn("mr-2 h-5 w-5", isFavorite && "fill-primary text-primary")} />
+                {isFavorite ? 'Favorita' : 'Agregar a Favoritos'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {description && (
+        <Card className="mb-8 md:mb-12 shadow-lg">
+          <CardContent className="p-6">
             <p className="text-foreground/90 leading-relaxed">{description}</p>
           </CardContent>
-        )}
-      </Card>
+        </Card>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
         <div className="md:col-span-1 space-y-8">
@@ -221,12 +228,12 @@ export default function LibraryDetailsPage() {
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full p-4 text-center">
                             <MapPin className="h-10 w-10 text-muted-foreground mb-2" />
-                            <p className="text-sm font-semibold text-foreground">Error al cargar el mapa</p>
+                            <p className="text-sm font-semibold text-foreground">Mapa no disponible</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                Verifica que la clave de API de Google Maps sea válida y no tenga restricciones.
+                                No se ha proporcionado una clave de API de Google Maps.
                             </p>
                              <p className="text-xs text-muted-foreground mt-2">
-                                Abre la consola del navegador (F12) para ver errores específicos.
+                                Si eres el administrador, revisa la consola del navegador (F12) para ver errores específicos si la clave ya fue añadida.
                             </p>
                         </div>
                     )}
