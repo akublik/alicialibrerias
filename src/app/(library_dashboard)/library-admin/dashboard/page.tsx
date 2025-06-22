@@ -3,35 +3,133 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store } from "lucide-react";
-import { useEffect, useState } from "react"; 
+import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store, Heart, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+
+interface Stats {
+  bookCount: number;
+  pendingOrders: number;
+  monthlySales: number;
+  favoriteCount: number; // This will be a placeholder
+}
+
+const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean, description?: string }) => {
+    return (
+      <Card className="shadow-md hover:shadow-lg transition-shadow">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="pt-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{value}</div>
+              {description && <p className="text-xs text-muted-foreground">{description}</p>}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
 export default function LibraryAdminDashboardPage() {
   const [libraryName, setLibraryName] = useState<string>("Tu Librería");
   const [libraryImageUrl, setLibraryImageUrl] = useState<string | undefined>(undefined);
+  const [stats, setStats] = useState<Stats>({
+    bookCount: 0,
+    pendingOrders: 0,
+    monthlySales: 0,
+    favoriteCount: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Get library info from localStorage
     if (typeof window !== "undefined") {
       const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
       if (storedLibraryData) {
-          try {
-              const libDetails = JSON.parse(storedLibraryData);
-              if (libDetails) {
-                if (libDetails.name) {
-                  setLibraryName(libDetails.name);
-                  console.log("Dashboard: Library name set to:", libDetails.name);
-                }
-                if (libDetails.imageUrl) {
-                  setLibraryImageUrl(libDetails.imageUrl);
-                  console.log("Dashboard: Library image URL set to:", libDetails.imageUrl);
-                }
-              }
-          } catch (e) {
-              console.error("Error parsing registered library data for dashboard:", e);
+        try {
+          const libDetails = JSON.parse(storedLibraryData);
+          if (libDetails) {
+            setLibraryName(libDetails.name || "Tu Librería");
+            setLibraryImageUrl(libDetails.imageUrl);
           }
+        } catch (e) {
+          console.error("Error parsing registered library data for dashboard:", e);
+        }
       }
     }
+
+    // Get libraryId for queries
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (!userDataString) {
+      setIsLoading(false);
+      return;
+    }
+    const userData = JSON.parse(userDataString);
+    const libraryId = userData.libraryId;
+
+    if (!libraryId || !db) {
+      setIsLoading(false);
+      return;
+    }
+
+    // --- Set up Firestore listeners ---
+
+    // Listener for books count
+    const booksRef = collection(db, "books");
+    const booksQuery = query(booksRef, where("libraryId", "==", libraryId));
+    const unsubscribeBooks = onSnapshot(booksQuery, (snapshot) => {
+      setStats(prevStats => ({ ...prevStats, bookCount: snapshot.size }));
+      setIsLoading(false);
+    }, () => setIsLoading(false));
+
+    // Listener for orders
+    const ordersRef = collection(db, "orders");
+    const ordersQuery = query(ordersRef, where("libraryId", "==", libraryId));
+    const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+      let pendingCount = 0;
+      let sales = 0;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.status === 'pending') {
+          pendingCount++;
+        }
+        
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            const orderDate = data.createdAt.toDate();
+            if (orderDate >= thirtyDaysAgo) {
+              sales += data.totalPrice;
+            }
+        }
+      });
+
+      setStats(prevStats => ({
+        ...prevStats,
+        pendingOrders: pendingCount,
+        monthlySales: sales
+      }));
+    });
+    
+    // Placeholder for favorites. A real implementation would require storing favorites in Firestore.
+    const mockFavorites = Math.floor(Math.random() * (75 - 5 + 1) + 5);
+    setStats(prevStats => ({ ...prevStats, favoriteCount: mockFavorites }));
+
+
+    return () => {
+      unsubscribeBooks();
+      unsubscribeOrders();
+    };
   }, []);
 
   return (
@@ -58,43 +156,32 @@ export default function LibraryAdminDashboardPage() {
        </div>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <Card className="shadow-md hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Libros Activos</CardTitle>
-            <BookCopy className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">125</div> {/* Placeholder */}
-            <p className="text-xs text-muted-foreground">
-              +5 esta semana {/* Placeholder */}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-md hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Pendientes</CardTitle>
-            <ShoppingCart className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div> {/* Placeholder */}
-            <p className="text-xs text-muted-foreground">
-              +3 nuevos hoy {/* Placeholder */}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-md hover:shadow-lg transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas del Mes</CardTitle>
-            <BarChart3 className="h-5 w-5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$1,250.00</div> {/* Placeholder */}
-            <p className="text-xs text-muted-foreground">
-              Comparado con $980.00 el mes pasado {/* Placeholder */}
-            </p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
+         <StatCard 
+            title="Libros Activos" 
+            value={stats.bookCount} 
+            icon={BookCopy} 
+            isLoading={isLoading} 
+          />
+          <StatCard 
+            title="Pedidos Pendientes" 
+            value={stats.pendingOrders} 
+            icon={ShoppingCart} 
+            isLoading={isLoading} 
+          />
+          <StatCard 
+            title="Ventas del Mes" 
+            value={`$${stats.monthlySales.toFixed(2)}`} 
+            icon={BarChart3} 
+            isLoading={isLoading} 
+          />
+          <StatCard 
+            title="Seguidores" 
+            value={stats.favoriteCount} 
+            icon={Heart} 
+            description="Lectores que te han marcado como favorito (simulado)." 
+            isLoading={false}
+          />
       </div>
 
       <div>
