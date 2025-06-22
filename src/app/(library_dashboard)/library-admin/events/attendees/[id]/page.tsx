@@ -13,6 +13,7 @@ import { collection, query, where, getDocs, doc, getDoc, orderBy } from "firebas
 import type { LibraryEvent, EventRegistration } from "@/types";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from "@/hooks/use-toast";
 
 export default function EventAttendeesPage() {
   const [event, setEvent] = useState<LibraryEvent | null>(null);
@@ -20,6 +21,7 @@ export default function EventAttendeesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const params = useParams();
   const eventId = params.id as string;
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!eventId || !db) {
@@ -46,18 +48,30 @@ export default function EventAttendeesPage() {
         const attendeesRef = collection(db, "eventRegistrations");
         const q = query(attendeesRef, where("eventId", "==", eventId), orderBy("createdAt", "asc"));
         const querySnapshot = await getDocs(q);
-        const attendeesList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EventRegistration));
+        const attendeesList: EventRegistration[] = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+            } as EventRegistration;
+        });
         setAttendees(attendeesList);
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching event data:", error);
+        toast({
+            title: "Error al cargar asistentes",
+            description: "No se pudieron cargar los datos. Revisa la consola para más detalles.",
+            variant: "destructive"
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchEventAndAttendees();
-  }, [eventId]);
+  }, [eventId, toast]);
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fadeIn">
@@ -112,7 +126,7 @@ export default function EventAttendeesPage() {
                       <TableRow key={attendee.id}>
                         <TableCell className="font-medium">{attendee.name}</TableCell>
                         <TableCell>{attendee.whatsapp}</TableCell>
-                        <TableCell>{attendee.createdAt?.toDate ? format(attendee.createdAt.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'}</TableCell>
+                        <TableCell>{attendee.createdAt ? format(new Date(attendee.createdAt), 'dd/MM/yyyy HH:mm') : 'N/A'}</TableCell>
                       </TableRow>
                     )) : (
                        <TableRow>

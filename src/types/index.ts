@@ -77,7 +77,7 @@ export interface Order {
   items: OrderItem[];
   totalPrice: number;
   status: 'pending' | 'shipped' | 'delivered' | 'cancelled';
-  createdAt: any; // Firestore Timestamp
+  createdAt: string; // ISO string from Firestore Timestamp
   shippingMethod: string;
   paymentMethod: string;
   shippingAddress?: string;
@@ -103,5 +103,5 @@ export interface EventRegistration {
   libraryId: string;
   name: string;
   whatsapp: string;
-  createdAt: any; // Firestore Timestamp
+  createdAt: string; // ISO string from Firestore Timestamp
 }
