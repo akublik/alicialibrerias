@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState, useRef } from "react";
-import type { Book, Library, Author, HomepageContent } from "@/types";
+import type { Book, Library, Author, HomepageContent, SecondaryBannerSlide } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
@@ -118,7 +118,7 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative pt-16 md:pt-20 pb-10 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
             <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
@@ -154,7 +154,7 @@ export default function HomePage() {
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="py-12 bg-muted/30">
+          <section className="pb-16 bg-muted/30">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
@@ -162,10 +162,10 @@ export default function HomePage() {
                       opts={{ loop: true }}
                   >
                       <CarouselContent>
-                          {homepageContent.secondaryBannerSlides.map((slide, index) => {
+                          {(homepageContent.secondaryBannerSlides as SecondaryBannerSlide[]).map((slide, index) => {
                             const cardContent = (
-                               <Card className="relative aspect-[16/5] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
-                                  {slide.imageUrl && (
+                               <Card className="relative aspect-[16/7] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
+                                  {slide.imageUrl ? (
                                     <Image
                                         src={slide.imageUrl}
                                         alt={slide.title}
@@ -173,7 +173,7 @@ export default function HomePage() {
                                         objectFit="cover"
                                         className="transition-transform duration-500 group-hover:scale-105"
                                     />
-                                  )}
+                                  ) : <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-accent/20"></div>}
                                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
                                       <h3 className="font-headline text-2xl md:text-4xl font-bold text-white shadow-2xl">{slide.title}</h3>
                                       <p className="text-md md:text-lg text-white/90 shadow-lg mt-2 max-w-2xl">{slide.subtitle}</p>
