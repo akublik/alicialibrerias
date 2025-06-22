@@ -110,7 +110,7 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative py-32 md:py-48 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative py-32 md:py-48 bg-gradient-to-br from-primary/10 via-background to-background pt-24 md:pt-40">
         {homepageContent ? (
           <>
             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
@@ -146,7 +146,7 @@ export default function HomePage() {
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="pb-12 bg-muted/30 pt-0">
+          <section className="pb-12 pt-8 bg-muted/30">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
