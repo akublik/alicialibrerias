@@ -130,14 +130,14 @@ export default function LibraryDetailsPage() {
 
       <Card className="mb-8 md:mb-12 shadow-xl overflow-hidden">
         <div className="relative h-64 md:h-96 w-full">
-          <Image
-            src={imageUrl!}
+          {imageUrl && <Image
+            src={imageUrl}
             alt={`Imagen de ${name}`}
             layout="fill"
             objectFit="cover"
             priority
             data-ai-hint={dataAiHint || 'library exterior'}
-          />
+          />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent"></div>
         </div>
         <CardHeader className={"relative -mt-24 md:-mt-32 z-10 p-6 md:p-8 bg-background/80 backdrop-blur-sm rounded-t-lg m-4 md:m-6"}>
@@ -170,7 +170,7 @@ export default function LibraryDetailsPage() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-start">
                 <MapPin className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <span className="text-foreground/80">{address} - <a href={`https://maps.google.com/?q=${encodeURIComponent(address || '')}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Ver en mapa</a></span>
+                <span className="text-foreground/80">{address}</span>
               </div>
               <div className="flex items-center">
                 <Clock className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
@@ -287,5 +287,3 @@ export default function LibraryDetailsPage() {
     </div>
   );
 }
-
-    
