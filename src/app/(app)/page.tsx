@@ -118,10 +118,10 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative py-20 md:py-28 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative py-28 md:py-36 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
+            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
             <div className="container mx-auto px-4 text-center relative z-10">
               <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
                 {homepageContent.bannerTitle}
