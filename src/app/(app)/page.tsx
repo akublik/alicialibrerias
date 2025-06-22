@@ -162,25 +162,37 @@ export default function HomePage() {
                       opts={{ loop: true }}
                   >
                       <CarouselContent>
-                          {homepageContent.secondaryBannerSlides.map((slide, index) => (
+                          {homepageContent.secondaryBannerSlides.map((slide, index) => {
+                            const cardContent = (
+                               <Card className="relative aspect-[16/5] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
+                                  {slide.imageUrl && (
+                                    <Image
+                                        src={slide.imageUrl}
+                                        alt={slide.title}
+                                        layout="fill"
+                                        objectFit="cover"
+                                        className="transition-transform duration-500 group-hover:scale-105"
+                                    />
+                                  )}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
+                                      <h3 className="font-headline text-2xl md:text-4xl font-bold text-white shadow-2xl">{slide.title}</h3>
+                                      <p className="text-md md:text-lg text-white/90 shadow-lg mt-2 max-w-2xl">{slide.subtitle}</p>
+                                  </div>
+                              </Card>
+                            );
+
+                            return (
                               <CarouselItem key={index}>
-                                  <Link href={slide.linkUrl} passHref>
-                                      <Card className="relative aspect-[16/6] w-full overflow-hidden group rounded-lg shadow-lg">
-                                          <Image
-                                              src={slide.imageUrl}
-                                              alt={slide.title}
-                                              layout="fill"
-                                              objectFit="cover"
-                                              className="transition-transform duration-500 group-hover:scale-105"
-                                          />
-                                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
-                                              <h3 className="font-headline text-2xl md:text-4xl font-bold text-white shadow-2xl">{slide.title}</h3>
-                                              <p className="text-md md:text-lg text-white/90 shadow-lg mt-2 max-w-2xl">{slide.subtitle}</p>
-                                          </div>
-                                      </Card>
-                                  </Link>
+                                  {slide.linkUrl ? (
+                                      <Link href={slide.linkUrl} passHref>
+                                          {cardContent}
+                                      </Link>
+                                  ) : (
+                                      <div className="cursor-default">{cardContent}</div>
+                                  )}
                               </CarouselItem>
-                          ))}
+                            );
+                          })}
                       </CarouselContent>
                       <CarouselPrevious className="hidden sm:flex left-[-50px]" />
                       <CarouselNext className="hidden sm:flex right-[-50px]" />

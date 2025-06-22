@@ -15,7 +15,7 @@ import Image from 'next/image';
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import type { Author, Book } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
@@ -26,10 +26,10 @@ import { Separator } from "@/components/ui/separator";
 
 // Schemas
 const secondaryBannerSlideSchema = z.object({
-  imageUrl: z.string().url({ message: "URL de imagen no válida." }).or(z.literal('')),
+  imageUrl: z.string().url({ message: "URL de imagen no válida." }).optional().or(z.literal('')),
   title: z.string().min(3, { message: "El título es requerido." }),
   subtitle: z.string().min(10, { message: "El subtítulo es requerido." }),
-  linkUrl: z.string().url({ message: "URL de enlace no válida." }),
+  linkUrl: z.string().url({ message: "URL de enlace no válida." }).optional().or(z.literal('')),
 });
 
 const homepageContentFormSchema = z.object({
@@ -90,6 +90,10 @@ export default function ManageContentPage() {
 
     useEffect(() => {
         const fetchInitialData = async () => {
+            if (!db) {
+                setIsLoading(false);
+                return;
+            }
             setIsLoading(true);
             try {
                 // Fetch homepage content
@@ -133,8 +137,12 @@ export default function ManageContentPage() {
     const bookOptions = useMemo<MultiSelectOption[]>(() => {
         return allBooks.map(book => ({ value: book.id, label: book.title }));
     }, [allBooks]);
-
+    
     const onHomepageSubmit = async (values: HomepageContentFormValues) => {
+        if (!db) {
+             toast({ title: "Error de conexión", variant: "destructive" });
+             return;
+        }
         setIsSavingHomepage(true);
 
         try {
@@ -202,7 +210,7 @@ export default function ManageContentPage() {
     };
 
     const handleDeleteAuthor = async () => {
-        if (!authorToDelete) return;
+        if (!authorToDelete || !db) return;
         try {
             await deleteDoc(doc(db, "authors", authorToDelete.id));
             toast({ title: "Autor eliminado" });
@@ -213,7 +221,7 @@ export default function ManageContentPage() {
             setAuthorToDelete(null);
         }
     };
-
+    
     if (isLoading) {
         return <div className="flex justify-center items-center py-16"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
     }
