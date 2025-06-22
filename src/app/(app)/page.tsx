@@ -118,10 +118,10 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative pt-16 md:pt-20 pb-10 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative py-20 md:py-28 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
+            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
             <div className="container mx-auto px-4 text-center relative z-10">
               <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
                 {homepageContent.bannerTitle}
@@ -154,7 +154,7 @@ export default function HomePage() {
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="pb-16 bg-muted/30">
+          <section className="pb-16 bg-muted/30 pt-4">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
@@ -164,7 +164,7 @@ export default function HomePage() {
                       <CarouselContent>
                           {(homepageContent.secondaryBannerSlides as SecondaryBannerSlide[]).map((slide, index) => {
                             const cardContent = (
-                               <Card className="relative aspect-[16/7] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
+                               <Card className="relative aspect-[16/6] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
                                   {slide.imageUrl ? (
                                     <Image
                                         src={slide.imageUrl}
