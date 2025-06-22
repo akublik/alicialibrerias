@@ -189,13 +189,15 @@ export default function HomePage() {
               {featuredAuthors.map((author) => (
                 <div key={author.id} className="text-center group">
                   <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden shadow-lg mb-4 border-4 border-primary/20 group-hover:border-primary transition-colors">
-                    <Image
-                      src={author.imageUrl}
-                      alt={author.name}
-                      layout="fill"
-                      objectFit="cover"
-                      data-ai-hint={author.dataAiHint}
-                    />
+                    {author.imageUrl && (
+                      <Image
+                        src={author.imageUrl}
+                        alt={author.name}
+                        layout="fill"
+                        objectFit="cover"
+                        data-ai-hint={author.dataAiHint}
+                      />
+                    )}
                   </div>
                   <h3 className="font-headline text-lg font-medium text-foreground group-hover:text-primary transition-colors">{author.name}</h3>
                   <p className="text-xs text-muted-foreground px-2 line-clamp-2">{author.bio}</p>
