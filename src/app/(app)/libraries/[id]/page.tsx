@@ -5,9 +5,9 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import type { Library, Book, LibraryEvent } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -119,6 +119,23 @@ export default function LibraryDetailsPage() {
         toast({ title: "Eliminada de Favoritos", description: `${library.name} ha sido eliminada de tus librerías favoritas.` });
       }
     }
+  };
+
+  const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
+    if (!event.date) return '#';
+    const startTime = new Date(event.date);
+    // Assume event is 1 hour long for simplicity
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+
+    const toGoogleFormat = (date: Date) => {
+        return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+    };
+
+    const eventTitle = encodeURIComponent(event.title);
+    const eventDetails = encodeURIComponent(event.description);
+    const eventLocation = encodeURIComponent(libraryAddress);
+
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${toGoogleFormat(startTime)}/${toGoogleFormat(endTime)}&details=${eventDetails}&location=${eventLocation}`;
   };
 
   if (isLoading) {
@@ -295,23 +312,40 @@ export default function LibraryDetailsPage() {
                 <CardHeader>
                   <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent>
                   {events.length > 0 ? (
-                    events.map((event) => (
-                      <Card key={event.id} className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-hidden">
-                        <div className="relative md:col-span-1 w-full aspect-video md:aspect-square">
-                          <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint={event.dataAiHint || 'event promo'}/>
-                        </div>
-                        <div className="md:col-span-2 p-4">
-                          <h3 className="font-headline text-lg font-semibold text-primary">{event.title}</h3>
-                          <p className="text-sm text-muted-foreground font-medium mb-2 flex items-center">
-                            <CalendarDaysIcon className="mr-2 h-4 w-4" />
-                            {format(new Date(event.date), "PPP 'a las' p", { locale: es })}
-                          </p>
-                          <p className="text-sm text-foreground/80 whitespace-pre-wrap">{event.description}</p>
-                        </div>
-                      </Card>
-                    ))
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {events.map((event) => (
+                        <Card key={event.id} className="flex flex-col overflow-hidden shadow-sm hover:shadow-lg transition-shadow">
+                          <div className="relative w-full aspect-video">
+                            <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint={event.dataAiHint || 'event promo'}/>
+                          </div>
+                          <CardHeader className="p-4 pb-2">
+                              <CardTitle className="font-headline text-lg text-primary">{event.title}</CardTitle>
+                              <CardDescription className="text-sm text-muted-foreground font-medium flex items-center pt-1">
+                                  <CalendarDaysIcon className="mr-2 h-4 w-4" />
+                                  {format(new Date(event.date), "PPP 'a las' p", { locale: es })}
+                              </CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-0">
+                              <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{event.description}</p>
+                          </CardContent>
+                          <CardFooter className="p-4 pt-0 mt-auto">
+                              <a 
+                                  href={createGoogleCalendarLink(event, library.address || library.name)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-full"
+                              >
+                                  <Button variant="outline" className="w-full font-body">
+                                      <CalendarPlus className="mr-2 h-4 w-4" />
+                                      Añadir al Calendario
+                                  </Button>
+                              </a>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
                   ) : (
                     <div className="text-center py-12">
                       <CalendarDaysIcon className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
