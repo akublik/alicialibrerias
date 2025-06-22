@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,10 +23,8 @@ import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
 import type { Book } from "@/types";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
@@ -44,7 +41,7 @@ const bookFormSchema = z.object({
   description: z.string().optional(),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  coverImage: z.any().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   isFeatured: z.boolean().default(false),
   pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
   coverType: z.string().optional(),
@@ -75,7 +72,7 @@ export default function EditBookPage() {
       description: "",
       categories: [],
       tags: [],
-      coverImage: undefined,
+      imageUrl: "",
       isFeatured: false,
       pageCount: '',
       coverType: '',
@@ -105,7 +102,7 @@ export default function EditBookPage() {
             description: bookData.description || '',
             categories: bookData.categories || [],
             tags: bookData.tags || [],
-            coverImage: undefined,
+            imageUrl: bookData.imageUrl || '',
             isFeatured: bookData.isFeatured || false,
             pageCount: bookData.pageCount || '',
             coverType: bookData.coverType || '',
@@ -162,20 +159,11 @@ export default function EditBookPage() {
 
 
   async function onSubmit(values: BookFormValues) {
-    if (!bookId || !book || !db || !storage) return;
+    if (!bookId || !book || !db) return;
 
     setIsSubmitting(true);
     
     try {
-      let imageUrl = book.imageUrl; // Keep existing image URL by default
-      const imageFile = values.coverImage?.[0];
-
-      if (imageFile) {
-        const imageRef = ref(storage, `book-covers/${book.libraryId}/${uuidv4()}-${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      }
-
       const bookRef = doc(db, "books", bookId);
       const updatedData = {
           title: values.title,
@@ -186,7 +174,7 @@ export default function EditBookPage() {
           description: values.description || '',
           categories: values.categories || [],
           tags: values.tags || [],
-          imageUrl,
+          imageUrl: values.imageUrl || book.imageUrl,
           isFeatured: values.isFeatured,
           pageCount: values.pageCount ? Number(values.pageCount) : null,
           coverType: values.coverType || null,
@@ -361,29 +349,30 @@ export default function EditBookPage() {
                 <CardContent className="space-y-4">
                     <div className="relative w-full aspect-[2/3] rounded-md overflow-hidden border">
                         <Image
-                            src={book.imageUrl}
+                            src={form.watch('imageUrl') || book.imageUrl}
                             alt={`Portada actual de ${book.title}`}
                             layout="fill"
                             objectFit="cover"
+                            key={form.watch('imageUrl') || book.imageUrl}
                         />
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="coverImage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subir nueva imagen</FormLabel>
-                          <FormControl>
-                            <Input 
-                                type="file" 
-                                accept="image/*"
-                                onChange={(e) => field.onChange(e.target.files)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                     <FormField
+                        control={form.control}
+                        name="imageUrl"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>URL de la nueva imagen</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        type="url"
+                                        placeholder="https://ejemplo.com/portada.jpg"
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
                 </CardContent>
             </Card>
 

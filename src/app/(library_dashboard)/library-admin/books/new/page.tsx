@@ -24,10 +24,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { addDoc, collection } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
@@ -43,7 +41,7 @@ const bookFormSchema = z.object({
   description: z.string().optional(),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  coverImage: z.any().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   isFeatured: z.boolean().default(false),
   pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
   coverType: z.string().optional(),
@@ -71,7 +69,7 @@ export default function NewBookPage() {
       description: "",
       categories: [],
       tags: [],
-      coverImage: undefined,
+      imageUrl: "",
       isFeatured: false,
       pageCount: '',
       coverType: '',
@@ -116,8 +114,8 @@ export default function NewBookPage() {
   async function onManualSubmit(values: BookFormValues) {
     setIsSubmittingManual(true);
     
-    if (!db || !storage) {
-        toast({ title: "Error de configuración", description: "La base de datos o el almacenamiento no están disponibles.", variant: "destructive" });
+    if (!db) {
+        toast({ title: "Error de configuración", description: "La base de datos no está disponible.", variant: "destructive" });
         setIsSubmittingManual(false);
         return;
     }
@@ -137,16 +135,8 @@ export default function NewBookPage() {
             return;
         }
         
-        let imageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
-        let dataAiHint = "book cover";
-
-        const imageFile = values.coverImage?.[0];
-        if (imageFile) {
-            const imageRef = ref(storage, `book-covers/${libraryId}/${uuidv4()}-${imageFile.name}`);
-            await uploadBytes(imageRef, imageFile);
-            imageUrl = await getDownloadURL(imageRef);
-            dataAiHint = "custom book cover";
-        }
+        const imageUrl = values.imageUrl || `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
+        const dataAiHint = "book cover";
 
         const newBookData = {
             title: values.title,
@@ -194,16 +184,12 @@ export default function NewBookPage() {
         return;
     }
     setIsSubmittingFile(true);
-    // Logic for file import will be implemented in the next step
     toast({
       title: "Función no implementada",
       description: "La importación de archivos se implementará próximamente.",
       variant: "destructive"
     });
     console.log("Attempted to import file:", importFile.name);
-    
-    // Simulate some work
-    // await new Promise(resolve => setTimeout(resolve, 2500));
     
     setIsSubmittingFile(false);
   }
@@ -315,15 +301,15 @@ export default function NewBookPage() {
                 
                  <FormField
                   control={form.control}
-                  name="coverImage"
+                  name="imageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>Imagen de Portada</FormLabel>
+                      <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>URL de la Portada</FormLabel>
                       <FormControl>
                         <Input 
-                            type="file" 
-                            accept="image/*"
-                            onChange={(e) => field.onChange(e.target.files)}
+                            type="url"
+                            placeholder="https://ejemplo.com/portada.jpg"
+                            {...field}
                         />
                       </FormControl>
                       <FormMessage />

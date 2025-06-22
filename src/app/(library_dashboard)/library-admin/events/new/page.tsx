@@ -1,3 +1,4 @@
+
 // src/app/(library_dashboard)/library-admin/events/new/page.tsx
 "use client";
 
@@ -14,10 +15,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -30,7 +29,7 @@ const eventFormSchema = z.object({
   date: z.date({
     required_error: "La fecha del evento es requerida.",
   }),
-  eventImage: z.any().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
 });
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
@@ -45,13 +44,14 @@ export default function NewEventPage() {
     defaultValues: {
       title: "",
       description: "",
+      imageUrl: "",
     },
   });
 
   async function onSubmit(values: EventFormValues) {
     setIsSubmitting(true);
     
-    if (!db || !storage) {
+    if (!db) {
       toast({ title: "Error de configuración", variant: "destructive" });
       setIsSubmitting(false);
       return;
@@ -67,22 +67,14 @@ export default function NewEventPage() {
       const userData = JSON.parse(userDataString);
       const libraryId = userData.libraryId;
 
-      let imageUrl = `https://placehold.co/600x400.png?text=${encodeURIComponent(values.title)}`;
-      let dataAiHint = "event placeholder";
-
-      const imageFile = values.eventImage?.[0];
-      if (imageFile) {
-        const imageRef = ref(storage, `event-images/${libraryId}/${uuidv4()}-${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-        dataAiHint = "custom event image";
-      }
+      const imageUrl = values.imageUrl || `https://placehold.co/600x400.png?text=${encodeURIComponent(values.title)}`;
+      const dataAiHint = "event placeholder";
 
       const newEventData = {
         libraryId,
         title: values.title,
         description: values.description,
-        date: values.date, // Firestore will convert JS Date to Timestamp
+        date: values.date, 
         imageUrl,
         dataAiHint,
         createdAt: serverTimestamp(),
@@ -168,12 +160,12 @@ export default function NewEventPage() {
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Describe de qué tratará el evento, quiénes son los ponentes, etc." {...field} rows={6} /></FormControl><FormMessage /></FormItem> )} />
               <FormField
                 control={form.control}
-                name="eventImage"
+                name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>Imagen del Evento (Opcional)</FormLabel>
+                    <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>URL de la Imagen del Evento (Opcional)</FormLabel>
                     <FormControl>
-                      <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files)} />
+                      <Input type="url" placeholder="https://ejemplo.com/evento.jpg" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

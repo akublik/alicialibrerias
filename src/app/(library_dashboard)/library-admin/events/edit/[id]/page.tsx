@@ -1,3 +1,4 @@
+
 // src/app/(library_dashboard)/library-admin/events/edit/[id]/page.tsx
 "use client";
 
@@ -15,10 +16,8 @@ import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { v4 as uuidv4 } from 'uuid';
 import type { LibraryEvent } from "@/types";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,7 +32,7 @@ const eventFormSchema = z.object({
   date: z.date({
     required_error: "La fecha del evento es requerida.",
   }),
-  eventImage: z.any().optional(),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
 });
 
 type EventFormValues = z.infer<typeof eventFormSchema>;
@@ -53,6 +52,7 @@ export default function EditEventPage() {
       title: "",
       description: "",
       date: new Date(),
+      imageUrl: ""
     },
   });
 
@@ -67,7 +67,6 @@ export default function EditEventPage() {
 
         if (docSnap.exists()) {
           const eventData = { id: docSnap.id, ...docSnap.data() } as LibraryEvent;
-          // Convert Firestore Timestamp to JS Date
           if (eventData.date && (eventData.date as any).toDate) {
              eventData.date = (eventData.date as any).toDate();
           }
@@ -77,6 +76,7 @@ export default function EditEventPage() {
             title: eventData.title,
             description: eventData.description,
             date: new Date(eventData.date),
+            imageUrl: eventData.imageUrl,
           });
         } else {
           toast({ title: "Error", description: "Evento no encontrado.", variant: "destructive" });
@@ -93,26 +93,17 @@ export default function EditEventPage() {
   }, [eventId, form, router, toast]);
 
   async function onSubmit(values: EventFormValues) {
-    if (!eventId || !event || !db || !storage) return;
+    if (!eventId || !event || !db) return;
 
     setIsSubmitting(true);
     
     try {
-      let imageUrl = event.imageUrl;
-      const imageFile = values.eventImage?.[0];
-
-      if (imageFile) {
-        const imageRef = ref(storage, `event-images/${event.libraryId}/${uuidv4()}-${imageFile.name}`);
-        await uploadBytes(imageRef, imageFile);
-        imageUrl = await getDownloadURL(imageRef);
-      }
-
       const eventRef = doc(db, "events", eventId);
       await updateDoc(eventRef, {
         title: values.title,
         description: values.description,
         date: values.date,
-        imageUrl,
+        imageUrl: values.imageUrl || event.imageUrl,
       });
 
       toast({
@@ -194,18 +185,18 @@ export default function EditEventPage() {
                <div className="space-y-2">
                  <Label>Imagen Actual</Label>
                  <div className="relative w-full max-w-sm aspect-video rounded-md overflow-hidden border">
-                    <Image src={event.imageUrl} alt={`Imagen actual de ${event.title}`} layout="fill" objectFit="cover" />
+                    <Image src={form.watch('imageUrl') || event.imageUrl} alt={`Imagen actual de ${event.title}`} layout="fill" objectFit="cover" key={form.watch('imageUrl') || event.imageUrl} />
                  </div>
                </div>
 
               <FormField
                 control={form.control}
-                name="eventImage"
+                name="imageUrl"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>Subir Nueva Imagen</FormLabel>
+                    <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/>URL de la Nueva Imagen</FormLabel>
                     <FormControl>
-                      <Input type="file" accept="image/*" onChange={(e) => field.onChange(e.target.files)} />
+                      <Input type="url" placeholder="https://ejemplo.com/evento.jpg" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -1,3 +1,4 @@
+
 // src/components/auth_library/LibraryRegisterForm.tsx
 "use client";
 
@@ -16,13 +17,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, AlertTriangle, ExternalLink, Share2 } from "lucide-react";
+import { Eye, EyeOff, UserPlus, Store, Loader2, Building, ImagePlus, Share2 } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 
 const libraryRegisterFormSchema = z.object({
   adminName: z.string().min(2, { message: "El nombre del administrador debe tener al menos 2 caracteres." }),
@@ -37,7 +38,7 @@ const libraryRegisterFormSchema = z.object({
   libraryPostalCode: z.string().optional(),
   libraryPhone: z.string().optional(),
   libraryDescription: z.string().optional(),
-  libraryLogo: z.any().optional(),
+  libraryImageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
   facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
   tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
@@ -48,28 +49,10 @@ const libraryRegisterFormSchema = z.object({
 
 type LibraryRegisterFormValues = z.infer<typeof libraryRegisterFormSchema>;
 
-// Helper function to add a timeout to a promise
-function withTimeout<T>(promise: Promise<T>, ms: number, errorMessage: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error(errorMessage));
-    }, ms);
-
-    promise
-      .then(resolve)
-      .catch(reject)
-      .finally(() => {
-        clearTimeout(timeoutId);
-      });
-  });
-}
-
 export function LibraryRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<string | null>(null);
-  const [isTesting, setIsTesting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -88,37 +71,12 @@ export function LibraryRegisterForm() {
       libraryPostalCode: "",
       libraryPhone: "",
       libraryDescription: "",
-      libraryLogo: undefined,
+      libraryImageUrl: "",
       instagram: "",
       facebook: "",
       tiktok: "",
     },
   });
-
-  const testFirebaseConnection = async () => {
-    setIsTesting(true);
-    setTestResult(null);
-    try {
-        const testDocRef = doc(db, "testCollection", "testDoc");
-        await withTimeout(getDoc(testDocRef), 8000, "La conexión tardó demasiado. Esto usualmente indica un problema con las variables de entorno de Firebase (NEXT_PUBLIC_FIREBASE_...) o una regla de seguridad muy restrictiva que causa un timeout.");
-        
-        const successMsg = "¡Conexión Exitosa! Tu configuración de Firebase parece correcta. Si el registro aún falla, el problema podría estar en las reglas de seguridad específicas de las colecciones 'users' o 'libraries'.";
-        setTestResult(successMsg);
-        toast({ title: "Prueba de Conexión Exitosa", description: "Firebase responde correctamente." });
-    } catch (error: any) {
-        let errorMessage = `Falló la conexión a Firebase. Error: ${error.message}.`;
-        if (error.code === 'permission-denied' || error.message.includes('permission-denied')) {
-            errorMessage = "¡Permiso denegado! Revisa tus reglas de seguridad en la consola de Firebase. Deben permitir la escritura para poder registrar nuevos usuarios y librerías.";
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('timeout')) {
-             errorMessage = `Error de Red o Timeout. Esto puede ser por: \n1. Variables de entorno (NEXT_PUBLIC_FIREBASE_...) incorrectas o faltantes. \n2. Reglas de seguridad de Firestore que son demasiado lentas o bloquean la solicitud. \nRevisa tu configuración y vuelve a intentarlo.`;
-        }
-        setTestResult(errorMessage);
-        toast({ title: "Error de Conexión a Firebase", description: errorMessage, variant: "destructive", duration: 15000 });
-    } finally {
-        setIsTesting(false);
-    }
-  };
-
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
@@ -126,8 +84,7 @@ export function LibraryRegisterForm() {
     try {
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", values.adminEmail));
-      const getDocsPromise = getDocs(q);
-      const querySnapshot = await withTimeout(getDocsPromise, 8000, "La verificación de usuario tardó demasiado.");
+      const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         toast({
@@ -138,13 +95,16 @@ export function LibraryRegisterForm() {
         setIsLoading(false);
         return;
       }
+      
+      const imageUrl = values.libraryImageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(values.libraryName)}`;
+      const dataAiHint = "library exterior";
 
       const newLibraryData = {
         name: values.libraryName,
         address: values.libraryAddress,
         location: `${values.libraryCity}, ${values.libraryProvince}`,
-        imageUrl: `https://placehold.co/400x300.png?text=${encodeURIComponent(values.libraryName)}`,
-        dataAiHint: "library exterior",
+        imageUrl,
+        dataAiHint,
         description: values.libraryDescription || "Una nueva y emocionante librería.",
         phone: values.libraryPhone || "",
         email: values.adminEmail,
@@ -153,8 +113,7 @@ export function LibraryRegisterForm() {
         tiktok: values.tiktok || "",
         createdAt: serverTimestamp(),
       };
-      const addLibraryPromise = addDoc(collection(db, "libraries"), newLibraryData);
-      const libraryDocRef = await withTimeout(addLibraryPromise, 8000, "La creación de la librería tardó demasiado.");
+      const libraryDocRef = await addDoc(collection(db, "libraries"), newLibraryData);
 
       const newUserData = {
         name: values.adminName,
@@ -164,8 +123,7 @@ export function LibraryRegisterForm() {
         libraryId: libraryDocRef.id,
         createdAt: serverTimestamp(),
       };
-      const addUserPromise = addDoc(collection(db, "users"), newUserData);
-      const userDocRef = await withTimeout(addUserPromise, 8000, "La creación del usuario tardó demasiado.");
+      const userDocRef = await addDoc(collection(db, "users"), newUserData);
 
       localStorage.setItem("isLibraryAdminAuthenticated", "true");
       localStorage.setItem("aliciaLibros_user", JSON.stringify({
@@ -197,7 +155,7 @@ export function LibraryRegisterForm() {
     } catch (error: any) {
       toast({
         title: "Error de Registro",
-        description: `No se pudo completar el registro. Motivo: ${error.message}. Por favor, usa la herramienta de diagnóstico y revisa tus reglas de seguridad de Firebase.`,
+        description: `No se pudo completar el registro. Motivo: ${error.message}.`,
         variant: "destructive",
         duration: 10000,
       });
@@ -214,36 +172,6 @@ export function LibraryRegisterForm() {
         <CardDescription>Únete a la red de Alicia Libros y llega a más lectores.</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Diagnostic Tool */}
-        <Card className="mb-6 bg-yellow-50 border-yellow-300">
-          <CardHeader className="flex-row items-center gap-4 space-y-0">
-            <AlertTriangle className="w-10 h-10 text-yellow-600 flex-shrink-0" />
-            <div>
-              <CardTitle className="text-lg font-headline text-yellow-800">Herramienta de Diagnóstico (¡Importante!)</CardTitle>
-              <CardDescription className="text-yellow-700 text-xs">
-                  Si el formulario se queda "pensando" o muestra error de 'timeout', el problema está en la conexión con Firebase. Usa este botón para saber por qué.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-              <Button type="button" variant="outline" className="w-full bg-white" onClick={testFirebaseConnection} disabled={isTesting}>
-                  {isTesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Probar Conexión con Firebase
-              </Button>
-              {testResult && (
-                  <div className={`mt-4 text-sm p-3 rounded-md whitespace-pre-wrap ${testResult.toLowerCase().includes('exitosa') ? 'bg-green-100 text-green-900 border border-green-200' : 'bg-red-100 text-red-900 border border-red-200'}`}>
-                      <p className="font-bold">{testResult.toLowerCase().includes('exitosa') ? 'Resultado: Éxito' : 'Resultado: Error'}</p>
-                      <p>{testResult}</p>
-                      {!testResult.toLowerCase().includes('exitosa') && (
-                        <a href="https://firebase.google.com/docs/firestore/security/get-started?hl=es-419" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline mt-2 inline-flex items-center font-semibold">
-                          Ver documentación de Reglas de Seguridad <ExternalLink className="ml-1 h-4 w-4"/>
-                        </a>
-                      )}
-                  </div>
-              )}
-          </CardContent>
-        </Card>
-
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <h3 className="font-headline text-lg text-foreground border-b pb-2 mb-4">Información del Administrador</h3>
@@ -261,16 +189,15 @@ export function LibraryRegisterForm() {
             
             <FormField
               control={form.control}
-              name="libraryLogo"
-              render={({ field: { onChange, value, ...rest } }) => (
+              name="libraryImageUrl"
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4 text-muted-foreground"/>Logo de la Librería (Opcional)</FormLabel>
+                  <FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4 text-muted-foreground"/>Logo de la Librería (URL Opcional)</FormLabel>
                   <FormControl>
                     <Input 
-                      type="file" 
-                      accept="image/*"
-                      onChange={(e) => onChange(e.target.files)}
-                      {...rest} 
+                      type="url" 
+                      placeholder="https://ejemplo.com/logo.png"
+                      {...field} 
                     />
                   </FormControl>
                   <FormMessage />
