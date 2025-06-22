@@ -3,7 +3,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,13 +22,22 @@ import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/m
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Separator } from "@/components/ui/separator";
 
 // Schemas
+const secondaryBannerSlideSchema = z.object({
+  imageUrl: z.string().url({ message: "URL de imagen no válida." }).or(z.literal('')),
+  title: z.string().min(3, { message: "El título es requerido." }),
+  subtitle: z.string().min(10, { message: "El subtítulo es requerido." }),
+  linkUrl: z.string().url({ message: "URL de enlace no válida." }),
+});
+
 const homepageContentFormSchema = z.object({
   bannerTitle: z.string().min(3, "El título es requerido."),
   bannerSubtitle: z.string().min(10, "El subtítulo es requerido."),
   bannerImageUrl: z.string().url({ message: "Debe ser una URL válida." }).optional().or(z.literal('')),
   featuredBookIds: z.array(z.string()).max(4, "Puedes seleccionar hasta 4 libros.").optional(),
+  secondaryBannerSlides: z.array(secondaryBannerSlideSchema).max(4, "Puedes tener hasta 4 slides.").optional(),
 });
 type HomepageContentFormValues = z.infer<typeof homepageContentFormSchema>;
 
@@ -47,7 +56,6 @@ export default function ManageContentPage() {
     const [isSavingAuthor, setIsSavingAuthor] = useState(false);
     const [allBooks, setAllBooks] = useState<Book[]>([]);
     const [authors, setAuthors] = useState<Author[]>([]);
-    const [currentBannerImageUrl, setCurrentBannerImageUrl] = useState<string>('');
     const [isAuthorDialogOpen, setIsAuthorDialogOpen] = useState(false);
     const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -62,8 +70,15 @@ export default function ManageContentPage() {
             bannerSubtitle: "",
             bannerImageUrl: "",
             featuredBookIds: [],
+            secondaryBannerSlides: [],
         }
     });
+
+    const { fields: secondaryBannerFields, append: appendSecondaryBanner, remove: removeSecondaryBanner } = useFieldArray({
+        control: homepageForm.control,
+        name: "secondaryBannerSlides"
+    });
+
     const authorForm = useForm<AuthorFormValues>({
         resolver: zodResolver(authorFormSchema),
         defaultValues: {
@@ -86,8 +101,8 @@ export default function ManageContentPage() {
                         bannerSubtitle: data.bannerSubtitle || "",
                         bannerImageUrl: data.bannerImageUrl || "",
                         featuredBookIds: data.featuredBookIds || [],
+                        secondaryBannerSlides: data.secondaryBannerSlides || [],
                     });
-                    setCurrentBannerImageUrl(data.bannerImageUrl || "");
                 }
 
                 // Fetch all books for multiselect
@@ -126,8 +141,9 @@ export default function ManageContentPage() {
             const dataToSave = {
                 bannerTitle: values.bannerTitle,
                 bannerSubtitle: values.bannerSubtitle,
-                bannerImageUrl: values.bannerImageUrl || currentBannerImageUrl,
+                bannerImageUrl: values.bannerImageUrl,
                 featuredBookIds: values.featuredBookIds || [],
+                secondaryBannerSlides: values.secondaryBannerSlides || [],
             };
             
             await setDoc(contentDocRef, dataToSave, { merge: true });
@@ -209,25 +225,52 @@ export default function ManageContentPage() {
                 Gestionar Contenido de Homepage
             </h1>
 
-            <Tabs defaultValue="banner">
-                <TabsList className="mb-4">
-                    <TabsTrigger value="banner">Banner</TabsTrigger>
-                    <TabsTrigger value="featured-books">Libros Destacados</TabsTrigger>
-                    <TabsTrigger value="authors">Autores</TabsTrigger>
-                    <TabsTrigger value="community" disabled>Comunidad (Próximamente)</TabsTrigger>
-                    <TabsTrigger value="games" disabled>Juegos (Próximamente)</TabsTrigger>
-                </TabsList>
-                
-                <Form {...homepageForm}>
-                    <form onSubmit={homepageForm.handleSubmit(onHomepageSubmit)} className="space-y-6">
+            <Form {...homepageForm}>
+                <form onSubmit={homepageForm.handleSubmit(onHomepageSubmit)} className="space-y-6">
+                    <Tabs defaultValue="banner">
+                        <TabsList className="mb-4">
+                            <TabsTrigger value="banner">Banner Principal</TabsTrigger>
+                            <TabsTrigger value="secondary-banner">Banner Secundario</TabsTrigger>
+                            <TabsTrigger value="featured-books">Libros Destacados</TabsTrigger>
+                            <TabsTrigger value="authors">Autores</TabsTrigger>
+                        </TabsList>
+                        
                         <TabsContent value="banner">
                             <Card>
                                 <CardHeader><CardTitle>Banner Principal</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
                                     <FormField control={homepageForm.control} name="bannerTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Banner</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     <FormField control={homepageForm.control} name="bannerSubtitle" render={({ field }) => ( <FormItem><FormLabel>Subtítulo del Banner</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    {currentBannerImageUrl && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={currentBannerImageUrl} alt="Banner actual" layout="fill" objectFit="cover" /></div>}
-                                    <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen del Banner</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                                    {homepageForm.watch('bannerImageUrl') && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={homepageForm.watch('bannerImageUrl')!} alt="Banner actual" layout="fill" objectFit="cover" /></div>}
+                                    <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen del Banner</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
+                        <TabsContent value="secondary-banner">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Banner Secundario (Carrusel)</CardTitle>
+                                    <CardDescription>Gestiona las diapositivas del carrusel. Máximo 4.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {secondaryBannerFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-md relative space-y-3">
+                                            <h4 className="font-medium">Diapositiva {index + 1}</h4>
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtítulo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.linkUrl`} render={({ field }) => ( <FormItem><FormLabel>Enlace (URL)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <Button type="button" variant="destructive" size="sm" onClick={() => removeSecondaryBanner(index)} className="absolute top-2 right-2">
+                                                <Trash2 className="h-4 w-4"/>
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {secondaryBannerFields.length < 4 && (
+                                        <Button type="button" variant="outline" onClick={() => appendSecondaryBanner({ imageUrl: '', title: '', subtitle: '', linkUrl: '' })}>
+                                            <PlusCircle className="mr-2 h-4 w-4"/> Añadir Diapositiva
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -257,47 +300,50 @@ export default function ManageContentPage() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        <Button type="submit" disabled={isSavingHomepage}>
-                            {isSavingHomepage ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                            Guardar Cambios de Homepage
-                        </Button>
-                    </form>
-                </Form>
+                        
+                        <TabsContent value="authors">
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex justify-between items-center">
+                                        <div>
+                                            <CardTitle>Autores Destacados</CardTitle>
+                                            <CardDescription>Gestiona la lista de autores que aparecen en la homepage.</CardDescription>
+                                        </div>
+                                        <Button type="button" onClick={() => openAuthorDialog(null)}><PlusCircle className="mr-2 h-4 w-4"/>Añadir Autor</Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader><TableRow><TableHead>Autor</TableHead><TableHead>Biografía</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
+                                        <TableBody>
+                                            {authors.map(author => (
+                                                <TableRow key={author.id}>
+                                                    <TableCell className="flex items-center gap-4">
+                                                        <Image src={author.imageUrl} alt={author.name} width={40} height={40} className="rounded-full object-cover"/>
+                                                        <span className="font-medium">{author.name}</span>
+                                                    </TableCell>
+                                                    <TableCell className="line-clamp-2">{author.bio}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => openAuthorDialog(author)}><Edit className="h-4 w-4"/></Button>
+                                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => confirmDeleteAuthor(author)}><Trash2 className="h-4 w-4"/></Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
 
-                <TabsContent value="authors">
-                    <Card>
-                        <CardHeader>
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle>Autores Destacados</CardTitle>
-                                    <CardDescription>Gestiona la lista de autores que aparecen en la homepage.</CardDescription>
-                                </div>
-                                <Button onClick={() => openAuthorDialog(null)}><PlusCircle className="mr-2 h-4 w-4"/>Añadir Autor</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                             <Table>
-                                <TableHeader><TableRow><TableHead>Autor</TableHead><TableHead>Biografía</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {authors.map(author => (
-                                        <TableRow key={author.id}>
-                                            <TableCell className="flex items-center gap-4">
-                                                <Image src={author.imageUrl} alt={author.name} width={40} height={40} className="rounded-full object-cover"/>
-                                                <span className="font-medium">{author.name}</span>
-                                            </TableCell>
-                                            <TableCell className="line-clamp-2">{author.bio}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" onClick={() => openAuthorDialog(author)}><Edit className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => confirmDeleteAuthor(author)}><Trash2 className="h-4 w-4"/></Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                    <Separator className="my-6"/>
+                    
+                    <Button type="submit" disabled={isSavingHomepage} size="lg">
+                        {isSavingHomepage ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                        Guardar Contenido de Homepage
+                    </Button>
+                </form>
+            </Form>
             
             <Dialog open={isAuthorDialogOpen} onOpenChange={setIsAuthorDialogOpen}>
                 <DialogContent>
@@ -310,7 +356,7 @@ export default function ManageContentPage() {
                             <FormField control={authorForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <FormField control={authorForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
                             {editingAuthor?.imageUrl && <div className="relative w-24 h-24 rounded-full overflow-hidden border"><Image src={editingAuthor.imageUrl} alt="Imagen actual" layout="fill" objectFit="cover" /></div>}
-                            <FormField control={authorForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen</FormLabel><FormControl><Input placeholder="https://ejemplo.com/autor.png" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                            <FormField control={authorForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen</FormLabel><FormControl><Input placeholder="https://ejemplo.com/autor.png" {...field} /></FormControl><FormMessage /></FormItem> )} />
                             <DialogFooter>
                                 <Button type="submit" disabled={isSavingAuthor}>
                                     {isSavingAuthor ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}

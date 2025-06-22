@@ -8,19 +8,16 @@ import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState } from "react";
-import type { Book, Library, Author } from "@/types";
+import type { Book, Library, Author, HomepageContent } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
+import { Card } from "@/components/ui/card";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 
-interface BannerData {
-  title: string;
-  subtitle: string;
-  imageUrl: string;
-  dataAiHint: string;
-}
 
 export default function HomePage() {
-  const [bannerData, setBannerData] = useState<BannerData | null>(null);
+  const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
   const [featuredLibraries, setFeaturedLibraries] = useState<Library[]>([]);
   const [featuredAuthors, setFeaturedAuthors] = useState<Author[]>([]);
@@ -41,22 +38,26 @@ export default function HomePage() {
 
         if (contentDocSnap.exists()) {
           const contentData = contentDocSnap.data();
-          setBannerData({
-            title: contentData.bannerTitle || "Bienvenido a Alicia Libros",
-            subtitle: contentData.bannerSubtitle || "Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.",
-            imageUrl: contentData.bannerImageUrl || "https://placehold.co/1920x1080.png",
-            dataAiHint: contentData.bannerDataAiHint || "library pattern"
+          setHomepageContent({
+            bannerTitle: contentData.bannerTitle || "Bienvenido a Alicia Libros",
+            bannerSubtitle: contentData.bannerSubtitle || "Tu portal al universo de las librerías independientes.",
+            bannerImageUrl: contentData.bannerImageUrl || "https://placehold.co/1920x1080.png",
+            bannerDataAiHint: contentData.bannerDataAiHint || "library pattern",
+            featuredBookIds: contentData.featuredBookIds || [],
+            secondaryBannerSlides: contentData.secondaryBannerSlides || []
           });
           if (contentData.featuredBookIds && contentData.featuredBookIds.length > 0) {
             featuredBookIds = contentData.featuredBookIds;
           }
         } else {
            // Default banner if content doc doesn't exist
-           setBannerData({
-             title: "Bienvenido a Alicia Libros",
-             subtitle: "Tu portal al universo de las librerías independientes. Descubre, conecta y apoya la cultura literaria local.",
-             imageUrl: "https://placehold.co/1920x1080.png",
-             dataAiHint: "library pattern"
+           setHomepageContent({
+             bannerTitle: "Bienvenido a Alicia Libros",
+             bannerSubtitle: "Tu portal al universo de las librerías independientes.",
+             bannerImageUrl: "https://placehold.co/1920x1080.png",
+             bannerDataAiHint: "library pattern",
+             featuredBookIds: [],
+             secondaryBannerSlides: [],
            });
         }
 
@@ -116,15 +117,15 @@ export default function HomePage() {
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
       <section className="relative py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-        {bannerData ? (
+        {homepageContent ? (
           <>
-            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${bannerData.imageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={bannerData.dataAiHint}></div>
+            <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
             <div className="container mx-auto px-4 text-center relative z-10">
               <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
-                {bannerData.title}
+                {homepageContent.bannerTitle}
               </h1>
               <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
-                {bannerData.subtitle}
+                {homepageContent.bannerSubtitle}
               </p>
             </div>
           </>
@@ -148,6 +149,44 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Secondary Banner Carousel */}
+      {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
+          <section className="py-12 bg-muted/30">
+              <div className="container mx-auto px-4">
+                  <Carousel
+                      plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
+                      className="w-full"
+                      opts={{ loop: true }}
+                  >
+                      <CarouselContent>
+                          {homepageContent.secondaryBannerSlides.map((slide, index) => (
+                              <CarouselItem key={index}>
+                                  <Link href={slide.linkUrl} passHref>
+                                      <Card className="relative aspect-[16/6] w-full overflow-hidden group rounded-lg shadow-lg">
+                                          <Image
+                                              src={slide.imageUrl}
+                                              alt={slide.title}
+                                              layout="fill"
+                                              objectFit="cover"
+                                              className="transition-transform duration-500 group-hover:scale-105"
+                                          />
+                                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent flex flex-col items-center justify-end text-center p-6 md:p-10">
+                                              <h3 className="font-headline text-2xl md:text-4xl font-bold text-white shadow-2xl">{slide.title}</h3>
+                                              <p className="text-md md:text-lg text-white/90 shadow-lg mt-2 max-w-2xl">{slide.subtitle}</p>
+                                          </div>
+                                      </Card>
+                                  </Link>
+                              </CarouselItem>
+                          ))}
+                      </CarouselContent>
+                      <CarouselPrevious className="hidden sm:flex left-[-50px]" />
+                      <CarouselNext className="hidden sm:flex right-[-50px]" />
+                  </Carousel>
+              </div>
+          </section>
+      )}
+
 
       {/* 2. Libros Destacados */}
       <section className="py-16 bg-background">

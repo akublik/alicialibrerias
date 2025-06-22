@@ -122,3 +122,19 @@ export interface Author {
   imageUrl: string;
   dataAiHint?: string;
 }
+
+export interface SecondaryBannerSlide {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  linkUrl: string;
+}
+
+export interface HomepageContent {
+  bannerTitle: string;
+  bannerSubtitle: string;
+  bannerImageUrl: string;
+  bannerDataAiHint?: string;
+  featuredBookIds: string[];
+  secondaryBannerSlides?: SecondaryBannerSlide[];
+}
