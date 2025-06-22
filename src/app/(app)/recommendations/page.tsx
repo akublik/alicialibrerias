@@ -63,14 +63,19 @@ export default function RecommendationsPage() {
       setRecommendations(recommendedBooks);
     } catch (error: any) {
       console.error("Error getting recommendations:", error);
-      let errorMessage = "No pudimos generar recomendaciones en este momento. Inténtalo de nuevo.";
-      // Check for the specific API key error message
+      
+      // Default user-friendly message
+      let toastDescription = "No pudimos generar recomendaciones en este momento. Por favor, inténtalo de nuevo más tarde.";
+
+      // Check for the specific API key error message to provide a hint for the developer in the console, but not to the user.
       if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
-        errorMessage = "La clave de API para la IA no está configurada. Por favor, asegúrate de que la variable de entorno GOOGLE_API_KEY esté definida en el servidor.";
+        console.error("DEVELOPER HINT: The AI feature failed because the GOOGLE_API_KEY is not set in your environment variables.");
+        toastDescription = "La función de recomendación por IA no está disponible en este momento. Disculpa las molestias."
       }
+      
       toast({
         title: "Error de Recomendación",
-        description: errorMessage,
+        description: toastDescription,
         variant: "destructive",
         duration: 9000,
       });

@@ -55,11 +55,16 @@ export default function GamesPage() {
         title: "¡Juego Generado!",
         description: "Tu juego literario está listo.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating literary game:", error);
+      let toastDescription = "No pudimos crear tu juego en este momento. Inténtalo de nuevo.";
+      if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
+          console.error("DEVELOPER HINT: The AI feature failed because the GOOGLE_API_KEY is not set in your environment variables.");
+          toastDescription = "La función de juegos por IA no está disponible en este momento. Disculpa las molestias."
+      }
       toast({
         title: "Error al Generar Juego",
-        description: "No pudimos crear tu juego en este momento. Inténtalo de nuevo.",
+        description: toastDescription,
         variant: "destructive",
       });
     } finally {
