@@ -39,7 +39,7 @@ export default function SuperAdminDashboardLayout({
 
   React.useEffect(() => {
     if (isSuperAdminAuthenticated === false) {
-      router.push("/login");
+      router.push("/superadmin-login");
     }
   }, [isSuperAdminAuthenticated, router]);
 
@@ -48,7 +48,7 @@ export default function SuperAdminDashboardLayout({
     localStorage.removeItem("aliciaLibros_user");
     localStorage.removeItem("isLibraryAdminAuthenticated");
     localStorage.removeItem("aliciaLibros_registeredLibrary");
-    router.push("/login");
+    router.push("/superadmin-login");
   };
   
   if (isSuperAdminAuthenticated === undefined) {

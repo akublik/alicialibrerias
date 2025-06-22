@@ -29,7 +29,14 @@ const formSchema = z.object({
   password: z.string().min(6, { message: "La contraseña debe tener al menos 6 caracteres." }),
 });
 
-export function LibraryLoginForm() {
+interface LibraryLoginFormProps {
+  title?: string;
+  description?: string;
+  icon?: React.ReactNode;
+  hideFooterLinks?: boolean;
+}
+
+export function LibraryLoginForm({ title, description, icon, hideFooterLinks }: LibraryLoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -149,9 +156,9 @@ export function LibraryLoginForm() {
   return (
     <Card className="w-full max-w-md shadow-2xl animate-fadeIn">
       <CardHeader className="text-center">
-        <Store className="mx-auto h-12 w-12 text-primary mb-4" />
-        <CardTitle className="font-headline text-3xl text-primary">Acceso Librerías</CardTitle>
-        <CardDescription>Ingresa a la plataforma para administrar tu librería.</CardDescription>
+        {icon || <Store className="mx-auto h-12 w-12 text-primary mb-4" />}
+        <CardTitle className="font-headline text-3xl text-primary">{title || "Acceso Librerías"}</CardTitle>
+        <CardDescription>{description || "Ingresa a la plataforma para administrar tu librería."}</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -206,14 +213,16 @@ export function LibraryLoginForm() {
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-col items-center space-y-2 text-sm">
-        <Link href="/library-register" className="font-medium text-primary hover:underline">
-          ¿No tienes una cuenta? Registra tu librería
-        </Link>
-        <Link href="/library-forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
-          ¿Olvidaste tu contraseña?
-        </Link>
-      </CardFooter>
+      {!hideFooterLinks && (
+        <CardFooter className="flex flex-col items-center space-y-2 text-sm">
+          <Link href="/library-register" className="font-medium text-primary hover:underline">
+            ¿No tienes una cuenta? Registra tu librería
+          </Link>
+          <Link href="/library-forgot-password" className="text-muted-foreground hover:text-primary hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </CardFooter>
+      )}
     </Card>
   );
 }
