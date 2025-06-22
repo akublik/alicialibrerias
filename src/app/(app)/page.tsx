@@ -20,7 +20,6 @@ import Autoplay from "embla-carousel-autoplay";
 export default function HomePage() {
   const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
-  const [featuredLibraries, setFeaturedLibraries] = useState<Library[]>([]);
   const [featuredAuthors, setFeaturedAuthors] = useState<Author[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const autoplay = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
@@ -88,13 +87,6 @@ export default function HomePage() {
         const authors: Author[] = authorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Author));
         setFeaturedAuthors(authors);
 
-        // Fetch Libraries (remains the same)
-        const librariesRef = collection(db, "libraries");
-        const librariesQuery = query(librariesRef, limit(3));
-        const librariesSnapshot = await getDocs(librariesQuery);
-        const libraries: Library[] = librariesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
-        setFeaturedLibraries(libraries);
-
       } catch (error) {
         console.error("Error fetching homepage data:", error);
       } finally {
@@ -118,10 +110,10 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative py-28 md:py-36 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative py-32 md:py-48 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
+            <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
             <div className="container mx-auto px-4 text-center relative z-10">
               <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
                 {homepageContent.bannerTitle}
@@ -154,7 +146,7 @@ export default function HomePage() {
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="pb-16 bg-muted/30 pt-4">
+          <section className="pb-12 bg-muted/30 pt-0">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
@@ -164,7 +156,7 @@ export default function HomePage() {
                       <CarouselContent>
                           {(homepageContent.secondaryBannerSlides as SecondaryBannerSlide[]).map((slide, index) => {
                             const cardContent = (
-                               <Card className="relative aspect-[16/6] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
+                               <Card className="relative aspect-[16/5] w-full overflow-hidden group rounded-lg shadow-lg bg-secondary flex items-center justify-center">
                                   {slide.imageUrl ? (
                                     <Image
                                         src={slide.imageUrl}
@@ -211,7 +203,7 @@ export default function HomePage() {
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
           ) : featuredBooks.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
               {featuredBooks.map((book) => (
                 <BookCard key={book.id} book={book} size="small" />
               ))}
@@ -276,9 +268,7 @@ export default function HomePage() {
                 <div className="sm:col-span-2 lg:col-span-3 flex justify-center items-center py-10">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
-            ) : featuredLibraries.map(library => (
-              <LibraryCard key={library.id} library={library} />
-            ))}
+            ) : null }
           </div>
         </div>
       </section>
