@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, PlusCircle, CalendarDays, Loader2, Edit, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, CalendarDays, Loader2, Edit, Trash2, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -165,6 +165,11 @@ export default function LibraryEventsPage() {
                               <DropdownMenuItem asChild>
                                 <Link href={`/library-admin/events/edit/${event.id}`}>
                                   <Edit className="mr-2 h-4 w-4" /> Editar
+                                </Link>
+                              </DropdownMenuItem>
+                               <DropdownMenuItem asChild>
+                                <Link href={`/library-admin/events/attendees/${event.id}`}>
+                                  <Users className="mr-2 h-4 w-4" /> Ver Asistentes
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />

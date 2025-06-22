@@ -7,16 +7,19 @@ import type { Library, Book, LibraryEvent } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -52,6 +55,12 @@ export default function LibraryDetailsPage() {
   const [books, setBooks] = useState<Book[]>([]); 
   const [events, setEvents] = useState<LibraryEvent[]>([]);
   const [isFavorite, setIsFavorite] = useState(false);
+
+  // State for event registration dialog
+  const [selectedEvent, setSelectedEvent] = useState<LibraryEvent | null>(null);
+  const [registrationName, setRegistrationName] = useState('');
+  const [registrationWhatsapp, setRegistrationWhatsapp] = useState('');
+  const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
 
   useEffect(() => {
     if (!libraryId || !db) {
@@ -121,10 +130,37 @@ export default function LibraryDetailsPage() {
     }
   };
 
+  const handleEventRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registrationName.trim() || !registrationWhatsapp.trim() || !selectedEvent || !library) return;
+    if (!db) {
+        toast({ title: "Error de conexión", variant: "destructive" });
+        return;
+    }
+
+    setIsSubmittingRegistration(true);
+    try {
+        await addDoc(collection(db, "eventRegistrations"), {
+            eventId: selectedEvent.id,
+            libraryId: library.id,
+            name: registrationName,
+            whatsapp: registrationWhatsapp,
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: "¡Registro Exitoso!", description: `Te has registrado a "${selectedEvent.title}". La librería se pondrá en contacto si es necesario.` });
+        setSelectedEvent(null);
+        setRegistrationName('');
+        setRegistrationWhatsapp('');
+    } catch (error: any) {
+        toast({ title: "Error en el registro", description: error.message, variant: "destructive" });
+    } finally {
+        setIsSubmittingRegistration(false);
+    }
+  };
+
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
     if (!event.date) return '#';
     const startTime = new Date(event.date);
-    // Assume event is 1 hour long for simplicity
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
     const toGoogleFormat = (date: Date) => {
@@ -330,7 +366,11 @@ export default function LibraryDetailsPage() {
                           <CardContent className="p-4 pt-0">
                               <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{event.description}</p>
                           </CardContent>
-                          <CardFooter className="p-4 pt-0 mt-auto">
+                          <CardFooter className="p-4 pt-0 mt-auto flex-col sm:flex-row gap-2">
+                              <Button variant="default" className="w-full font-body" onClick={() => setSelectedEvent(event)}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Registrarme
+                              </Button>
                               <a 
                                   href={createGoogleCalendarLink(event, library.address || library.name)}
                                   target="_blank"
@@ -360,6 +400,36 @@ export default function LibraryDetailsPage() {
           </Tabs>
         </div>
       </div>
+
+       <Dialog open={!!selectedEvent} onOpenChange={(isOpen) => { if (!isOpen) setSelectedEvent(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Registrarme en "{selectedEvent?.title}"</DialogTitle>
+              <DialogDescription>
+                Deja tus datos para que la librería sepa que estás interesado/a.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleEventRegistration}>
+              <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="name" className="text-right">Nombre</Label>
+                      <Input id="name" value={registrationName} onChange={(e) => setRegistrationName(e.target.value)} className="col-span-3" required />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="whatsapp" className="text-right">WhatsApp</Label>
+                      <Input id="whatsapp" value={registrationWhatsapp} onChange={(e) => setRegistrationWhatsapp(e.target.value)} className="col-span-3" required />
+                  </div>
+              </div>
+              <DialogFooter>
+                  <Button type="submit" disabled={isSubmittingRegistration}>
+                      {isSubmittingRegistration ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                      Confirmar Registro
+                  </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

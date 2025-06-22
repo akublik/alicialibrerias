@@ -96,3 +96,12 @@ export interface LibraryEvent {
   dataAiHint?: string;
   createdAt: any; // Firestore Timestamp
 }
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  libraryId: string;
+  name: string;
+  whatsapp: string;
+  createdAt: any; // Firestore Timestamp
+}
