@@ -1,3 +1,4 @@
+
 // src/app/(app)/page.tsx
 "use client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { Book, Library, Author, HomepageContent } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
@@ -22,6 +23,7 @@ export default function HomePage() {
   const [featuredLibraries, setFeaturedLibraries] = useState<Library[]>([]);
   const [featuredAuthors, setFeaturedAuthors] = useState<Author[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const autoplay = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,7 +157,7 @@ export default function HomePage() {
           <section className="py-12 bg-muted/30">
               <div className="container mx-auto px-4">
                   <Carousel
-                      plugins={[Autoplay({ delay: 5000, stopOnInteraction: true })]}
+                      plugins={[autoplay.current]}
                       className="w-full"
                       opts={{ loop: true }}
                   >
