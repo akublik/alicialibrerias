@@ -67,9 +67,12 @@ export function LoginForm() {
         });
       } else {
         const userDoc = querySnapshot.docs[0];
-        const userData = { id: userDoc.id, ...userDoc.data() } as User;
+        const userData = { id: userDoc.id, ...userDoc.data() } as any; // Use any to check 'role' and 'rol'
 
-        if (userData.role !== 'reader') {
+        // Accommodate for 'rol' typo
+        const userRole = userData.role || userData.rol;
+        
+        if (userRole !== 'reader') {
            toast({
               title: "Acceso Incorrecto",
               description: "Esta es una cuenta de administrador. Por favor, usa el portal de acceso para librerías o superadministradores.",
@@ -79,7 +82,10 @@ export function LoginForm() {
             return;
         }
 
-        if (userData.isActive === false) {
+        const finalUserData = { ...userData, role: userRole };
+        delete finalUserData.rol; // Clean up the object to be consistent
+
+        if (finalUserData.isActive === false) {
           toast({
             title: "Cuenta Desactivada",
             description: "Tu cuenta ha sido desactivada. Por favor, contacta con el soporte.",
@@ -90,11 +96,11 @@ export function LoginForm() {
         }
         
         localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+        localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
         
         toast({
           title: "Inicio de Sesión Exitoso",
-          description: `Bienvenido/a de nuevo, ${userData.name}.`,
+          description: `Bienvenido/a de nuevo, ${finalUserData.name}.`,
         });
 
         router.push(redirectUrl);

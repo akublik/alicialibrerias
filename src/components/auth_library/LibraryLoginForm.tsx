@@ -55,12 +55,11 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
     setIsLoading(true);
     
     try {
-      // 1. Query the 'users' collection with the expected role
+      // 1. Query the 'users' collection without role first.
       const usersRef = collection(db, "users");
       const q = query(usersRef, 
         where("email", "==", values.email), 
-        where("password", "==", values.password),
-        where("role", "==", expectedRole)
+        where("password", "==", values.password)
       );
       const querySnapshot = await getDocs(q);
 
@@ -75,9 +74,26 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
       } 
       
       const userDoc = querySnapshot.docs[0];
-      const userData = { id: userDoc.id, ...userDoc.data() } as User;
+      const userData = { id: userDoc.id, ...userDoc.data() } as any; // Use any to check both 'role' and 'rol'
 
-      if (userData.isActive === false) {
+      // Accommodate for 'rol' typo
+      const userRole = userData.role || userData.rol;
+
+      if (userRole !== expectedRole) {
+        toast({
+          title: "Acceso Incorrecto",
+          description: `Esta cuenta no tiene el rol de '${expectedRole}'. Por favor, usa el portal de acceso correcto.`,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const finalUserData = { ...userData, role: userRole };
+      delete finalUserData.rol; // Clean up the object to be consistent
+
+
+      if (finalUserData.isActive === false) {
          toast({
           title: "Cuenta Desactivada",
           description: "La cuenta de este administrador ha sido desactivada.",
@@ -88,16 +104,16 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
       }
 
       // Handle login based on the now-verified role
-      if (userData.role === 'superadmin') {
+      if (finalUserData.role === 'superadmin') {
          localStorage.setItem("isAuthenticated", "true");
-         localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
-         toast({ title: "Acceso de Superadmin", description: `Bienvenido, ${userData.name}.` });
+         localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
+         toast({ title: "Acceso de Superadmin", description: `Bienvenido, ${finalUserData.name}.` });
          router.push("/superadmin/dashboard");
          return;
       }
 
-      if (userData.role === 'library') {
-          if (!userData.libraryId) {
+      if (finalUserData.role === 'library') {
+          if (!finalUserData.libraryId) {
              toast({
               title: "Error de Cuenta",
               description: "Esta cuenta de librería no está asociada a ningún registro de librería.",
@@ -107,13 +123,13 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
             return;
           }
 
-          const libraryDocRef = doc(db, "libraries", userData.libraryId);
+          const libraryDocRef = doc(db, "libraries", finalUserData.libraryId);
           const libraryDocSnap = await getDoc(libraryDocRef);
 
           if (!libraryDocSnap.exists()) {
              toast({
               title: "Error de Datos",
-              description: `No se pudo encontrar la librería asociada (ID: ${userData.libraryId}).`,
+              description: `No se pudo encontrar la librería asociada (ID: ${finalUserData.libraryId}).`,
               variant: "destructive",
             });
             setIsLoading(false);
@@ -133,7 +149,7 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
           }
           
           localStorage.setItem("isLibraryAdminAuthenticated", "true");
-          localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+          localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
           localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, name: libraryData.name, imageUrl: libraryData.imageUrl }));
           
           toast({
