@@ -9,6 +9,7 @@ export default function SuperAdminLoginPage() {
       description="Ingresa tus credenciales de superadministrador."
       icon={<Settings className="mx-auto h-12 w-12 text-destructive mb-4" />}
       hideFooterLinks={true}
+      expectedRole="superadmin"
     />
   );
 }

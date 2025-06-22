@@ -2,5 +2,5 @@
 import { LibraryLoginForm } from '@/components/auth_library/LibraryLoginForm';
 
 export default function LibraryLoginPage() {
-  return <LibraryLoginForm />;
+  return <LibraryLoginForm expectedRole="library" />;
 }
