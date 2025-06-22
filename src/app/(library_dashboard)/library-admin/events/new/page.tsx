@@ -42,6 +42,10 @@ export default function NewEventPage() {
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+    },
   });
 
   async function onSubmit(values: EventFormValues) {

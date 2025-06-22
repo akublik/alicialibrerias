@@ -48,6 +48,10 @@ export default function EditEventPage() {
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+    },
   });
 
   useEffect(() => {
