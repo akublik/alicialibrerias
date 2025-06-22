@@ -25,6 +25,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Label } from "@/components/ui/label";
 
 const eventFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -51,6 +52,7 @@ export default function EditEventPage() {
     defaultValues: {
       title: "",
       description: "",
+      date: new Date(),
     },
   });
 
