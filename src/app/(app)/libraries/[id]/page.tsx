@@ -331,10 +331,7 @@ export default function LibraryDetailsPage() {
                             <MapPin className="h-10 w-10 text-muted-foreground mb-2" />
                             <p className="text-sm font-semibold text-foreground">Mapa no disponible</p>
                             <p className="text-xs text-muted-foreground mt-1">
-                                No se ha proporcionado una clave de API de Google Maps.
-                            </p>
-                             <p className="text-xs text-muted-foreground mt-2">
-                                Si eres el administrador, revisa la consola del navegador (F12) para ver errores específicos si la clave ya fue añadida.
+                                No se ha proporcionado una clave de API de Google Maps. Asegúrate de que la variable <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> esté en tu archivo <code>.env</code>.
                             </p>
                         </div>
                     )}
