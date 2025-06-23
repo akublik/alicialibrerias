@@ -15,6 +15,13 @@ import type { BookRequest } from "@/types";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+const statusTranslations: Record<BookRequest['status'], string> = {
+  pending: 'Pendiente',
+  reviewed: 'Revisada',
+  rejected: 'Rechazada',
+  added: 'Añadida',
+};
+
 export default function ManageBookRequestsPage() {
   const [requests, setRequests] = useState<BookRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,7 +66,7 @@ export default function ManageBookRequestsPage() {
       await updateDoc(requestRef, { status: newStatus });
       toast({
         title: "Estado Actualizado",
-        description: `La solicitud ha sido marcada como "${newStatus}".`
+        description: `La solicitud ha sido marcada como "${statusTranslations[newStatus]}".`
       });
     } catch (error: any) {
       toast({
@@ -134,15 +141,15 @@ export default function ManageBookRequestsPage() {
                     <TableCell>
                        <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant={getStatusVariant(req.status)} size="sm" className="capitalize" disabled={isUpdating === req.id}>
+                            <Button variant={getStatusVariant(req.status)} size="sm" className="w-24 justify-center" disabled={isUpdating === req.id}>
                               {isUpdating === req.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                              {req.status}
+                              {statusTranslations[req.status]}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             {statusOptions.map(status => (
-                              <DropdownMenuItem key={status} onSelect={() => handleStatusChange(req.id, status)} className="capitalize">
-                                {status}
+                              <DropdownMenuItem key={status} onSelect={() => handleStatusChange(req.id, status)}>
+                                {statusTranslations[status]}
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
