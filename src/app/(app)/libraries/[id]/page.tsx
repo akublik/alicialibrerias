@@ -7,7 +7,7 @@ import type { Library, Book, LibraryEvent, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus, QrCode } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -20,6 +20,7 @@ import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { QRCodeSVG } from 'qrcode.react';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -305,6 +306,25 @@ export default function LibraryDetailsPage() {
                   {tiktok && <Button asChild variant="outline" size="icon"><a href={tiktok} target="_blank" rel="noopener noreferrer" aria-label="TikTok"><TikTokIcon className="h-5 w-5" /></a></Button>}
                 </div>
               )}
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl flex items-center">
+                    <QrCode className="mr-2 h-5 w-5 text-primary"/>
+                    Código de Lealtad
+                </CardTitle>
+                 <CardDescription>Escanea este código en la librería para acumular puntos o identificarte.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center p-6">
+                {library.id ? (
+                    <div className="p-4 bg-white rounded-lg">
+                      <QRCodeSVG value={library.id} size={160} />
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground">No se pudo generar el código.</p>
+                )}
             </CardContent>
           </Card>
 
