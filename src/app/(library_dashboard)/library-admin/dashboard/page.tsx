@@ -3,11 +3,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store, Heart, Loader2 } from "lucide-react";
+import { BookCopy, ShoppingCart, BarChart3, PlusCircle, Store, Heart, Loader2, QrCode } from "lucide-react";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Stats {
   bookCount: number;
@@ -42,6 +43,7 @@ const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title:
 export default function LibraryAdminDashboardPage() {
   const [libraryName, setLibraryName] = useState<string>("Tu Librería");
   const [libraryImageUrl, setLibraryImageUrl] = useState<string | undefined>(undefined);
+  const [libraryId, setLibraryId] = useState<string | null>(null);
   const [stats, setStats] = useState<Stats>({
     bookCount: 0,
     pendingOrders: 0,
@@ -51,7 +53,6 @@ export default function LibraryAdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Get library info from localStorage
     if (typeof window !== "undefined") {
       const storedLibraryData = localStorage.getItem("aliciaLibros_registeredLibrary");
       if (storedLibraryData) {
@@ -67,35 +68,32 @@ export default function LibraryAdminDashboardPage() {
       }
     }
 
-    // Get libraryId for queries
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (!userDataString) {
       setIsLoading(false);
       return;
     }
     const userData = JSON.parse(userDataString);
-    const libraryId = userData.libraryId;
+    const currentLibraryId = userData.libraryId;
+    setLibraryId(currentLibraryId);
 
-    if (!libraryId || !db) {
+    if (!currentLibraryId || !db) {
       setIsLoading(false);
       return;
     }
 
-    // --- Set up Firestore listeners ---
     let unsubscribes: (() => void)[] = [];
 
-    // Listener for books count
     const booksRef = collection(db, "books");
-    const booksQuery = query(booksRef, where("libraryId", "==", libraryId));
+    const booksQuery = query(booksRef, where("libraryId", "==", currentLibraryId));
     const unsubscribeBooks = onSnapshot(booksQuery, (snapshot) => {
       setStats(prevStats => ({ ...prevStats, bookCount: snapshot.size }));
       setIsLoading(false);
     }, () => setIsLoading(false));
     unsubscribes.push(unsubscribeBooks);
 
-    // Listener for orders
     const ordersRef = collection(db, "orders");
-    const ordersQuery = query(ordersRef, where("libraryId", "==", libraryId));
+    const ordersQuery = query(ordersRef, where("libraryId", "==", currentLibraryId));
     const unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
       let pendingCount = 0;
       let sales = 0;
@@ -124,8 +122,7 @@ export default function LibraryAdminDashboardPage() {
     });
     unsubscribes.push(unsubscribeOrders);
     
-    // Listener for favorites count
-    const favoritesQuery = query(collection(db, "userFavorites"), where("libraryId", "==", libraryId));
+    const favoritesQuery = query(collection(db, "userFavorites"), where("libraryId", "==", currentLibraryId));
     const unsubscribeFavorites = onSnapshot(favoritesQuery, (snapshot) => {
       setStats(prevStats => ({ ...prevStats, favoriteCount: snapshot.size }));
     });
@@ -191,22 +188,50 @@ export default function LibraryAdminDashboardPage() {
 
       <div>
         <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">Acciones Rápidas</h2>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          <Link href="/library-admin/books/new">
-            <Button size="lg" className="w-full justify-start text-base py-6 shadow-sm hover:shadow-md transition-shadow">
-              <PlusCircle className="mr-3 h-5 w-5" /> Añadir Nuevo Libro
-            </Button>
-          </Link>
-           <Link href="/library-admin/orders">
-            <Button size="lg" variant="outline" className="w-full justify-start text-base py-6 shadow-sm hover:shadow-md transition-shadow">
-              <ShoppingCart className="mr-3 h-5 w-5" /> Ver Pedidos
-            </Button>
-          </Link>
-          <Link href="/library-admin/profile">
-             <Button size="lg" variant="outline" className="w-full justify-start text-base py-6 shadow-sm hover:shadow-md transition-shadow">
-              <Store className="mr-3 h-5 w-5" /> Editar Perfil de Librería
-            </Button>
-          </Link>
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
+          
+          <Card className="lg:col-span-1 shadow-md">
+             <CardHeader><CardTitle className="font-headline text-lg">Atajos</CardTitle></CardHeader>
+             <CardContent className="flex flex-col gap-3">
+                <Link href="/library-admin/books/new">
+                    <Button size="lg" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                    <PlusCircle className="mr-3 h-5 w-5" /> Añadir Nuevo Libro
+                    </Button>
+                </Link>
+                <Link href="/library-admin/orders">
+                    <Button size="lg" variant="outline" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                    <ShoppingCart className="mr-3 h-5 w-5" /> Ver Pedidos
+                    </Button>
+                </Link>
+                <Link href="/library-admin/profile">
+                    <Button size="lg" variant="outline" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                    <Store className="mr-3 h-5 w-5" /> Editar Perfil
+                    </Button>
+                </Link>
+             </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 shadow-md">
+            <CardHeader>
+                <CardTitle className="font-headline text-lg flex items-center">
+                    <QrCode className="mr-2 h-5 w-5 text-primary"/>
+                    Código QR de la Librería
+                </CardTitle>
+                <CardDescription>
+                    Permite a tus clientes escanear este código para identificarse en tu programa de lealtad.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center p-6">
+                {libraryId ? (
+                    <div className="p-4 bg-white rounded-lg">
+                      <QRCodeSVG value={libraryId} size={140} />
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground">Cargando código QR...</p>
+                )}
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </div>

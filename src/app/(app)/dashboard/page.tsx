@@ -9,12 +9,14 @@ import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface UserData {
+  id: string;
   name: string;
   email: string;
   joinDate?: string;
@@ -54,6 +56,7 @@ export default function DashboardPage() {
         
         // If we are here, role is 'reader', so we set the state
         setUser({
+          id: userData.id,
           name: userData.name || "Usuario",
           email: userData.email || "email@desconocido.com",
           joinDate: "Enero 2024", // Placeholder
@@ -108,8 +111,8 @@ export default function DashboardPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* User Profile Card */}
-        <div className="lg:col-span-1">
+        {/* User Profile & QR Card */}
+        <div className="lg:col-span-1 space-y-8">
           <Card className="shadow-lg">
             <CardHeader className="text-center">
               <Image
@@ -131,6 +134,25 @@ export default function DashboardPage() {
               <Button variant="destructive" className="w-full font-body" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
               </Button>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl flex items-center">
+                    <QrCode className="mr-2 h-5 w-5 text-primary"/>
+                    Mi Código de Lealtad
+                </CardTitle>
+                 <CardDescription>Muestra este código en las librerías participantes para acumular puntos.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center p-6">
+                {user.id ? (
+                    <div className="p-4 bg-white rounded-lg">
+                      <QRCodeSVG value={user.id} size={160} />
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground">No se pudo generar el código.</p>
+                )}
             </CardContent>
           </Card>
         </div>
