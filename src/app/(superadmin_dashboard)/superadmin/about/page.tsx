@@ -58,6 +58,16 @@ export default function ManageAboutPage() {
   const form = useForm<AboutUsFormValues>({
     resolver: zodResolver(aboutUsFormSchema),
     defaultValues: {
+      headerTitle: "",
+      headerSubtitle: "",
+      headerImageUrl: "",
+      headerDataAiHint: "",
+      missionTitle: "",
+      missionParagraph1: "",
+      missionParagraph2: "",
+      missionImageUrl: "",
+      missionDataAiHint: "",
+      whyUsTitle: "",
       team: [],
       benefits: [],
     },
@@ -132,19 +142,21 @@ export default function ManageAboutPage() {
           <Card>
             <CardHeader><CardTitle>Sección de Encabezado</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="headerTitle" render={({ field }) => ( <FormItem><FormLabel>Título Principal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="headerSubtitle" render={({ field }) => ( <FormItem><FormLabel>Subtítulo</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="headerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL Imagen de Fondo (Patrón)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="headerTitle" render={({ field }) => ( <FormItem><FormLabel>Título Principal</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="headerSubtitle" render={({ field }) => ( <FormItem><FormLabel>Subtítulo</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="headerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL Imagen de Fondo (Patrón)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="headerDataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (Encabezado)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader><CardTitle>Sección de Misión</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <FormField control={form.control} name="missionTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Misión</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="missionParagraph1" render={({ field }) => ( <FormItem><FormLabel>Párrafo 1</FormLabel><FormControl><Textarea {...field} rows={4} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="missionParagraph2" render={({ field }) => ( <FormItem><FormLabel>Párrafo 2</FormLabel><FormControl><Textarea {...field} rows={4} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="missionImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL Imagen de la Misión</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Misión</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionParagraph1" render={({ field }) => ( <FormItem><FormLabel>Párrafo 1</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionParagraph2" render={({ field }) => ( <FormItem><FormLabel>Párrafo 2</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL Imagen de la Misión</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionDataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (Misión)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
             </CardContent>
           </Card>
 
@@ -156,13 +168,13 @@ export default function ManageAboutPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-                <FormField control={form.control} name="whyUsTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Sección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="whyUsTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Sección</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
                 <Separator />
                 {benefitFields.map((field, index) => (
                   <div key={field.id} className="p-4 border rounded-md space-y-3 relative">
                      <h4 className="font-medium">Beneficio {index + 1}</h4>
-                     <FormField control={form.control} name={`benefits.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                     <FormField control={form.control} name={`benefits.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                     <FormField control={form.control} name={`benefits.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                     <FormField control={form.control} name={`benefits.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
                      <FormField control={form.control} name={`benefits.${index}.icon`} render={({ field }) => ( 
                         <FormItem>
                           <FormLabel>Ícono</FormLabel>
@@ -196,10 +208,10 @@ export default function ManageAboutPage() {
               {teamFields.map((field, index) => (
                 <div key={field.id} className="p-4 border rounded-md space-y-3 relative">
                   <h4 className="font-medium">Miembro {index + 1}</h4>
-                  <FormField control={form.control} name={`team.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name={`team.${index}.role`} render={({ field }) => ( <FormItem><FormLabel>Rol</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name={`team.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name={`team.${index}.dataAiHint`} render={({ field }) => ( <FormItem><FormLabel>Pista para IA (1-2 palabras)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name={`team.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name={`team.${index}.role`} render={({ field }) => ( <FormItem><FormLabel>Rol</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name={`team.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name={`team.${index}.dataAiHint`} render={({ field }) => ( <FormItem><FormLabel>Pista para IA (1-2 palabras)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
                   <Button type="button" variant="destructive" size="sm" onClick={() => removeTeamMember(index)} className="absolute top-4 right-4"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
