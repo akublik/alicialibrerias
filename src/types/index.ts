@@ -43,6 +43,9 @@ export interface User {
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
   isActive?: boolean;
+  birthdate?: string; // Storing as ISO string
+  favoriteCategories?: string[];
+  favoriteTags?: string[];
 }
 
 export interface Review {

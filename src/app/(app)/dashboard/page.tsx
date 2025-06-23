@@ -2,49 +2,71 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Calendar as CalendarIcon, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
+import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { MultiSelect } from '@/components/ui/multi-select';
+import { bookCategories, bookTags } from '@/lib/options';
 
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  joinDate?: string;
-  avatarUrl?: string;
-  dataAiHint?: string;
-}
+const profileFormSchema = z.object({
+  name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
+  birthdate: z.date().optional(),
+  favoriteCategories: z.array(z.string()).optional(),
+  favoriteTags: z.array(z.string()).optional(),
+});
+type ProfileFormValues = z.infer<typeof profileFormSchema>;
+
+interface UserData extends User {}
 
 export default function DashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<UserData | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+  });
+
+  // Effect to load user data from localStorage
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
-
     if (!authStatus) {
-      if (typeof window !== "undefined") {
-        router.push("/login");
-      }
+      if (typeof window !== "undefined") router.push("/login");
       return;
     }
+    setIsAuthenticated(true);
 
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (userDataString) {
       try {
         const userData: User = JSON.parse(userDataString);
-
-        // Role-based redirection to prevent wrong dashboard access
         if (userData.role === 'library') {
             router.replace('/library-admin/dashboard');
             return;
@@ -54,31 +76,32 @@ export default function DashboardPage() {
             return;
         }
         
-        // If we are here, role is 'reader', so we set the state
         setUser({
-          id: userData.id,
-          name: userData.name || "Usuario",
-          email: userData.email || "email@desconocido.com",
+          ...userData,
           joinDate: "Enero 2024", // Placeholder
           avatarUrl: (userData as any).avatarUrl || "https://placehold.co/150x150.png",
           dataAiHint: (userData as any).dataAiHint || "user avatar",
         });
-        setIsAuthenticated(true);
-
       } catch (e) {
         console.error("Error parsing user data from localStorage", e);
-        // If data is corrupted, log out
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("aliciaLibros_user");
-        router.push("/login");
+        handleLogout();
       }
     } else {
-      // If auth status is true but no user data, it's an inconsistent state. Log out.
-      localStorage.removeItem("isAuthenticated");
-      router.push("/login");
+      handleLogout();
     }
   }, [router]);
 
+  // Effect to reset form when dialog opens
+  useEffect(() => {
+    if (user && isEditDialogOpen) {
+      form.reset({
+        name: user.name || '',
+        birthdate: user.birthdate ? new Date(user.birthdate) : undefined,
+        favoriteCategories: user.favoriteCategories || [],
+        favoriteTags: user.favoriteTags || [],
+      });
+    }
+  }, [user, isEditDialogOpen, form]);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
@@ -89,6 +112,48 @@ export default function DashboardPage() {
       router.push("/");
     }
   };
+  
+  async function onProfileSubmit(values: ProfileFormValues) {
+    if (!user || !db) return;
+    setIsSubmitting(true);
+    try {
+        const userRef = doc(db, "users", user.id);
+        const updatedData = {
+            name: values.name,
+            birthdate: values.birthdate ? values.birthdate.toISOString() : null,
+            favoriteCategories: values.favoriteCategories || [],
+            favoriteTags: values.favoriteTags || [],
+        };
+
+        // Use a temp object for update to avoid non-serializable data
+        const firestoreUpdateData: any = { ...updatedData };
+        if (!firestoreUpdateData.birthdate) {
+            delete firestoreUpdateData.birthdate;
+        }
+
+        await updateDoc(userRef, firestoreUpdateData);
+        
+        const updatedUserInState = { ...user, ...updatedData };
+        setUser(updatedUserInState);
+
+        const localStorageUser = {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            ...updatedData,
+        }
+
+        localStorage.setItem("aliciaLibros_user", JSON.stringify(localStorageUser));
+
+        toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
+        setIsEditDialogOpen(false);
+    } catch (error: any) {
+        toast({ title: "Error al actualizar", description: error.message, variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
+}
+
 
   if (!isAuthenticated || !user) {
     return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
@@ -111,7 +176,6 @@ export default function DashboardPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* User Profile & QR Card */}
         <div className="lg:col-span-1 space-y-8">
           <Card className="shadow-lg">
             <CardHeader className="text-center">
@@ -126,11 +190,79 @@ export default function DashboardPage() {
               <CardTitle className="font-headline text-2xl">{user.name}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
               <CardDescription>Miembro desde: {user.joinDate}</CardDescription>
+               {user.birthdate && (
+                <CardDescription>
+                  Cumpleaños: {format(new Date(user.birthdate), "dd 'de' MMMM", { locale: es })}
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full font-body">
-                <Edit3 className="mr-2 h-4 w-4" /> Editar Perfil
-              </Button>
+              <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full font-body">
+                    <Edit3 className="mr-2 h-4 w-4" /> Editar Perfil
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px]">
+                  <DialogHeader>
+                    <DialogTitle>Editar Perfil</DialogTitle>
+                    <DialogDescription>
+                      Actualiza tu información personal y tus preferencias literarias.
+                    </DialogDescription>
+                  </DialogHeader>
+                   <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
+                        <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                         <FormField control={form.control} name="birthdate" render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                            <FormLabel>Fecha de Nacimiento</FormLabel>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                    {field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={1920} toYear={new Date().getFullYear()} initialFocus />
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                          </FormItem>
+                         )} />
+                        <FormField control={form.control} name="favoriteCategories" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Géneros Favoritos</FormLabel>
+                                <FormControl>
+                                    <MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="favoriteTags" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Etiquetas / Temas Favoritos</FormLabel>
+                                <FormControl>
+                                    <MultiSelect placeholder="Selecciona etiquetas..." options={bookTags} value={field.value || []} onChange={field.onChange} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <DialogFooter>
+                          <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
+                          <Button type="submit" disabled={isSubmitting}>
+                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              Guardar Cambios
+                          </Button>
+                        </DialogFooter>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+
               <Button variant="destructive" className="w-full font-body" onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
               </Button>
