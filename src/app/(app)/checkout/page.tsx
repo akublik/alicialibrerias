@@ -27,7 +27,7 @@ import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
 
 const SHIPPING_COST_DELIVERY = 3.50;
@@ -208,6 +208,16 @@ export default function CheckoutPage() {
       }
 
       await addDoc(collection(db, "orders"), newOrderData);
+
+      // --- Update User Loyalty Points ---
+      const userRef = doc(db, "users", buyerId);
+      const pointsToIncrement = Math.floor(totalPrice); // Points are based on subtotal, not final total with shipping
+      if (pointsToIncrement > 0) {
+          await updateDoc(userRef, {
+              loyaltyPoints: increment(pointsToIncrement)
+          });
+      }
+      // --- End of Update ---
 
       toast({
         title: "¡Pedido Realizado con Éxito!",

@@ -50,6 +50,7 @@ export interface User {
   favoriteTags?: string[];
   avatarUrl?: string;
   dataAiHint?: string;
+  loyaltyPoints?: number;
 }
 
 export interface Review {
