@@ -15,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { placeholderLibraries, placeholderBooks } from "@/lib/placeholders";
 import type { Book, Library, User, Order } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { BookCard } from "@/components/BookCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,6 +28,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { es } from 'date-fns/locale';
+import { BookCard } from "@/components/BookCard";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
@@ -56,8 +56,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [isEditDialogOpen, setIsEditDialogOpen = useState(false);
-  const [isSubmitting, setIsSubmitting = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
@@ -446,5 +446,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
