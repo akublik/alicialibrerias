@@ -21,7 +21,7 @@ export default function HomePage() {
   const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
   const [nationalBooks, setNationalBooks] = useState<Book[]>([]);
-  const [nationalSectionTitle, setNationalSectionTitle] = useState("Libros Ecuatorianos");
+  const [nationalSectionTitle, setNationalSectionTitle] = useState("Libros Nacionales");
   const [isLoading, setIsLoading] = useState(true);
   const autoplay = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
 
@@ -37,19 +37,28 @@ export default function HomePage() {
         const contentDocSnap = await getDoc(contentDocRef);
         
         let featuredBookIds: string[] = [];
+        let categoryToFetch = 'literatura-ecuatoriana'; // Default category
 
         if (contentDocSnap.exists()) {
-          const contentData = contentDocSnap.data();
+          const contentData = contentDocSnap.data() as HomepageContent;
           setHomepageContent({
             bannerTitle: contentData.bannerTitle || "Bienvenido a Alicia Libros",
             bannerSubtitle: contentData.bannerSubtitle || "Tu portal al universo de las librerías independientes.",
             bannerImageUrl: contentData.bannerImageUrl || "https://placehold.co/1920x1080.png",
             bannerDataAiHint: contentData.bannerDataAiHint || "library pattern",
             featuredBookIds: contentData.featuredBookIds || [],
-            secondaryBannerSlides: contentData.secondaryBannerSlides || []
+            secondaryBannerSlides: contentData.secondaryBannerSlides || [],
+            nationalSectionTitle: contentData.nationalSectionTitle || "Libros Nacionales",
+            nationalSectionCategory: contentData.nationalSectionCategory || "literatura-ecuatoriana",
           });
           if (contentData.featuredBookIds && contentData.featuredBookIds.length > 0) {
             featuredBookIds = contentData.featuredBookIds;
+          }
+          if (contentData.nationalSectionTitle) {
+            setNationalSectionTitle(contentData.nationalSectionTitle);
+          }
+          if (contentData.nationalSectionCategory) {
+            categoryToFetch = contentData.nationalSectionCategory;
           }
         } else {
            // Default banner if content doc doesn't exist
@@ -81,10 +90,10 @@ export default function HomePage() {
            setFeaturedBooks(books);
         }
 
-        // Fetch National Books (Ecuadorian)
+        // Fetch National Books (using dynamic category)
         const nationalBooksQuery = query(
           collection(db, "books"),
-          where("categories", "array-contains", "literatura-ecuatoriana"),
+          where("categories", "array-contains", categoryToFetch),
           limit(5)
         );
         const nationalBooksSnapshot = await getDocs(nationalBooksQuery);

@@ -35,6 +35,8 @@ const homepageContentFormSchema = z.object({
   bannerImageUrl: z.string().url({ message: "Debe ser una URL válida." }).optional().or(z.literal('')),
   featuredBookIds: z.array(z.string()).max(4, "Puedes seleccionar hasta 4 libros.").optional(),
   secondaryBannerSlides: z.array(secondaryBannerSlideSchema).max(4, "Puedes tener hasta 4 slides.").optional(),
+  nationalSectionTitle: z.string().optional(),
+  nationalSectionCategory: z.string().optional(),
 });
 type HomepageContentFormValues = z.infer<typeof homepageContentFormSchema>;
 
@@ -55,6 +57,8 @@ export default function ManageContentPage() {
             bannerImageUrl: "",
             featuredBookIds: [],
             secondaryBannerSlides: [],
+            nationalSectionTitle: "Libros Ecuatorianos",
+            nationalSectionCategory: "literatura-ecuatoriana",
         }
     });
 
@@ -81,6 +85,8 @@ export default function ManageContentPage() {
                         bannerImageUrl: data.bannerImageUrl || "",
                         featuredBookIds: data.featuredBookIds || [],
                         secondaryBannerSlides: data.secondaryBannerSlides || [],
+                        nationalSectionTitle: data.nationalSectionTitle || "Libros Ecuatorianos",
+                        nationalSectionCategory: data.nationalSectionCategory || "literatura-ecuatoriana",
                     });
                 }
 
@@ -121,6 +127,8 @@ export default function ManageContentPage() {
                 bannerImageUrl: values.bannerImageUrl,
                 featuredBookIds: values.featuredBookIds || [],
                 secondaryBannerSlides: values.secondaryBannerSlides || [],
+                nationalSectionTitle: values.nationalSectionTitle || "",
+                nationalSectionCategory: values.nationalSectionCategory || "",
             };
             
             await setDoc(contentDocRef, dataToSave, { merge: true });
@@ -147,10 +155,11 @@ export default function ManageContentPage() {
             <Form {...homepageForm}>
                 <form onSubmit={homepageForm.handleSubmit(onHomepageSubmit)} className="space-y-6">
                     <Tabs defaultValue="banner">
-                        <TabsList className="mb-4">
+                        <TabsList className="mb-4 grid w-full grid-cols-4">
                             <TabsTrigger value="banner">Banner Principal</TabsTrigger>
                             <TabsTrigger value="secondary-banner">Banner Secundario</TabsTrigger>
                             <TabsTrigger value="featured-books">Libros Destacados</TabsTrigger>
+                             <TabsTrigger value="national-section">Sección Nacional</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="banner">
@@ -218,6 +227,43 @@ export default function ManageContentPage() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
+
+                        <TabsContent value="national-section">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Sección de Libros Nacionales</CardTitle>
+                                    <CardDescription>Configura la sección que destaca libros de una región o categoría específica.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                     <FormField
+                                        control={homepageForm.control}
+                                        name="nationalSectionTitle"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Título de la Sección</FormLabel>
+                                                <FormControl><Input placeholder="Libros Ecuatorianos" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={homepageForm.control}
+                                        name="nationalSectionCategory"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Categoría a Mostrar</FormLabel>
+                                                <FormControl><Input placeholder="literatura-ecuatoriana" {...field} /></FormControl>
+                                                <FormDescription>
+                                                    Usa el "valor" de la categoría (ej: `literatura-ecuatoriana`).
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+
                     </Tabs>
 
                     <Separator className="my-6"/>

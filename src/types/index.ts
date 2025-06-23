@@ -1,3 +1,4 @@
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -143,6 +144,8 @@ export interface HomepageContent {
   bannerDataAiHint?: string;
   featuredBookIds: string[];
   secondaryBannerSlides?: SecondaryBannerSlide[];
+  nationalSectionTitle?: string;
+  nationalSectionCategory?: string;
 }
 
 export interface AboutUsTeamMember {
