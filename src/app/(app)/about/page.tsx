@@ -1,13 +1,24 @@
 // src/app/(app)/about/page.tsx
 "use client";
 
-import { BookHeart, Users, MapPinned, Sparkles, Loader2 } from 'lucide-react';
+import { BookHeart, Users, MapPinned, Sparkles, Loader2, Award, BookOpen, Globe, HeartHandshake } from 'lucide-react';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AboutUsContent } from '@/types';
+
+const iconMap: { [key: string]: React.ElementType } = {
+  BookHeart,
+  Users,
+  MapPinned,
+  Sparkles,
+  Award,
+  BookOpen,
+  Globe,
+  HeartHandshake,
+};
 
 export default function AboutPage() {
   const [content, setContent] = useState<AboutUsContent | null>(null);
@@ -40,6 +51,13 @@ export default function AboutPage() {
               { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
               { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
               { name: 'Sofía Torres', role: 'Encargada de Comunidad', imageUrl: 'https://placehold.co/200x200.png?text=Sofia', dataAiHint: 'woman community' },
+            ],
+            whyUsTitle: "¿Por Qué Alicia Libros?",
+            benefits: [
+              { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: 'BookHeart' },
+              { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: 'Users' },
+              { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: 'Sparkles' },
+              { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: 'MapPinned' },
             ]
           });
         }
@@ -103,20 +121,17 @@ export default function AboutPage() {
 
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">¿Por Qué Alicia Libros?</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">{content.whyUsTitle}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[
-              { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: BookHeart },
-              { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: Users },
-              { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: Sparkles },
-              { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: MapPinned },
-            ].map(benefit => (
+            {(content.benefits || []).map(benefit => {
+              const IconComponent = iconMap[benefit.icon] || BookHeart;
+              return (
               <div key={benefit.title} className="text-center p-6 bg-card rounded-lg shadow-sm hover:shadow-lg transition-shadow">
-                <benefit.icon className="h-12 w-12 text-primary mx-auto mb-4" />
+                <IconComponent className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="font-headline text-xl font-semibold mb-2 text-foreground">{benefit.title}</h3>
                 <p className="text-sm text-muted-foreground">{benefit.description}</p>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </section>

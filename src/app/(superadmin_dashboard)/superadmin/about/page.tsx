@@ -15,12 +15,20 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import type { AboutUsContent } from "@/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 const teamMemberSchema = z.object({
   name: z.string().min(2, "El nombre es requerido."),
   role: z.string().min(2, "El rol es requerido."),
   imageUrl: z.string().url("URL de imagen no válida."),
   dataAiHint: z.string().optional(),
+});
+
+const benefitSchema = z.object({
+  title: z.string().min(3, "El título es requerido."),
+  description: z.string().min(10, "La descripción es requerida."),
+  icon: z.string().min(2, "El ícono es requerido."),
 });
 
 const aboutUsFormSchema = z.object({
@@ -34,6 +42,8 @@ const aboutUsFormSchema = z.object({
   missionImageUrl: z.string().url("URL de imagen no válida."),
   missionDataAiHint: z.string().optional(),
   team: z.array(teamMemberSchema).optional(),
+  whyUsTitle: z.string().min(3, "El título de la sección es requerido."),
+  benefits: z.array(benefitSchema).optional(),
 });
 
 type AboutUsFormValues = z.infer<typeof aboutUsFormSchema>;
@@ -49,13 +59,30 @@ export default function ManageAboutPage() {
     resolver: zodResolver(aboutUsFormSchema),
     defaultValues: {
       team: [],
+      benefits: [],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: teamFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
     control: form.control,
     name: "team",
   });
+
+  const { fields: benefitFields, append: appendBenefit, remove: removeBenefit } = useFieldArray({
+    control: form.control,
+    name: "benefits",
+  });
+
+  const availableIcons = [
+    { value: 'BookHeart', label: 'Corazón de Libro (BookHeart)' },
+    { value: 'Users', label: 'Usuarios (Users)' },
+    { value: 'MapPinned', label: 'Mapa (MapPinned)' },
+    { value: 'Sparkles', label: 'Destellos (Sparkles)' },
+    { value: 'Award', label: 'Premio (Award)' },
+    { value: 'BookOpen', label: 'Libro Abierto (BookOpen)' },
+    { value: 'Globe', label: 'Globo (Globe)' },
+    { value: 'HeartHandshake', label: 'Apretón de Manos (HeartHandshake)' },
+  ];
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -124,19 +151,56 @@ export default function ManageAboutPage() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Sección de Equipo</CardTitle>
-                <Button type="button" variant="outline" onClick={() => append({ name: '', role: '', imageUrl: '', dataAiHint: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Miembro</Button>
+                <CardTitle>Sección "¿Por Qué Alicia Libros?"</CardTitle>
+                 <Button type="button" variant="outline" onClick={() => appendBenefit({ title: '', description: '', icon: 'BookHeart' })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Beneficio</Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fields.map((field, index) => (
+                <FormField control={form.control} name="whyUsTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Sección</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <Separator />
+                {benefitFields.map((field, index) => (
+                  <div key={field.id} className="p-4 border rounded-md space-y-3 relative">
+                     <h4 className="font-medium">Beneficio {index + 1}</h4>
+                     <FormField control={form.control} name={`benefits.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                     <FormField control={form.control} name={`benefits.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                     <FormField control={form.control} name={`benefits.${index}.icon`} render={({ field }) => ( 
+                        <FormItem>
+                          <FormLabel>Ícono</FormLabel>
+                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un ícono" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {availableIcons.map(icon => <SelectItem key={icon.value} value={icon.value}>{icon.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          <FormMessage />
+                        </FormItem> 
+                      )} />
+                    <Button type="button" variant="destructive" size="sm" onClick={() => removeBenefit(index)} className="absolute top-4 right-4"><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Sección de Equipo</CardTitle>
+                <Button type="button" variant="outline" onClick={() => appendTeamMember({ name: '', role: '', imageUrl: '', dataAiHint: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Miembro</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {teamFields.map((field, index) => (
                 <div key={field.id} className="p-4 border rounded-md space-y-3 relative">
                   <h4 className="font-medium">Miembro {index + 1}</h4>
                   <FormField control={form.control} name={`team.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name={`team.${index}.role`} render={({ field }) => ( <FormItem><FormLabel>Rol</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name={`team.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name={`team.${index}.dataAiHint`} render={({ field }) => ( <FormItem><FormLabel>Pista para IA (1-2 palabras)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                  <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)} className="absolute top-4 right-4"><Trash2 className="h-4 w-4" /></Button>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => removeTeamMember(index)} className="absolute top-4 right-4"><Trash2 className="h-4 w-4" /></Button>
                 </div>
               ))}
             </CardContent>

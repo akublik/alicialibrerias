@@ -146,6 +146,12 @@ export interface AboutUsTeamMember {
   dataAiHint: string;
 }
 
+export interface AboutUsBenefit {
+  title: string;
+  description: string;
+  icon: string;
+}
+
 export interface AboutUsContent {
   headerTitle: string;
   headerSubtitle: string;
@@ -157,4 +163,6 @@ export interface AboutUsContent {
   missionImageUrl: string;
   missionDataAiHint: string;
   team: AboutUsTeamMember[];
+  whyUsTitle: string;
+  benefits: AboutUsBenefit[];
 }
