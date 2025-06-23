@@ -170,4 +170,14 @@ export interface AboutUsContent {
   benefits: AboutUsBenefit[];
 }
 
-    
+export interface BookRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  bookTitle: string;
+  bookAuthor: string;
+  notes?: string;
+  status: 'pending' | 'reviewed' | 'rejected' | 'added';
+  createdAt: any; // Firestore Timestamp
+}

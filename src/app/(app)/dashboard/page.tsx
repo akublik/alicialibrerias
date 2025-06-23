@@ -15,14 +15,14 @@ import { Input } from "@/components/ui/input";
 import { placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User, Order } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2 } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { format } from 'date-fns';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
@@ -48,6 +48,14 @@ const profileFormSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+const requestFormSchema = z.object({
+  bookTitle: z.string().min(2, { message: "El título es requerido." }),
+  bookAuthor: z.string().min(2, { message: "El autor es requerido." }),
+  notes: z.string().optional(),
+});
+type RequestFormValues = z.infer<typeof requestFormSchema>;
+
+
 interface UserData extends User {
   joinDate?: string;
   avatarUrl?: string;
@@ -62,6 +70,7 @@ export default function DashboardPage() {
 
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
@@ -74,6 +83,11 @@ export default function DashboardPage() {
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
+  });
+
+  const requestForm = useForm<RequestFormValues>({
+    resolver: zodResolver(requestFormSchema),
+    defaultValues: { bookTitle: "", bookAuthor: "", notes: "" },
   });
 
   // Effect to load user data from localStorage
@@ -263,7 +277,7 @@ export default function DashboardPage() {
     try {
       const result = await getBookRecommendations({
         userId: user.id,
-        readingHistory: [], // Only use explicit preferences
+        readingHistory: [],
         preferences: preferences,
       });
       
@@ -285,6 +299,29 @@ export default function DashboardPage() {
       setIsLoadingAi(false);
     }
   };
+
+  async function onBookRequestSubmit(values: RequestFormValues) {
+    if (!user || !db) return;
+    setIsRequesting(true);
+    try {
+        await addDoc(collection(db, "bookRequests"), {
+            userId: user.id,
+            userName: user.name,
+            userEmail: user.email,
+            bookTitle: values.bookTitle,
+            bookAuthor: values.bookAuthor,
+            notes: values.notes || "",
+            status: 'pending',
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: "Solicitud Enviada", description: "Hemos recibido tu solicitud. ¡Gracias!" });
+        requestForm.reset();
+    } catch (error: any) {
+        toast({ title: "Error al enviar", description: error.message, variant: "destructive" });
+    } finally {
+        setIsRequesting(false);
+    }
+  }
 
 
   if (!isAuthenticated || !user) {
@@ -490,7 +527,7 @@ export default function DashboardPage() {
                     Alicia te recomienda
                   </CardTitle>
                   <CardDescription>
-                    Nuestra IA utiliza tus preferencias de perfil, historial de compras y los gustos que nos describas aquí para encontrar tu próxima lectura ideal.
+                    Nuestra IA utiliza los gustos que nos describas aquí para encontrar tu próxima lectura ideal.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -505,7 +542,7 @@ export default function DashboardPage() {
                             className="mt-2"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Describe lo que buscas. Sé tan específico como quieras.
+                            Describe lo que buscas. Sé tan específico como quieras. La IA responderá únicamente a lo que escribas aquí.
                         </p>
                     </div>
                     <Button onClick={handleGetRecommendations} disabled={isLoadingAi} className="w-full sm:w-auto">
@@ -559,6 +596,32 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
+
+               <Card className="mt-6">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center">
+                        <HelpCircle className="mr-2 h-5 w-5 text-primary"/>
+                        ¿No encuentras un libro?
+                    </CardTitle>
+                    <CardDescription>
+                        Si hay algún libro que te gustaría ver en nuestra plataforma, dínoslo. Lo comunicaremos a las librerías.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...requestForm}>
+                        <form onSubmit={requestForm.handleSubmit(onBookRequestSubmit)} className="space-y-4">
+                            <FormField control={requestForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} placeholder="Ej: La vegetariana" /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={requestForm.control} name="bookAuthor" render={({ field }) => ( <FormItem><FormLabel>Autor(a)</FormLabel><FormControl><Input {...field} placeholder="Ej: Han Kang" /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={requestForm.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Cualquier detalle adicional, como la editorial o el año, es útil." /></FormControl><FormMessage /></FormItem> )}/>
+                            <Button type="submit" disabled={isRequesting} className="w-full sm:w-auto">
+                                {isRequesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                Enviar Solicitud
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+              </Card>
+
             </TabsContent>
 
           </Tabs>
