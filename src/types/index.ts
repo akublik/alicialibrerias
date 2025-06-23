@@ -47,6 +47,8 @@ export interface User {
   birthdate?: string; // Storing as ISO string
   favoriteCategories?: string[];
   favoriteTags?: string[];
+  avatarUrl?: string;
+  dataAiHint?: string;
 }
 
 export interface Review {
@@ -181,4 +183,9 @@ export interface BookRequest {
   notes?: string;
   status: 'pending' | 'responded';
   createdAt: any; // Firestore Timestamp
+}
+
+export interface LibraryAnalytics {
+  id: string; // This will be the libraryId
+  visitCount: number;
 }

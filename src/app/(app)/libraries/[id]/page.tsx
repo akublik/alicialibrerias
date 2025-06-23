@@ -12,7 +12,7 @@ import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit, setDoc, increment } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -89,6 +89,9 @@ export default function LibraryDetailsPage() {
                 const foundLibrary = { id: librarySnap.id, ...librarySnap.data() } as Library;
                 setLibrary(foundLibrary);
                 
+                // Log visit
+                logVisit(libraryId);
+
                 // Fetch books for this library
                 const booksRef = collection(db, "books");
                 const qBooks = query(booksRef, where("libraryId", "==", libraryId));
@@ -134,6 +137,24 @@ export default function LibraryDetailsPage() {
     fetchLibraryData();
   }, [libraryId]);
   
+  const logVisit = async (id: string) => {
+    if (!id || !db) return;
+    const sessionKey = `visited-library-${id}`;
+    if (sessionStorage.getItem(sessionKey)) {
+      return; // Already visited this session
+    }
+    
+    try {
+      const analyticsRef = doc(db, "libraryAnalytics", id);
+      await setDoc(analyticsRef, {
+        visitCount: increment(1)
+      }, { merge: true });
+      sessionStorage.setItem(sessionKey, 'true');
+    } catch (error) {
+      console.error("Error logging library visit:", error);
+    }
+  };
+
   const toggleFavorite = async () => {
     if (!user) {
         toast({

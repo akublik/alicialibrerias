@@ -3,13 +3,13 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Store, BarChart3, Loader2, BookCopy, ShoppingCart, PackageOpen, Heart, TrendingUp } from "lucide-react";
+import { Users, Store, BarChart3, Loader2, BookCopy, ShoppingCart, PackageOpen, Heart, TrendingUp, Eye, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
-import type { Library, Order, User, Book } from "@/types";
+import type { Library, Order, User, Book, LibraryAnalytics } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -54,6 +54,7 @@ export default function SuperAdminDashboardPage() {
   const [allLibraries, setAllLibraries] = useState<Library[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [libraryAnalytics, setLibraryAnalytics] = useState<LibraryAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isApproving, setIsApproving] = useState<string | null>(null);
   const { toast } = useToast();
@@ -71,6 +72,7 @@ export default function SuperAdminDashboardPage() {
       { ref: collection(db, "libraries"), setter: setAllLibraries },
       { ref: collection(db, "orders"), setter: setAllOrders },
       { ref: collection(db, "books"), setter: setAllBooks },
+      { ref: collection(db, "libraryAnalytics"), setter: setLibraryAnalytics },
     ];
     
     let loadedCount = 0;
@@ -199,6 +201,44 @@ export default function SuperAdminDashboardPage() {
     return allLibraries.filter(lib => lib.isActive === false || lib.isActive === undefined);
   }, [allLibraries]);
 
+  const topVisitedLibraries = useMemo(() => {
+    if (isLoading || !libraryAnalytics.length || !allLibraries.length) return [];
+    return libraryAnalytics
+        .map(analytic => {
+            const library = allLibraries.find(lib => lib.id === analytic.id);
+            return {
+                id: analytic.id,
+                visitCount: analytic.visitCount,
+                name: library?.name || 'Librería Desconocida',
+                imageUrl: library?.imageUrl
+            };
+        })
+        .sort((a, b) => b.visitCount - a.visitCount)
+        .slice(0, 5);
+  }, [libraryAnalytics, allLibraries, isLoading]);
+
+  const topReaders = useMemo(() => {
+    if (isLoading || !allUsers.length || !allOrders.length) return [];
+    
+    const ordersByUser = allOrders.reduce((acc, order) => {
+        acc[order.buyerId] = (acc[order.buyerId] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(ordersByUser)
+        .map(([userId, orderCount]) => {
+            const user = allUsers.find(u => u.id === userId);
+            return {
+                userId,
+                orderCount,
+                name: user?.name || 'Usuario Desconocido',
+                avatarUrl: user?.avatarUrl,
+            };
+        })
+        .sort((a, b) => b.orderCount - a.orderCount)
+        .slice(0, 5);
+  }, [allUsers, allOrders, isLoading]);
+
   const handleApproveLibrary = async (libraryId: string) => {
     if (!db) return;
     setIsApproving(libraryId);
@@ -322,6 +362,62 @@ export default function SuperAdminDashboardPage() {
           </Card>
           
           <div className="space-y-8">
+             <Card className="shadow-lg">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Eye className="h-5 w-5"/>Librerías más Visitadas</CardTitle>
+                   <CardDescription>Ranking por visitas a la página de detalle.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                 {isLoading ? (
+                    <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : topVisitedLibraries.length > 0 ? (
+                    <Table>
+                      <TableBody>
+                        {topVisitedLibraries.map(lib => (
+                          <TableRow key={lib.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                <span className="font-medium">{lib.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">{lib.visitCount} visitas</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (<p className="p-4 text-center text-sm text-muted-foreground">Aún no hay datos de visitas.</p>)}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Trophy className="h-5 w-5"/>Top 5 Lectores</CardTitle>
+                   <CardDescription>Ranking por número de pedidos realizados.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                 {isLoading ? (
+                    <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : topReaders.length > 0 ? (
+                    <Table>
+                      <TableBody>
+                        {topReaders.map(reader => (
+                          <TableRow key={reader.userId}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Image src={reader.avatarUrl || 'https://placehold.co/40x40.png'} alt={`Avatar de ${reader.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                <span className="font-medium">{reader.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">{reader.orderCount} pedidos</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (<p className="p-4 text-center text-sm text-muted-foreground">No hay suficientes datos de pedidos.</p>)}
+              </CardContent>
+            </Card>
+
             <Card className="shadow-lg">
               <CardHeader>
                   <CardTitle className="flex items-center gap-2"><Store className="h-5 w-5"/>Top 5 Librerías</CardTitle>
