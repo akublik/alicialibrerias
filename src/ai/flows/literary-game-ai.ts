@@ -17,12 +17,36 @@ const LiteraryGamesAIInputSchema = z.object({
 });
 export type LiteraryGamesAIInput = z.infer<typeof LiteraryGamesAIInputSchema>;
 
-const LiteraryGamesAIOutputSchema = z.object({
-  gameTitle: z.string().describe('The title of the generated literary game.'),
-  gameDescription: z.string().describe('A description of the literary game, including rules and objectives.'),
-  gameInstructions: z.string().describe('Step-by-step instructions on how to play the game.'),
+// Schema for text-based games
+const GameTextSchema = z.object({
+    type: z.literal('text').describe("El tipo de juego, para juegos basados en texto."),
+    title: z.string().describe('El título del juego literario.'),
+    description: z.string().describe('Una descripción del juego literario, incluyendo reglas y objetivos.'),
+    instructions: z.string().describe('Instrucciones paso a paso sobre cómo jugar.'),
 });
+
+// Schema for quiz-based games
+const QuizQuestionSchema = z.object({
+    question: z.string().describe("El texto de la pregunta de trivia."),
+    options: z.array(z.string()).length(4).describe("Un array de 4 posibles respuestas (opciones)."),
+    correctAnswer: z.string().describe("La respuesta correcta de entre las opciones."),
+    rationale: z.string().optional().describe("Una breve explicación de por qué la respuesta es correcta."),
+});
+
+const QuizGameSchema = z.object({
+    type: z.literal('quiz').describe("El tipo de juego, para juegos de trivia o cuestionarios."),
+    title: z.string().describe('El título del juego de trivia.'),
+    description: z.string().describe('Una breve introducción o descripción del juego de trivia.'),
+    questions: z.array(QuizQuestionSchema).min(3).max(10).describe("Una lista de 3 a 10 preguntas para el juego."),
+});
+
+// Discriminated union for the output
+const LiteraryGamesAIOutputSchema = z.discriminatedUnion("type", [
+    GameTextSchema,
+    QuizGameSchema
+]);
 export type LiteraryGamesAIOutput = z.infer<typeof LiteraryGamesAIOutputSchema>;
+
 
 export async function literaryGamesAI(input: LiteraryGamesAIInput): Promise<LiteraryGamesAIOutput> {
   return literaryGamesAIFlow(input);
@@ -32,13 +56,18 @@ const prompt = ai.definePrompt({
   name: 'literaryGamesAIPrompt',
   input: {schema: LiteraryGamesAIInputSchema},
   output: {schema: LiteraryGamesAIOutputSchema},
-  prompt: `You are a literary game designer. Generate a literary game based on the following criteria:
+  prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
 
-Game Type: {{{gameType}}}
-Theme: {{{theme}}}
-Complexity: {{{complexity}}}
+Basado en la siguiente solicitud, genera un juego literario.
 
-Provide the game title, a description of the game including rules and objectives, and step-by-step instructions on how to play the game.`,
+Tipo de Juego: {{{gameType}}}
+Tema: {{{theme}}}
+Complejidad: {{{complexity}}}
+
+- Si el tipo de juego es "Trivia", "Cuestionario", "Quiz" o "Adivinanzas", genera un juego de tipo 'quiz'. Debe tener un título, una descripción y una lista de 5 a 10 preguntas. Cada pregunta debe tener 4 opciones, una respuesta correcta y una explicación breve (rationale) de la respuesta.
+- Para cualquier otro tipo de juego, genera un juego de tipo 'text'. Debe tener un título, una descripción con reglas y unas instrucciones.
+
+Asegúrate de que el resultado se ajuste al esquema de salida JSON proporcionado.`,
 });
 
 const literaryGamesAIFlow = ai.defineFlow(
