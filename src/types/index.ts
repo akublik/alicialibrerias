@@ -178,6 +178,6 @@ export interface BookRequest {
   bookTitle: string;
   bookAuthor: string;
   notes?: string;
-  status: 'pending' | 'reviewed' | 'rejected' | 'added';
+  status: 'pending' | 'responded';
   createdAt: any; // Firestore Timestamp
 }

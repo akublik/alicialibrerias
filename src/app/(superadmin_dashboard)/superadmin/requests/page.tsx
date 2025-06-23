@@ -17,9 +17,7 @@ import { es } from 'date-fns/locale';
 
 const statusTranslations: Record<BookRequest['status'], string> = {
   pending: 'Pendiente',
-  reviewed: 'Revisada',
-  rejected: 'Rechazada',
-  added: 'Añadida',
+  responded: 'Respondida',
 };
 
 export default function ManageBookRequestsPage() {
@@ -79,14 +77,12 @@ export default function ManageBookRequestsPage() {
     }
   };
   
-  const statusOptions: BookRequest['status'][] = ['pending', 'reviewed', 'rejected', 'added'];
+  const statusOptions: BookRequest['status'][] = ['pending', 'responded'];
   
   const getStatusVariant = (status: BookRequest['status']) => {
     switch (status) {
       case 'pending': return 'outline';
-      case 'reviewed': return 'default';
-      case 'added': return 'secondary';
-      case 'rejected': return 'destructive';
+      case 'responded': return 'secondary';
       default: return 'outline';
     }
   };
@@ -141,7 +137,7 @@ export default function ManageBookRequestsPage() {
                     <TableCell>
                        <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant={getStatusVariant(req.status)} size="sm" className="w-24 justify-center" disabled={isUpdating === req.id}>
+                            <Button variant={getStatusVariant(req.status)} size="sm" className="w-28 justify-center" disabled={isUpdating === req.id}>
                               {isUpdating === req.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                               {statusTranslations[req.status]}
                             </Button>
