@@ -76,17 +76,6 @@ export default function DashboardPage() {
     resolver: zodResolver(profileFormSchema),
   });
 
-  const readingHistory = useMemo(() => {
-    if (!orders || orders.length === 0) return [];
-    const bookTitles = new Set<string>();
-    orders.forEach(order => {
-      order.items.forEach(item => {
-        bookTitles.add(item.title);
-      });
-    });
-    return Array.from(bookTitles);
-  }, [orders]);
-
   // Effect to load user data from localStorage
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
@@ -258,10 +247,10 @@ export default function DashboardPage() {
 
   const handleGetRecommendations = async () => {
     if (!user) return;
-    if (!preferences.trim() && readingHistory.length === 0 && (!user.favoriteCategories || user.favoriteCategories.length === 0)) {
+    if (!preferences.trim()) {
       toast({
         title: "Más información, por favor",
-        description: "Escribe tus preferencias o realiza una compra para que podamos generar recomendaciones.",
+        description: "Escribe tus preferencias para que podamos generar recomendaciones.",
         variant: "destructive",
       });
       return;
@@ -274,8 +263,8 @@ export default function DashboardPage() {
     try {
       const result = await getBookRecommendations({
         userId: user.id,
-        readingHistory: readingHistory,
-        preferences: `Géneros favoritos: ${user.favoriteCategories?.join(', ') || 'ninguno'}. Temas preferidos: ${user.favoriteTags?.join(', ') || 'ninguno'}. Preferencias adicionales del usuario: ${preferences}`,
+        readingHistory: [], // Only use explicit preferences
+        preferences: preferences,
       });
       
       const foundBookDetails = result.foundInInventory
@@ -516,7 +505,7 @@ export default function DashboardPage() {
                             className="mt-2"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Tu historial de compras y tus géneros favoritos se incluyen automáticamente.
+                            Describe lo que buscas. Sé tan específico como quieras.
                         </p>
                     </div>
                     <Button onClick={handleGetRecommendations} disabled={isLoadingAi} className="w-full sm:w-auto">
