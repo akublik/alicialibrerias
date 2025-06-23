@@ -41,10 +41,10 @@ const homepageContentFormSchema = z.object({
   bannerTitle: z.string().min(3, "El título es requerido."),
   bannerSubtitle: z.string().min(10, "El subtítulo es requerido."),
   bannerImageUrl: z.string().url({ message: "Debe ser una URL válida." }).optional().or(z.literal('')),
-  featuredBookIds: z.array(z.string()).max(4, "Puedes seleccionar hasta 4 libros.").optional(),
+  featuredBookIds: z.array(z.string()).max(5, "Puedes seleccionar hasta 5 libros.").optional(),
   secondaryBannerSlides: z.array(secondaryBannerSlideSchema).max(4, "Puedes tener hasta 4 slides.").optional(),
   nationalSectionTitle: z.string().optional(),
-  nationalSectionCategory: z.string().optional(),
+  nationalBookIds: z.array(z.string()).max(10, "Puedes seleccionar hasta 10 libros.").optional(),
 });
 type HomepageContentFormValues = z.infer<typeof homepageContentFormSchema>;
 
@@ -66,7 +66,7 @@ export default function ManageContentPage() {
             featuredBookIds: [],
             secondaryBannerSlides: [],
             nationalSectionTitle: "Libros Ecuatorianos",
-            nationalSectionCategory: "literatura-ecuatoriana",
+            nationalBookIds: [],
         }
     });
 
@@ -94,7 +94,7 @@ export default function ManageContentPage() {
                         featuredBookIds: data.featuredBookIds || [],
                         secondaryBannerSlides: data.secondaryBannerSlides || [],
                         nationalSectionTitle: data.nationalSectionTitle || "Libros Ecuatorianos",
-                        nationalSectionCategory: data.nationalSectionCategory || "literatura-ecuatoriana",
+                        nationalBookIds: data.nationalBookIds || [],
                     });
                 }
 
@@ -136,7 +136,7 @@ export default function ManageContentPage() {
                 featuredBookIds: values.featuredBookIds || [],
                 secondaryBannerSlides: values.secondaryBannerSlides || [],
                 nationalSectionTitle: values.nationalSectionTitle || "",
-                nationalSectionCategory: values.nationalSectionCategory || "",
+                nationalBookIds: values.nationalBookIds || [],
             };
             
             await setDoc(contentDocRef, dataToSave, { merge: true });
@@ -177,7 +177,7 @@ export default function ManageContentPage() {
                                     <FormField control={homepageForm.control} name="bannerTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Banner</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     <FormField control={homepageForm.control} name="bannerSubtitle" render={({ field }) => ( <FormItem><FormLabel>Subtítulo del Banner</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     {homepageForm.watch('bannerImageUrl') && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={homepageForm.watch('bannerImageUrl')!} alt="Banner actual" layout="fill" objectFit="cover" /></div>}
-                                    <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen del Banner</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                    <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen del Banner</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -192,10 +192,10 @@ export default function ManageContentPage() {
                                     {secondaryBannerFields.map((field, index) => (
                                         <div key={field.id} className="p-4 border rounded-md relative space-y-3">
                                             <h4 className="font-medium">Diapositiva {index + 1}</h4>
-                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
                                              <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                              <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtítulo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.linkUrl`} render={({ field }) => ( <FormItem><FormLabel>Enlace (URL)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.linkUrl`} render={({ field }) => ( <FormItem><FormLabel>Enlace (URL)</FormLabel><FormControl><Input {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
                                             <Button type="button" variant="destructive" size="sm" onClick={() => removeSecondaryBanner(index)} className="absolute top-2 right-2">
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
@@ -212,7 +212,7 @@ export default function ManageContentPage() {
 
                         <TabsContent value="featured-books">
                             <Card>
-                                <CardHeader><CardTitle>Libros Destacados</CardTitle><CardDescription>Selecciona hasta 4 libros para mostrar en la sección de destacados.</CardDescription></CardHeader>
+                                <CardHeader><CardTitle>Libros Destacados</CardTitle><CardDescription>Selecciona hasta 5 libros para mostrar en la sección de destacados de la página principal.</CardDescription></CardHeader>
                                 <CardContent>
                                     <FormField
                                         control={homepageForm.control}
@@ -240,7 +240,7 @@ export default function ManageContentPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Sección de Libros Nacionales</CardTitle>
-                                    <CardDescription>Configura la sección que destaca libros de una región o categoría específica.</CardDescription>
+                                    <CardDescription>Configura la sección que destaca libros de una región o tema específico (ej. "Joyas Ecuatorianas").</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                      <FormField
@@ -256,13 +256,20 @@ export default function ManageContentPage() {
                                     />
                                      <FormField
                                         control={homepageForm.control}
-                                        name="nationalSectionCategory"
+                                        name="nationalBookIds"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Categoría a Mostrar</FormLabel>
-                                                <FormControl><Input placeholder="literatura-ecuatoriana" {...field} /></FormControl>
+                                                <FormLabel>Libros para la Sección Nacional</FormLabel>
+                                                <FormControl>
+                                                    <MultiSelect
+                                                        placeholder="Selecciona hasta 10 libros..."
+                                                        options={bookOptions}
+                                                        value={field.value || []}
+                                                        onChange={field.onChange}
+                                                    />
+                                                </FormControl>
                                                 <FormDescription>
-                                                    Usa el "valor" de la categoría (ej: `literatura-ecuatoriana`).
+                                                    Selecciona los libros que aparecerán en esta sección.
                                                 </FormDescription>
                                                 <FormMessage />
                                             </FormItem>

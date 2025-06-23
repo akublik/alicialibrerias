@@ -145,7 +145,7 @@ export interface HomepageContent {
   featuredBookIds: string[];
   secondaryBannerSlides?: SecondaryBannerSlide[];
   nationalSectionTitle?: string;
-  nationalSectionCategory?: string;
+  nationalBookIds?: string[];
 }
 
 export interface AboutUsTeamMember {

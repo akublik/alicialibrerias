@@ -37,7 +37,7 @@ export default function HomePage() {
         const contentDocSnap = await getDoc(contentDocRef);
         
         let featuredBookIds: string[] = [];
-        let categoryToFetch = 'literatura-ecuatoriana'; // Default category
+        let nationalBookIds: string[] = [];
 
         if (contentDocSnap.exists()) {
           const contentData = contentDocSnap.data() as HomepageContent;
@@ -49,7 +49,7 @@ export default function HomePage() {
             featuredBookIds: contentData.featuredBookIds || [],
             secondaryBannerSlides: contentData.secondaryBannerSlides || [],
             nationalSectionTitle: contentData.nationalSectionTitle || "Libros Nacionales",
-            nationalSectionCategory: contentData.nationalSectionCategory || "literatura-ecuatoriana",
+            nationalBookIds: contentData.nationalBookIds || [],
           });
           if (contentData.featuredBookIds && contentData.featuredBookIds.length > 0) {
             featuredBookIds = contentData.featuredBookIds;
@@ -57,8 +57,8 @@ export default function HomePage() {
           if (contentData.nationalSectionTitle) {
             setNationalSectionTitle(contentData.nationalSectionTitle);
           }
-          if (contentData.nationalSectionCategory) {
-            categoryToFetch = contentData.nationalSectionCategory;
+          if (contentData.nationalBookIds && contentData.nationalBookIds.length > 0) {
+            nationalBookIds = contentData.nationalBookIds;
           }
         } else {
            // Default banner if content doc doesn't exist
@@ -71,34 +71,36 @@ export default function HomePage() {
              secondaryBannerSlides: [],
            });
         }
+        
+        const booksRef = collection(db, "books");
 
-        // --- Fetch Featured Books ---
+        // --- Fetch All Books needed in one go if possible ---
+        const allNeededIds = [...new Set([...featuredBookIds, ...nationalBookIds])];
+        let allBooks: Book[] = [];
+        if (allNeededIds.length > 0) {
+            const booksQuery = query(booksRef, where(documentId(), "in", allNeededIds));
+            const booksSnapshot = await getDocs(booksQuery);
+            allBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+        }
+
+        // --- Populate Featured Books ---
         if (featuredBookIds.length > 0) {
-          const booksRef = collection(db, "books");
-          // Firestore 'in' query is limited to 30 elements, but we only need 4.
-          const booksQuery = query(booksRef, where(documentId(), "in", featuredBookIds));
-          const booksSnapshot = await getDocs(booksQuery);
-          const books = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-          // Preserve order from featuredBookIds
-          const orderedBooks = featuredBookIds.map(id => books.find(b => b.id === id)).filter(Boolean) as Book[];
+          const orderedBooks = featuredBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
           setFeaturedBooks(orderedBooks);
         } else {
-           // Fallback if no featured books are set
            const fallbackBooksQuery = query(collection(db, "books"), limit(4));
            const booksSnapshot = await getDocs(fallbackBooksQuery);
            const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
            setFeaturedBooks(books);
         }
 
-        // Fetch National Books (using dynamic category)
-        const nationalBooksQuery = query(
-          collection(db, "books"),
-          where("categories", "array-contains", categoryToFetch),
-          limit(5)
-        );
-        const nationalBooksSnapshot = await getDocs(nationalBooksQuery);
-        const nationalBooksData: Book[] = nationalBooksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-        setNationalBooks(nationalBooksData);
+        // --- Populate National Books ---
+        if (nationalBookIds.length > 0) {
+          const orderedNationalBooks = nationalBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
+          setNationalBooks(orderedNationalBooks);
+        } else {
+          setNationalBooks([]);
+        }
 
       } catch (error) {
         console.error("Error fetching homepage data:", error);
@@ -249,7 +251,7 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-             <p className="text-center text-muted-foreground">No hay libros destacados para tu región en este momento.</p>
+             <p className="text-center text-muted-foreground">No hay libros seleccionados para esta sección.</p>
           )}
         </div>
       </section>
