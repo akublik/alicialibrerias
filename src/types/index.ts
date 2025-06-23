@@ -32,6 +32,7 @@ export interface Library {
   facebook?: string;
   tiktok?: string;
   isActive?: boolean;
+  createdAt?: any; // Firestore Timestamp
 }
 
 export interface User {

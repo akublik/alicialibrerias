@@ -2,17 +2,23 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Store, BarChart3, Loader2 } from "lucide-react";
+import { Users, Store, BarChart3, Loader2, BookCopy, ShoppingCart, PackageOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-import type { Library } from "@/types";
+import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import type { Library, Order, User, Book } from "@/types";
+import { useToast } from "@/hooks/use-toast";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface GlobalStats {
   userCount: number;
   libraryCount: number;
   totalSales: number;
+  totalBooks: number;
+  totalOrders: number;
 }
 
 const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean, description?: string }) => {
@@ -40,9 +46,13 @@ const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title:
 
 
 export default function SuperAdminDashboardPage() {
-  const [stats, setStats] = useState<GlobalStats>({ userCount: 0, libraryCount: 0, totalSales: 0 });
-  const [librarySales, setLibrarySales] = useState<{ id: string; name: string; sales: number, imageUrl?: string }[]>([]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [allLibraries, setAllLibraries] = useState<Library[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isApproving, setIsApproving] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!db) {
@@ -51,47 +61,77 @@ export default function SuperAdminDashboardPage() {
     }
 
     const unsubscribes: (() => void)[] = [];
+    const collections = [
+      { ref: collection(db, "users"), setter: setAllUsers },
+      { ref: collection(db, "libraries"), setter: setAllLibraries },
+      { ref: collection(db, "orders"), setter: setAllOrders },
+      { ref: collection(db, "books"), setter: setAllBooks },
+    ];
 
-    const usersRef = collection(db, "users");
-    const unsubUsers = onSnapshot(usersRef, (snapshot) => {
-      setStats(prev => ({ ...prev, userCount: snapshot.size }));
-    });
-    unsubscribes.push(unsubUsers);
-    
-    const librariesRef = collection(db, "libraries");
-    const unsubLibraries = onSnapshot(librariesRef, (librarySnapshot) => {
-      const allLibraries = librarySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
-      setStats(prev => ({ ...prev, libraryCount: librarySnapshot.size }));
-
-      const ordersRef = collection(db, "orders");
-      const unsubOrders = onSnapshot(ordersRef, (orderSnapshot) => {
-        const total = orderSnapshot.docs.reduce((sum, doc) => sum + (doc.data().totalPrice || 0), 0);
-        
-        const salesByLibrary: { [key: string]: number } = {};
-        orderSnapshot.forEach(doc => {
-          const order = doc.data();
-          if (order.libraryId && order.totalPrice) {
-            salesByLibrary[order.libraryId] = (salesByLibrary[order.libraryId] || 0) + order.totalPrice;
-          }
-        });
-
-        const processedSales = allLibraries.map(lib => ({
-          id: lib.id,
-          name: lib.name,
-          imageUrl: lib.imageUrl,
-          sales: salesByLibrary[lib.id] || 0,
-        })).sort((a, b) => b.sales - a.sales);
-
-        setStats(prev => ({ ...prev, totalSales: total }));
-        setLibrarySales(processedSales);
+    let loadedCollections = 0;
+    collections.forEach(({ ref, setter }) => {
+      const unsubscribe = onSnapshot(ref, (snapshot) => {
+        setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+        loadedCollections++;
+        if (loadedCollections === collections.length) {
+          setIsLoading(false);
+        }
+      }, (error) => {
+        console.error(`Error fetching ${ref.path}:`, error);
         setIsLoading(false);
       });
-      unsubscribes.push(unsubOrders);
-    }, () => setIsLoading(false));
-    unsubscribes.push(unsubLibraries);
+      unsubscribes.push(unsubscribe);
+    });
 
     return () => unsubscribes.forEach(unsub => unsub());
   }, []);
+  
+  const stats: GlobalStats = useMemo(() => {
+    const totalSales = allOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+    return {
+      userCount: allUsers.length,
+      libraryCount: allLibraries.length,
+      totalSales,
+      totalBooks: allBooks.length,
+      totalOrders: allOrders.length,
+    };
+  }, [allUsers, allLibraries, allOrders, allBooks]);
+
+  const librarySales = useMemo(() => {
+    const salesByLibrary: { [key: string]: number } = {};
+    allOrders.forEach(order => {
+      if (order.libraryId && order.totalPrice) {
+        salesByLibrary[order.libraryId] = (salesByLibrary[order.libraryId] || 0) + order.totalPrice;
+      }
+    });
+    return allLibraries.map(lib => ({
+      id: lib.id,
+      name: lib.name,
+      imageUrl: lib.imageUrl,
+      sales: salesByLibrary[lib.id] || 0,
+    })).sort((a, b) => b.sales - a.sales);
+  }, [allLibraries, allOrders]);
+  
+  const pendingLibraries = useMemo(() => {
+    return allLibraries.filter(lib => lib.isActive === false || lib.isActive === undefined);
+  }, [allLibraries]);
+
+  const handleApproveLibrary = async (libraryId: string) => {
+    if (!db) return;
+    setIsApproving(libraryId);
+    const libraryRef = doc(db, "libraries", libraryId);
+    try {
+        await updateDoc(libraryRef, { isActive: true });
+        toast({
+            title: "Librería Aprobada",
+            description: "La librería ahora está activa en la plataforma."
+        });
+    } catch (error: any) {
+        toast({ title: "Error al aprobar", description: error.message, variant: "destructive" });
+    } finally {
+        setIsApproving(null);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fadeIn">
@@ -104,10 +144,53 @@ export default function SuperAdminDashboardPage() {
         </p>
       </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-        <StatCard title="Usuarios Totales" value={stats.userCount} icon={Users} isLoading={isLoading} description="Lectores, librerías y admins." />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
+        <StatCard title="Usuarios Totales" value={stats.userCount} icon={Users} isLoading={isLoading} description="Lectores y admins." />
         <StatCard title="Librerías Registradas" value={stats.libraryCount} icon={Store} isLoading={isLoading} />
-        <StatCard title="Ventas Totales Históricas" value={`$${stats.totalSales.toFixed(2)}`} icon={BarChart3} isLoading={isLoading} />
+        <StatCard title="Libros en Catálogo" value={stats.totalBooks} icon={BookCopy} isLoading={isLoading} />
+        <StatCard title="Pedidos Globales" value={stats.totalOrders} icon={ShoppingCart} isLoading={isLoading} />
+        <StatCard title="Ventas Globales" value={`$${stats.totalSales.toFixed(2)}`} icon={BarChart3} isLoading={isLoading} />
+      </div>
+
+       <div className="mt-8">
+          <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">Aprobaciones Pendientes</h2>
+          <Card className="shadow-lg">
+              <CardContent className="p-0">
+                  {isLoading ? (
+                      <div className="flex justify-center items-center py-16"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+                  ) : pendingLibraries.length > 0 ? (
+                      <Table>
+                          <TableHeader><TableRow><TableHead>Librería</TableHead><TableHead>Email</TableHead><TableHead>Fecha Registro</TableHead><TableHead className="text-right">Acción</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                              {pendingLibraries.map(lib => (
+                                  <TableRow key={lib.id}>
+                                      <TableCell>
+                                          <div className="flex items-center gap-3">
+                                              <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                              <span className="font-medium">{lib.name}</span>
+                                          </div>
+                                      </TableCell>
+                                      <TableCell>{lib.email}</TableCell>
+                                      <TableCell>{lib.createdAt?.toDate ? format(lib.createdAt.toDate(), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</TableCell>
+                                      <TableCell className="text-right">
+                                          <Button onClick={() => handleApproveLibrary(lib.id)} disabled={isApproving === lib.id} size="sm">
+                                              {isApproving === lib.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                              Aprobar
+                                          </Button>
+                                      </TableCell>
+                                  </TableRow>
+                              ))}
+                          </TableBody>
+                      </Table>
+                  ) : (
+                      <div className="p-6 text-center text-muted-foreground flex flex-col items-center gap-2">
+                        <PackageOpen className="h-10 w-10"/>
+                        <p className="font-medium">¡Todo al día!</p>
+                        <p className="text-sm">No hay librerías pendientes de aprobación.</p>
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
       </div>
 
        <div className="mt-8">
