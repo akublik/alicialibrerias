@@ -1,15 +1,12 @@
-
 // src/app/(app)/page.tsx
 "use client";
 import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
-import { SearchBar } from "@/components/SearchBar";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
-import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState, useRef } from "react";
-import type { Book, Library, HomepageContent, SecondaryBannerSlide } from "@/types";
+import type { Book, HomepageContent, SecondaryBannerSlide } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
@@ -37,7 +34,7 @@ export default function HomePage() {
         const contentDocSnap = await getDoc(contentDocRef);
         
         let featuredBookIds: string[] = [];
-        let categoryToFetch = 'literatura-ecuatoriana'; // Default category
+        let nationalBookIds: string[] = [];
 
         if (contentDocSnap.exists()) {
           const contentData = contentDocSnap.data() as HomepageContent;
@@ -49,7 +46,7 @@ export default function HomePage() {
             featuredBookIds: contentData.featuredBookIds || [],
             secondaryBannerSlides: contentData.secondaryBannerSlides || [],
             nationalSectionTitle: contentData.nationalSectionTitle || "Libros Nacionales",
-            nationalSectionCategory: contentData.nationalSectionCategory || "literatura-ecuatoriana",
+            nationalBookIds: contentData.nationalBookIds || [],
           });
           if (contentData.featuredBookIds && contentData.featuredBookIds.length > 0) {
             featuredBookIds = contentData.featuredBookIds;
@@ -57,8 +54,8 @@ export default function HomePage() {
           if (contentData.nationalSectionTitle) {
             setNationalSectionTitle(contentData.nationalSectionTitle);
           }
-          if (contentData.nationalSectionCategory) {
-            categoryToFetch = contentData.nationalSectionCategory;
+          if (contentData.nationalBookIds && contentData.nationalBookIds.length > 0) {
+            nationalBookIds = contentData.nationalBookIds;
           }
         } else {
            // Default banner if content doc doesn't exist
@@ -71,34 +68,44 @@ export default function HomePage() {
              secondaryBannerSlides: [],
            });
         }
+        
+        const booksRef = collection(db, "books");
 
-        // --- Fetch Featured Books ---
+        // --- Fetch All Books needed in one go if possible ---
+        const allNeededIds = [...new Set([...featuredBookIds, ...nationalBookIds])];
+        let allBooks: Book[] = [];
+        if (allNeededIds.length > 0) {
+            const chunks: string[][] = [];
+            for (let i = 0; i < allNeededIds.length; i += 30) {
+                chunks.push(allNeededIds.slice(i, i + 30));
+            }
+            const bookPromises = chunks.map(chunk => getDocs(query(booksRef, where(documentId(), "in", chunk))));
+            const bookSnapshots = await Promise.all(bookPromises);
+            bookSnapshots.forEach(snapshot => {
+                snapshot.docs.forEach(doc => {
+                    allBooks.push({ id: doc.id, ...doc.data() } as Book);
+                });
+            });
+        }
+
+        // --- Populate Featured Books ---
         if (featuredBookIds.length > 0) {
-          const booksRef = collection(db, "books");
-          // Firestore 'in' query is limited to 30 elements, but we only need 4.
-          const booksQuery = query(booksRef, where(documentId(), "in", featuredBookIds));
-          const booksSnapshot = await getDocs(booksQuery);
-          const books = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-          // Preserve order from featuredBookIds
-          const orderedBooks = featuredBookIds.map(id => books.find(b => b.id === id)).filter(Boolean) as Book[];
+          const orderedBooks = featuredBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
           setFeaturedBooks(orderedBooks);
         } else {
-           // Fallback if no featured books are set
            const fallbackBooksQuery = query(collection(db, "books"), limit(4));
            const booksSnapshot = await getDocs(fallbackBooksQuery);
            const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
            setFeaturedBooks(books);
         }
 
-        // Fetch National Books (using dynamic category)
-        const nationalBooksQuery = query(
-          collection(db, "books"),
-          where("categories", "array-contains", categoryToFetch),
-          limit(5)
-        );
-        const nationalBooksSnapshot = await getDocs(nationalBooksQuery);
-        const nationalBooksData: Book[] = nationalBooksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-        setNationalBooks(nationalBooksData);
+        // --- Populate National Books ---
+        if (nationalBookIds.length > 0) {
+          const orderedNationalBooks = nationalBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
+          setNationalBooks(orderedNationalBooks);
+        } else {
+          setNationalBooks([]);
+        }
 
       } catch (error) {
         console.error("Error fetching homepage data:", error);
@@ -108,10 +115,6 @@ export default function HomePage() {
     };
     fetchData();
   }, []);
-
-  const handleSearch = (term: string) => {
-    console.log("Searching for:", term);
-  };
 
   const platformBenefits = [
     { title: "Descubre Joyas Literarias", description: "Encuentra libros únicos de editoriales independientes y autores emergentes.", icon: BookHeart },
@@ -249,26 +252,8 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-             <p className="text-center text-muted-foreground">No hay libros destacados para tu región en este momento.</p>
+             <p className="text-center text-muted-foreground">No hay libros seleccionados para esta sección.</p>
           )}
-        </div>
-      </section>
-
-      {/* 4. Buscador Librerías */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">Encuentra tu Librería</h2>
-          <p className="text-center text-lg text-foreground/70 mb-8 max-w-xl mx-auto">
-            Busca entre decenas de librerías independientes y descubre tu próximo rincón literario favorito.
-          </p>
-          <SearchBar onSearch={handleSearch} className="max-w-2xl mx-auto" />
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoading ? (
-                <div className="sm:col-span-2 lg:col-span-3 flex justify-center items-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-            ) : null }
-          </div>
         </div>
       </section>
       
