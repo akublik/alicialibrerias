@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
@@ -73,6 +73,7 @@ export default function SuperAdminDashboardLayout({
     { title: "Gestionar Usuarios", href: "/superadmin/users", icon: Users },
     { title: "Gestionar Librerías", href: "/superadmin/libraries", icon: Store },
     { title: "Contenido Homepage", href: "/superadmin/content", icon: FilePenLine },
+    { title: "Gestionar 'Nosotros'", href: "/superadmin/about", icon: Info },
   ];
 
   return (

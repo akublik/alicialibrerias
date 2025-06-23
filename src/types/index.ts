@@ -138,3 +138,23 @@ export interface HomepageContent {
   featuredBookIds: string[];
   secondaryBannerSlides?: SecondaryBannerSlide[];
 }
+
+export interface AboutUsTeamMember {
+  name: string;
+  role: string;
+  imageUrl: string;
+  dataAiHint: string;
+}
+
+export interface AboutUsContent {
+  headerTitle: string;
+  headerSubtitle: string;
+  headerImageUrl: string;
+  headerDataAiHint: string;
+  missionTitle: string;
+  missionParagraph1: string;
+  missionParagraph2: string;
+  missionImageUrl: string;
+  missionDataAiHint: string;
+  team: AboutUsTeamMember[];
+}
