@@ -1,20 +1,21 @@
 // src/app/(superadmin_dashboard)/superadmin/users/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users } from "lucide-react";
+import { Loader2, Users, Gift } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { User } from "@/types";
+import type { User, Order } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
@@ -33,19 +34,64 @@ export default function ManageUsersPage() {
       return;
     }
     
-    const usersRef = collection(db, "users");
-    const unsubscribe = onSnapshot(usersRef, (snapshot) => {
+    let loadedUsers = false;
+    let loadedOrders = false;
+    
+    const checkLoadingDone = () => {
+        if (loadedUsers && loadedOrders) {
+            setIsLoading(false);
+        }
+    }
+
+    const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false);
+      loadedUsers = true;
+      checkLoadingDone();
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    const ordersUnsubscribe = onSnapshot(collection(db, "orders"), (snapshot) => {
+      const allOrders = snapshot.docs.map(doc => {
+         const data = doc.data();
+         return {
+            id: doc.id,
+            ...data,
+            totalPrice: data.totalPrice || 0,
+            buyerId: data.buyerId || '',
+         } as Order;
+      });
+      setOrders(allOrders);
+      loadedOrders = true;
+      checkLoadingDone();
+    }, (error) => {
+      console.error("Error fetching orders:", error);
+      toast({ title: "Error al cargar pedidos", variant: "destructive" });
+      setIsLoading(false);
+    });
+
+
+    return () => {
+        usersUnsubscribe();
+        ordersUnsubscribe();
+    };
   }, [toast]);
+
+  const userPoints = useMemo(() => {
+    const pointsMap = new Map<string, number>();
+    orders.forEach(order => {
+      if (order.buyerId && order.totalPrice) {
+        const points = Math.floor(order.totalPrice);
+        const currentPoints = pointsMap.get(order.buyerId) || 0;
+        pointsMap.set(order.buyerId, currentPoints + points);
+      }
+    });
+    return pointsMap;
+  }, [orders]);
+
 
   const handleStatusChange = async (user: User, newStatus: boolean) => {
     if (!db || !user.id || user.id === currentAdminId) return;
@@ -106,6 +152,7 @@ export default function ManageUsersPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Puntos</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -116,6 +163,12 @@ export default function ManageUsersPage() {
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">{user.role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 font-semibold text-primary">
+                        <Gift className="h-4 w-4" />
+                        {userPoints.get(user.id) || 0}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
