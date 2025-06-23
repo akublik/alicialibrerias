@@ -12,9 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
-import type { Book, Library, User } from "@/types";
-import { BookCard } from "@/components/BookCard";
+import { placeholderLibraries, placeholderBooks } from "@/lib/placeholders";
+import type { Book, Library, User, Order } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2 } from "lucide-react";
 import Image from "next/image";
@@ -23,10 +22,12 @@ import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { format } from 'date-fns';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { es } from 'date-fns/locale';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
@@ -57,6 +58,9 @@ export default function DashboardPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
   });
@@ -89,6 +93,40 @@ export default function DashboardPage() {
           avatarUrl: (userData as any).avatarUrl || "https://placehold.co/150x150.png",
           dataAiHint: (userData as any).dataAiHint || "user avatar",
         });
+
+        if (db) {
+            // Fetch Libraries for name mapping
+            const libUnsub = onSnapshot(collection(db, "libraries"), (snapshot) => {
+                const libMap = new Map<string, string>();
+                snapshot.forEach(doc => {
+                    libMap.set(doc.id, doc.data().name);
+                });
+                setLibraries(libMap);
+            });
+
+            // Fetch user's orders
+            const ordersRef = collection(db, "orders");
+            const q = query(ordersRef, where("buyerId", "==", userData.id));
+            const ordersUnsub = onSnapshot(q, (snapshot) => {
+                const userOrders: Order[] = [];
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    userOrders.push({
+                        id: doc.id,
+                        ...data,
+                        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
+                    } as Order);
+                });
+                userOrders.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
+                setOrders(userOrders);
+            });
+
+            return () => {
+                libUnsub();
+                ordersUnsub();
+            };
+        }
+
       } catch (e) {
         console.error("Error parsing user data from localStorage", e);
         handleLogout();
@@ -156,6 +194,9 @@ export default function DashboardPage() {
         const firestoreUpdateData: any = { ...updatedData };
         if (!firestoreUpdateData.birthdate) {
             delete firestoreUpdateData.birthdate;
+        } else {
+             // Ensure it's a string for Firestore if it's a Date object
+            firestoreUpdateData.birthdate = updatedData.birthdate;
         }
 
         await updateDoc(userRef, firestoreUpdateData);
@@ -186,8 +227,6 @@ export default function DashboardPage() {
     return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
   }
 
-  // Mock purchases
-  const mockPurchases: Book[] = placeholderBooks.slice(0, 2).map(b => ({...b, id: b.id + "-purchase"}));
   const mockFavoriteLibraries: Library[] = placeholderLibraries.slice(0, 2).map(l => ({...l, id: l.id + "-fav"}));
   const mockAiRecommendations: Book[] = placeholderBooks.slice(2, 4).map(b => ({...b, id: b.id + "-airec"}));
 
@@ -219,7 +258,7 @@ export default function DashboardPage() {
               <CardDescription>Miembro desde: {user.joinDate}</CardDescription>
                {user.birthdate && (
                 <CardDescription>
-                  Cumpleaños: {format(new Date(user.birthdate), "dd/MM/yyyy")}
+                  Cumpleaños: {format(new Date(user.birthdate), 'dd/MM/yyyy')}
                 </CardDescription>
               )}
             </CardHeader>
@@ -331,12 +370,33 @@ export default function DashboardPage() {
                   <CardTitle className="font-headline text-xl">Historial de Compras</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {mockPurchases.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {mockPurchases.map(book => <BookCard key={book.id} book={book} />)}
-                    </div>
+                  {orders.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Libro(s)</TableHead>
+                          <TableHead>Librería</TableHead>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead className="text-right">Monto</TableHead>
+                          <TableHead className="text-right">Puntos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {orders.map((order) => (
+                          <TableRow key={order.id}>
+                            <TableCell className="font-medium max-w-[200px] truncate" title={order.items.map(item => item.title).join(', ')}>
+                              {order.items.map(item => item.title).join(', ')}
+                            </TableCell>
+                            <TableCell>{libraries.get(order.libraryId) || 'Librería Desconocida'}</TableCell>
+                            <TableCell>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
+                            <TableCell className="text-right">${order.totalPrice.toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">+{Math.floor(order.totalPrice)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   ) : (
-                    <p className="text-muted-foreground">Aún no has realizado ninguna compra.</p>
+                    <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra.</p>
                   )}
                 </CardContent>
               </Card>
@@ -385,3 +445,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
