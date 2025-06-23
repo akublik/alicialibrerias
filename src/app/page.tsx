@@ -1,3 +1,4 @@
+
 // src/app/(app)/page.tsx
 "use client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
 import { LibraryCard } from "@/components/LibraryCard";
 import { useEffect, useState, useRef } from "react";
-import type { Book, Library, Author, HomepageContent, SecondaryBannerSlide } from "@/types";
+import type { Book, Library, HomepageContent, SecondaryBannerSlide } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
@@ -19,7 +20,8 @@ import Autoplay from "embla-carousel-autoplay";
 export default function HomePage() {
   const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
   const [featuredBooks, setFeaturedBooks] = useState<Book[]>([]);
-  const [featuredAuthors, setFeaturedAuthors] = useState<Author[]>([]);
+  const [nationalBooks, setNationalBooks] = useState<Book[]>([]);
+  const [nationalSectionTitle, setNationalSectionTitle] = useState("Libros Ecuatorianos");
   const [isLoading, setIsLoading] = useState(true);
   const autoplay = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
 
@@ -79,12 +81,15 @@ export default function HomePage() {
            setFeaturedBooks(books);
         }
 
-        // Fetch Authors
-        const authorsRef = collection(db, "authors");
-        const authorsQuery = query(authorsRef, limit(4));
-        const authorsSnapshot = await getDocs(authorsQuery);
-        const authors: Author[] = authorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Author));
-        setFeaturedAuthors(authors);
+        // Fetch National Books (Ecuadorian)
+        const nationalBooksQuery = query(
+          collection(db, "books"),
+          where("categories", "array-contains", "literatura-ecuatoriana"),
+          limit(5)
+        );
+        const nationalBooksSnapshot = await getDocs(nationalBooksQuery);
+        const nationalBooksData: Book[] = nationalBooksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+        setNationalBooks(nationalBooksData);
 
       } catch (error) {
         console.error("Error fetching homepage data:", error);
@@ -220,36 +225,22 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 3. Autores Destacados */}
+      {/* 3. Libros Nacionales */}
       <section className="py-16 bg-primary/5">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Autores Destacados</h2>
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">{nationalSectionTitle}</h2>
           {isLoading ? (
              <div className="flex justify-center items-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
-          ) : featuredAuthors.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-              {featuredAuthors.map((author) => (
-                <div key={author.id} className="text-center group">
-                  <div className="relative w-32 h-32 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden shadow-lg mb-4 border-4 border-primary/20 group-hover:border-primary transition-colors">
-                    {author.imageUrl && (
-                      <Image
-                        src={author.imageUrl}
-                        alt={author.name}
-                        layout="fill"
-                        objectFit="cover"
-                        data-ai-hint={author.dataAiHint}
-                      />
-                    )}
-                  </div>
-                  <h3 className="font-headline text-lg font-medium text-foreground group-hover:text-primary transition-colors">{author.name}</h3>
-                  <p className="text-xs text-muted-foreground px-2 line-clamp-2">{author.bio}</p>
-                </div>
+          ) : nationalBooks.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+              {nationalBooks.map((book) => (
+                <BookCard key={book.id} book={book} size="small" />
               ))}
             </div>
           ) : (
-             <p className="text-center text-muted-foreground">No hay autores destacados para mostrar.</p>
+             <p className="text-center text-muted-foreground">No hay libros destacados para tu región en este momento.</p>
           )}
         </div>
       </section>
