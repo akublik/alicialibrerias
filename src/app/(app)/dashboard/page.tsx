@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User, Order, BookRequest } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -90,7 +90,17 @@ export default function DashboardPage() {
     defaultValues: { bookTitle: "", bookAuthor: "", notes: "" },
   });
 
-  // Effect to load user data from localStorage
+  const handleLogout = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("aliciaLibros_user");
+    setIsAuthenticated(false);
+    setUser(null);
+    if (typeof window !== "undefined") {
+      router.push("/");
+    }
+  };
+
+  // Effect to load user data from localStorage and then listen for real-time updates
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     if (!authStatus) {
@@ -102,79 +112,88 @@ export default function DashboardPage() {
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (userDataString) {
       try {
-        const userData: User = JSON.parse(userDataString);
-        if (userData.role === 'library') {
+        const initialUserData: User = JSON.parse(userDataString);
+
+        if (initialUserData.role === 'library') {
             router.replace('/library-admin/dashboard');
             return;
         }
-        if (userData.role === 'superadmin') {
+        if (initialUserData.role === 'superadmin') {
             router.replace('/superadmin/dashboard');
             return;
         }
-        
-        let joinDateStr = "Miembro reciente";
-        if (userData.createdAt && (userData.createdAt as any).seconds) {
-            const joinDate = new Date((userData.createdAt as any).seconds * 1000);
-            joinDateStr = format(joinDate, "MMMM yyyy", { locale: es });
-            joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
+
+        if (!db || !initialUserData.id) {
+          console.error("DB connection or user ID missing.");
+          handleLogout();
+          return;
         }
 
-        setUser({
-          ...userData,
-          joinDate: joinDateStr,
-          avatarUrl: (userData as any).avatarUrl || "https://placehold.co/150x150.png",
-          dataAiHint: (userData as any).dataAiHint || "user avatar",
-        });
+        let unsubscribes: (() => void)[] = [];
 
-        if (db) {
-            let unsubscribes: (() => void)[] = [];
-
-            // Fetch Libraries for name mapping
-            const libUnsub = onSnapshot(collection(db, "libraries"), (snapshot) => {
-                const libMap = new Map<string, string>();
-                snapshot.forEach(doc => {
-                    libMap.set(doc.id, doc.data().name);
-                });
-                setLibraries(libMap);
-            });
-            unsubscribes.push(libUnsub);
-
-            // Fetch user's orders
-            const ordersRef = collection(db, "orders");
-            const q = query(ordersRef, where("buyerId", "==", userData.id));
-            const ordersUnsub = onSnapshot(q, (snapshot) => {
-                const userOrders: Order[] = [];
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    userOrders.push({
-                        id: doc.id,
-                        ...data,
-                        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
-                    } as Order);
-                });
-                userOrders.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
-                setOrders(userOrders);
-            });
-            unsubscribes.push(ordersUnsub);
-
-             const booksUnsub = onSnapshot(collection(db, "books"), (snapshot) => {
-                const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-                setAllBooks(booksData);
-            });
-            unsubscribes.push(booksUnsub);
-
-            return () => {
-                unsubscribes.forEach(unsub => unsub());
+        // Real-time listener for user document
+        const userRef = doc(db, "users", initialUserData.id);
+        const userUnsub = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const liveUserData = docSnap.data() as User;
+            let joinDateStr = "Miembro reciente";
+            if (liveUserData.createdAt && (liveUserData.createdAt as any).seconds) {
+              const joinDate = new Date((liveUserData.createdAt as any).seconds * 1000);
+              joinDateStr = format(joinDate, "MMMM yyyy", { locale: es });
+              joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
+            }
+            const fullUserData: UserData = {
+              id: docSnap.id,
+              ...liveUserData,
+              joinDate: joinDateStr,
+              avatarUrl: liveUserData.avatarUrl || "https://placehold.co/150x150.png",
+              dataAiHint: liveUserData.dataAiHint || "user avatar",
             };
-        }
+            setUser(fullUserData);
+            localStorage.setItem("aliciaLibros_user", JSON.stringify(fullUserData)); // Keep localStorage updated
+          } else {
+            console.error("User document does not exist, logging out.");
+            handleLogout();
+          }
+        });
+        unsubscribes.push(userUnsub);
+
+        // Fetch other related data
+        const libUnsub = onSnapshot(collection(db, "libraries"), (snapshot) => {
+          const libMap = new Map<string, string>();
+          snapshot.forEach(doc => { libMap.set(doc.id, doc.data().name); });
+          setLibraries(libMap);
+        });
+        unsubscribes.push(libUnsub);
+
+        const ordersRef = collection(db, "orders");
+        const q = query(ordersRef, where("buyerId", "==", initialUserData.id));
+        const ordersUnsub = onSnapshot(q, (snapshot) => {
+          const userOrders = snapshot.docs.map(doc => ({
+            id: doc.id, ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
+          } as Order)).sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
+          setOrders(userOrders);
+        });
+        unsubscribes.push(ordersUnsub);
+
+        const booksUnsub = onSnapshot(collection(db, "books"), (snapshot) => {
+          setAllBooks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
+        });
+        unsubscribes.push(booksUnsub);
+
+        return () => {
+          unsubscribes.forEach(unsub => unsub());
+        };
 
       } catch (e) {
-        console.error("Error parsing user data from localStorage", e);
+        console.error("Error setting up dashboard:", e);
         handleLogout();
       }
     } else {
       handleLogout();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   // Effect to reset form when dialog opens
@@ -188,16 +207,6 @@ export default function DashboardPage() {
       });
     }
   }, [user, isEditDialogOpen, form]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("aliciaLibros_user");
-    setIsAuthenticated(false);
-    setUser(null);
-    if (typeof window !== "undefined") {
-      router.push("/");
-    }
-  };
   
   async function onProfileSubmit(values: ProfileFormValues) {
     if (!user || !db) return;
@@ -238,18 +247,6 @@ export default function DashboardPage() {
 
         await updateDoc(userRef, firestoreUpdateData);
         
-        const updatedUserInState = { ...user, ...updatedData };
-        setUser(updatedUserInState);
-
-        const localStorageUser = {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            ...updatedData,
-        }
-
-        localStorage.setItem("aliciaLibros_user", JSON.stringify(localStorageUser));
-
         toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
         setIsEditDialogOpen(false);
     } catch (error: any) {
@@ -363,6 +360,13 @@ export default function DashboardPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-3">
+              <div className="p-4 border rounded-lg bg-muted/50 text-center">
+                <p className="text-sm font-medium text-muted-foreground">Puntos de Lealtad</p>
+                <div className="flex items-center justify-center gap-2 mt-1">
+                    <Gift className="h-6 w-6 text-primary"/>
+                    <p className="text-2xl font-bold text-primary">{user.loyaltyPoints || 0}</p>
+                </div>
+              </div>
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" className="w-full font-body">
@@ -630,3 +634,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
