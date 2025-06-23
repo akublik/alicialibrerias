@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { placeholderLibraries, placeholderBooks } from "@/lib/placeholders";
+import { placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User, Order } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2 } from "lucide-react";
@@ -31,18 +31,15 @@ import { es } from 'date-fns/locale';
 import { BookCard } from "@/components/BookCard";
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { getBookRecommendations } from '@/ai/flows/book-recommendations';
+import { getBookRecommendations, type BookRecommendationsOutput } from '@/ai/flows/book-recommendations';
+import { Separator } from '@/components/ui/separator';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
   birthdate: z.string().optional().refine((val) => {
     if (!val || val.trim() === "") return true; // optional field
     const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
-    if (!regex.test(val)) return false;
-    
-    const [day, month, year] = val.split('/').map(Number);
-    const date = new Date(year, month - 1, day);
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    return regex.test(val);
   }, {
     message: "Fecha inválida. Usa el formato DD/MM/AAAA.",
   }),
@@ -70,7 +67,9 @@ export default function DashboardPage() {
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [preferences, setPreferences] = useState('');
-  const [aiRecommendations, setAiRecommendations] = useState<Book[]>([]);
+  
+  const [foundBooks, setFoundBooks] = useState<Book[]>([]);
+  const [newSuggestions, setNewSuggestions] = useState<BookRecommendationsOutput['newSuggestions']>([]);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
 
   const form = useForm<ProfileFormValues>({
@@ -209,8 +208,8 @@ export default function DashboardPage() {
             const month = parseInt(parts[1], 10) - 1; // JS months are 0-11
             const year = parseInt(parts[2], 10);
             if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                const date = new Date(year, month, day);
-                if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+                const date = new Date(Date.UTC(year, month, day)); // Use UTC to avoid timezone issues
+                if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
                     return date;
                 }
             }
@@ -224,7 +223,7 @@ export default function DashboardPage() {
         const userRef = doc(db, "users", user.id);
         const updatedData = {
             name: values.name,
-            birthdate: birthdateAsDate ? birthdateAsDate.toISOString() : null,
+            birthdate: birthdateAsDate ? birthdateAsDate.toISOString().split('T')[0] : null,
             favoriteCategories: values.favoriteCategories || [],
             favoriteTags: values.favoriteTags || [],
         };
@@ -232,8 +231,6 @@ export default function DashboardPage() {
         const firestoreUpdateData: any = { ...updatedData };
         if (!firestoreUpdateData.birthdate) {
             delete firestoreUpdateData.birthdate;
-        } else {
-            firestoreUpdateData.birthdate = updatedData.birthdate;
         }
 
         await updateDoc(userRef, firestoreUpdateData);
@@ -271,7 +268,8 @@ export default function DashboardPage() {
     }
 
     setIsLoadingAi(true);
-    setAiRecommendations([]);
+    setFoundBooks([]);
+    setNewSuggestions([]);
 
     try {
       const result = await getBookRecommendations({
@@ -280,21 +278,13 @@ export default function DashboardPage() {
         preferences: `Géneros favoritos: ${user.favoriteCategories?.join(', ') || 'ninguno'}. Temas preferidos: ${user.favoriteTags?.join(', ') || 'ninguno'}. Preferencias adicionales del usuario: ${preferences}`,
       });
       
-      const recommendedBooks = result.recommendations.map((title, index) => {
-        const existingBook = allBooks.find(b => b.title.toLowerCase() === title.toLowerCase());
-        if (existingBook) return {...existingBook, id: existingBook.id + `-${index}`};
-        return {
-          id: `rec-${index}-${Date.now()}`,
-          title,
-          authors: ["Autor por IA"],
-          price: Math.floor(Math.random() * 10) + 15,
-          imageUrl: `https://placehold.co/300x450.png`,
-          dataAiHint: "recommended book",
-          libraryId: 'ai-generated'
-        } as Book;
-      }).slice(0, 6);
+      const foundBookDetails = result.foundInInventory
+          .map(found => allBooks.find(b => b.id === found.id))
+          .filter((b): b is Book => !!b);
       
-      setAiRecommendations(recommendedBooks);
+      setFoundBooks(foundBookDetails);
+      setNewSuggestions(result.newSuggestions);
+
     } catch (error: any) {
       console.error("Error getting recommendations:", error);
       toast({
@@ -342,7 +332,7 @@ export default function DashboardPage() {
               {user.joinDate && <CardDescription>Miembro desde: {user.joinDate}</CardDescription>}
                {user.birthdate && (
                 <CardDescription>
-                  Cumpleaños: {format(new Date(user.birthdate), 'dd/MM/yyyy')}
+                   Cumpleaños: {format(new Date(user.birthdate), 'dd/MM/yyyy', {locale: es})}
                 </CardDescription>
               )}
             </CardHeader>
@@ -516,7 +506,7 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <div>
-                        <Label htmlFor="preferences-ai" className="font-medium">¿Algo más que debamos saber?</Label>
+                        <Label htmlFor="preferences-ai" className="font-medium">Describe qué te apetece leer:</Label>
                         <Textarea
                             id="preferences-ai"
                             value={preferences}
@@ -526,32 +516,59 @@ export default function DashboardPage() {
                             className="mt-2"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                            Tu historial de compras ({readingHistory.length} libros) y tus géneros favoritos se incluyen automáticamente.
+                            Tu historial de compras y tus géneros favoritos se incluyen automáticamente.
                         </p>
                     </div>
                     <Button onClick={handleGetRecommendations} disabled={isLoadingAi} className="w-full sm:w-auto">
                         {isLoadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        {isLoadingAi ? "Generando..." : "Generar Nuevas Recomendaciones"}
+                        {isLoadingAi ? "Generando..." : "Generar Recomendaciones"}
                     </Button>
                 </CardContent>
               </Card>
               
-              <div className="mt-6">
-                <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground text-center">Tus Recomendaciones</h3>
+              <div className="mt-6 space-y-6">
                 {isLoadingAi ? (
                      <div className="flex justify-center items-center py-16">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
                      </div>
-                ) : aiRecommendations.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {aiRecommendations.map(book => <BookCard key={book.id} book={book} size="small" />)}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">Tus recomendaciones aparecerán aquí.</p>
-                        <p className="text-xs text-muted-foreground">¡Usa el generador para empezar!</p>
-                    </div>
-                  )}
+                ) : (
+                  <>
+                    {foundBooks.length > 0 && (
+                       <div>
+                         <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground">Encontrado en nuestro catálogo</h3>
+                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {foundBooks.map(book => <BookCard key={book.id} book={book} size="small" />)}
+                         </div>
+                       </div>
+                    )}
+
+                    {newSuggestions.length > 0 && (
+                       <div>
+                         <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground">Otras sugerencias para ti</h3>
+                         <div className="space-y-4">
+                           {newSuggestions.map((suggestion, index) => (
+                             <Card key={index} className="shadow-sm">
+                                <CardHeader>
+                                  <CardTitle className="font-headline text-lg text-primary">{suggestion.title}</CardTitle>
+                                  <CardDescription>por {suggestion.author}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                  <p className="text-sm text-foreground/80 italic">"{suggestion.rationale}"</p>
+                                </CardContent>
+                             </Card>
+                           ))}
+                         </div>
+                       </div>
+                    )}
+                    
+                    {!isLoadingAi && foundBooks.length === 0 && newSuggestions.length === 0 && (
+                         <div className="text-center py-8 bg-muted/50 rounded-lg">
+                            <p className="text-muted-foreground">Tus recomendaciones aparecerán aquí.</p>
+                            <p className="text-xs text-muted-foreground">¡Usa el generador para empezar!</p>
+                        </div>
+                    )}
+                  </>
+                )}
               </div>
             </TabsContent>
 
