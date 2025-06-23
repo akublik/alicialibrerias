@@ -48,7 +48,11 @@ const profileFormSchema = z.object({
 });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
-interface UserData extends User {}
+interface UserData extends User {
+  joinDate?: string;
+  avatarUrl?: string;
+  dataAiHint?: string;
+}
 
 export default function DashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -88,9 +92,16 @@ export default function DashboardPage() {
             return;
         }
         
+        let joinDateStr = "Miembro reciente";
+        if (userData.createdAt && (userData.createdAt as any).seconds) {
+            const joinDate = new Date((userData.createdAt as any).seconds * 1000);
+            joinDateStr = format(joinDate, "MMMM yyyy", { locale: es });
+            joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
+        }
+
         setUser({
           ...userData,
-          joinDate: "Enero 2024", // Placeholder
+          joinDate: joinDateStr,
           avatarUrl: (userData as any).avatarUrl || "https://placehold.co/150x150.png",
           dataAiHint: (userData as any).dataAiHint || "user avatar",
         });
@@ -256,7 +267,7 @@ export default function DashboardPage() {
               />
               <CardTitle className="font-headline text-2xl">{user.name}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
-              <CardDescription>Miembro desde: {user.joinDate}</CardDescription>
+              {user.joinDate && <CardDescription>Miembro desde: {user.joinDate}</CardDescription>}
                {user.birthdate && (
                 <CardDescription>
                   Cumpleaños: {format(new Date(user.birthdate), 'dd/MM/yyyy')}
