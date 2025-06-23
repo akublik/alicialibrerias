@@ -3,7 +3,7 @@
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Store, BarChart3, Loader2, BookCopy, ShoppingCart, PackageOpen } from "lucide-react";
+import { Users, Store, BarChart3, Loader2, BookCopy, ShoppingCart, PackageOpen, Heart, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useEffect, useState, useMemo } from "react";
@@ -65,26 +65,36 @@ export default function SuperAdminDashboardPage() {
     }
 
     const unsubscribes: (() => void)[] = [];
-    const collections = [
+    
+    const collectionsToFetch = [
       { ref: collection(db, "users"), setter: setAllUsers },
       { ref: collection(db, "libraries"), setter: setAllLibraries },
       { ref: collection(db, "orders"), setter: setAllOrders },
       { ref: collection(db, "books"), setter: setAllBooks },
     ];
+    
+    let loadedCount = 0;
 
-    let loadedCollections = 0;
-    collections.forEach(({ ref, setter }) => {
-      const unsubscribe = onSnapshot(ref, (snapshot) => {
-        setter(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
-        loadedCollections++;
-        if (loadedCollections === collections.length) {
-          setIsLoading(false);
-        }
-      }, (error) => {
-        console.error(`Error fetching ${ref.path}:`, error);
-        setIsLoading(false);
-      });
-      unsubscribes.push(unsubscribe);
+    collectionsToFetch.forEach(({ ref, setter }) => {
+        const unsubscribe = onSnapshot(ref, (snapshot) => {
+            const items = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : null,
+                }
+            });
+            setter(items as any);
+            loadedCount++;
+            if (loadedCount === collectionsToFetch.length) {
+                setIsLoading(false);
+            }
+        }, (error) => {
+            console.error(`Error fetching ${ref.path}:`, error);
+            setIsLoading(false);
+        });
+        unsubscribes.push(unsubscribe);
     });
 
     return () => unsubscribes.forEach(unsub => unsub());
@@ -100,6 +110,22 @@ export default function SuperAdminDashboardPage() {
       totalOrders: allOrders.length,
     };
   }, [allUsers, allLibraries, allOrders, allBooks]);
+
+  const sevenDaysAgo = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  }, []);
+
+  const newUsersLastWeek = useMemo(() => {
+    if (!allUsers) return 0;
+    return allUsers.filter(user => user.createdAt && new Date(user.createdAt) >= sevenDaysAgo).length;
+  }, [allUsers, sevenDaysAgo]);
+
+  const newOrdersLastWeek = useMemo(() => {
+    if (!allOrders) return 0;
+    return allOrders.filter(order => order.createdAt && new Date(order.createdAt) >= sevenDaysAgo).length;
+  }, [allOrders, sevenDaysAgo]);
   
   const salesChartData = useMemo(() => {
     const last30Days = Array.from({ length: 30 }, (_, i) => {
@@ -146,6 +172,28 @@ export default function SuperAdminDashboardPage() {
       sales: salesByLibrary[lib.id] || 0,
     })).sort((a, b) => b.sales - a.sales).slice(0, 5); // Top 5
   }, [allLibraries, allOrders]);
+
+  const bestsellingBooks = useMemo(() => {
+    const salesCount: { [bookId: string]: { count: number; title: string; imageUrl?: string } } = {};
+    allOrders.forEach(order => {
+        order.items.forEach(item => {
+            if (salesCount[item.bookId]) {
+                salesCount[item.bookId].count += item.quantity;
+            } else {
+                salesCount[item.bookId] = {
+                    count: item.quantity,
+                    title: item.title,
+                    imageUrl: item.imageUrl,
+                };
+            }
+        });
+    });
+
+    return Object.entries(salesCount)
+        .map(([bookId, data]) => ({ bookId, ...data }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+  }, [allOrders]);
   
   const pendingLibraries = useMemo(() => {
     return allLibraries.filter(lib => lib.isActive === false || lib.isActive === undefined);
@@ -180,10 +228,10 @@ export default function SuperAdminDashboardPage() {
       </header>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-8">
-        <StatCard title="Usuarios Totales" value={stats.userCount} icon={Users} isLoading={isLoading} description="Lectores y admins." />
-        <StatCard title="Librerías Registradas" value={stats.libraryCount} icon={Store} isLoading={isLoading} />
+        <StatCard title="Usuarios Totales" value={stats.userCount} icon={Users} isLoading={isLoading} description={`+${newUsersLastWeek} en la última semana`} />
+        <StatCard title="Librerías Registradas" value={stats.libraryCount} icon={Store} isLoading={isLoading} description={`${pendingLibraries.length} pendientes`} />
         <StatCard title="Libros en Catálogo" value={stats.totalBooks} icon={BookCopy} isLoading={isLoading} />
-        <StatCard title="Pedidos Globales" value={stats.totalOrders} icon={ShoppingCart} isLoading={isLoading} />
+        <StatCard title="Pedidos Globales" value={stats.totalOrders} icon={ShoppingCart} isLoading={isLoading} description={`+${newOrdersLastWeek} en la última semana`}/>
         <StatCard title="Ventas Globales" value={`$${stats.totalSales.toFixed(2)}`} icon={BarChart3} isLoading={isLoading} />
       </div>
 
@@ -206,7 +254,7 @@ export default function SuperAdminDashboardPage() {
                                           </div>
                                       </TableCell>
                                       <TableCell>{lib.email}</TableCell>
-                                      <TableCell>{lib.createdAt?.toDate ? format(lib.createdAt.toDate(), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</TableCell>
+                                      <TableCell>{lib.createdAt ? format(new Date(lib.createdAt), 'dd/MM/yyyy', { locale: es }) : 'N/A'}</TableCell>
                                       <TableCell className="text-right">
                                           <Button onClick={() => handleApproveLibrary(lib.id)} disabled={isApproving === lib.id} size="sm">
                                               {isApproving === lib.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -228,8 +276,8 @@ export default function SuperAdminDashboardPage() {
           </Card>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mt-8">
-          <Card className="lg:col-span-3 shadow-lg">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mt-8">
+          <Card className="xl:col-span-2 shadow-lg">
             <CardHeader>
               <CardTitle>Ventas de los Últimos 30 Días</CardTitle>
               <CardDescription>Evolución de las ventas totales de la plataforma.</CardDescription>
@@ -273,35 +321,64 @@ export default function SuperAdminDashboardPage() {
             </CardContent>
           </Card>
           
-          <Card className="lg:col-span-2 shadow-lg">
-            <CardHeader>
-                <CardTitle>Top 5 Librerías con más Ventas</CardTitle>
-                 <CardDescription>Ranking de ventas totales por librería.</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-               {isLoading ? (
-                  <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                ) : (
-                  <Table>
-                    <TableBody>
-                      {librarySales.map(lib => (
-                        <TableRow key={lib.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
-                              <span className="font-medium">{lib.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">${lib.sales.toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-            </CardContent>
-          </Card>
-      </div>
+          <div className="space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Store className="h-5 w-5"/>Top 5 Librerías</CardTitle>
+                   <CardDescription>Ranking de ventas totales por librería.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                 {isLoading ? (
+                    <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : (
+                    <Table>
+                      <TableBody>
+                        {librarySales.map(lib => (
+                          <TableRow key={lib.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                <span className="font-medium">{lib.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">${lib.sales.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+              </CardContent>
+            </Card>
 
+            <Card className="shadow-lg">
+              <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><BookCopy className="h-5 w-5"/>Top 5 Libros Vendidos</CardTitle>
+                   <CardDescription>Ranking por unidades vendidas.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                 {isLoading ? (
+                    <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : (
+                    <Table>
+                      <TableBody>
+                        {bestsellingBooks.map(book => (
+                          <TableRow key={book.bookId}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Image src={book.imageUrl || 'https://placehold.co/40x40.png'} alt={`Portada de ${book.title}`} width={30} height={45} className="rounded-sm object-cover"/>
+                                <span className="font-medium line-clamp-1">{book.title}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold">{book.count} uds.</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+              </CardContent>
+            </Card>
+          </div>
+      </div>
     </div>
   );
 }
