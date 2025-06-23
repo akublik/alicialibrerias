@@ -15,13 +15,10 @@ import Image from 'next/image';
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot, addDoc, deleteDoc, writeBatch } from "firebase/firestore";
-import type { Author, Book } from "@/types";
+import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
+import type { Book } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 
 // Schemas
@@ -41,26 +38,13 @@ const homepageContentFormSchema = z.object({
 });
 type HomepageContentFormValues = z.infer<typeof homepageContentFormSchema>;
 
-const authorFormSchema = z.object({
-  name: z.string().min(2, "El nombre es requerido."),
-  bio: z.string().min(10, "La biografía es requerida."),
-  imageUrl: z.string().url({ message: "Debe ser una URL válida." }).optional().or(z.literal('')),
-});
-type AuthorFormValues = z.infer<typeof authorFormSchema>;
-
 const contentDocRef = doc(db, "homepage_content", "sections");
 
 export default function ManageContentPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSavingHomepage, setIsSavingHomepage] = useState(false);
-    const [isSavingAuthor, setIsSavingAuthor] = useState(false);
     const [allBooks, setAllBooks] = useState<Book[]>([]);
-    const [authors, setAuthors] = useState<Author[]>([]);
-    const [isAuthorDialogOpen, setIsAuthorDialogOpen] = useState(false);
-    const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [authorToDelete, setAuthorToDelete] = useState<Author | null>(null);
-
+    
     const { toast } = useToast();
 
     const homepageForm = useForm<HomepageContentFormValues>({
@@ -77,15 +61,6 @@ export default function ManageContentPage() {
     const { fields: secondaryBannerFields, append: appendSecondaryBanner, remove: removeSecondaryBanner } = useFieldArray({
         control: homepageForm.control,
         name: "secondaryBannerSlides"
-    });
-
-    const authorForm = useForm<AuthorFormValues>({
-        resolver: zodResolver(authorFormSchema),
-        defaultValues: {
-            name: "",
-            bio: "",
-            imageUrl: "",
-        }
     });
 
     useEffect(() => {
@@ -114,14 +89,8 @@ export default function ManageContentPage() {
                     setAllBooks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
                 });
 
-                // Fetch authors
-                const authorsUnsub = onSnapshot(collection(db, "authors"), (snapshot) => {
-                    setAuthors(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Author)));
-                });
-                
                 return () => {
                     booksUnsub();
-                    authorsUnsub();
                 };
 
             } catch (error: any) {
@@ -164,64 +133,6 @@ export default function ManageContentPage() {
         }
     };
     
-    const openAuthorDialog = (author: Author | null) => {
-        setEditingAuthor(author);
-        if (author) {
-            authorForm.reset({ name: author.name, bio: author.bio, imageUrl: author.imageUrl || '' });
-        } else {
-            authorForm.reset({ name: "", bio: "", imageUrl: "" });
-        }
-        setIsAuthorDialogOpen(true);
-    };
-
-    const onAuthorSubmit = async (values: AuthorFormValues) => {
-        setIsSavingAuthor(true);
-        try {
-            const imageUrl = values.imageUrl || editingAuthor?.imageUrl || `https://placehold.co/100x100.png?text=${encodeURIComponent(values.name[0])}`;
-            
-            const authorData = {
-                name: values.name,
-                bio: values.bio,
-                imageUrl,
-                dataAiHint: "author portrait"
-            };
-            
-            if (editingAuthor) {
-                await updateDoc(doc(db, "authors", editingAuthor.id), authorData);
-                toast({ title: "Autor actualizado" });
-            } else {
-                await addDoc(collection(db, "authors"), authorData);
-                toast({ title: "Autor añadido" });
-            }
-
-            setIsAuthorDialogOpen(false);
-            setEditingAuthor(null);
-
-        } catch (error: any) {
-            toast({ title: "Error al guardar autor", description: error.message, variant: "destructive" });
-        } finally {
-            setIsSavingAuthor(false);
-        }
-    };
-
-    const confirmDeleteAuthor = (author: Author) => {
-        setAuthorToDelete(author);
-        setIsDeleteDialogOpen(true);
-    };
-
-    const handleDeleteAuthor = async () => {
-        if (!authorToDelete || !db) return;
-        try {
-            await deleteDoc(doc(db, "authors", authorToDelete.id));
-            toast({ title: "Autor eliminado" });
-        } catch (error: any) {
-            toast({ title: "Error al eliminar autor", description: error.message, variant: "destructive" });
-        } finally {
-            setIsDeleteDialogOpen(false);
-            setAuthorToDelete(null);
-        }
-    };
-    
     if (isLoading) {
         return <div className="flex justify-center items-center py-16"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
     }
@@ -240,7 +151,6 @@ export default function ManageContentPage() {
                             <TabsTrigger value="banner">Banner Principal</TabsTrigger>
                             <TabsTrigger value="secondary-banner">Banner Secundario</TabsTrigger>
                             <TabsTrigger value="featured-books">Libros Destacados</TabsTrigger>
-                            <TabsTrigger value="authors">Autores</TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="banner">
@@ -308,40 +218,6 @@ export default function ManageContentPage() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        
-                        <TabsContent value="authors">
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <CardTitle>Autores Destacados</CardTitle>
-                                            <CardDescription>Gestiona la lista de autores que aparecen en la homepage.</CardDescription>
-                                        </div>
-                                        <Button type="button" onClick={() => openAuthorDialog(null)}><PlusCircle className="mr-2 h-4 w-4"/>Añadir Autor</Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader><TableRow><TableHead>Autor</TableHead><TableHead>Biografía</TableHead><TableHead className="text-right">Acciones</TableHead></TableRow></TableHeader>
-                                        <TableBody>
-                                            {authors.map(author => (
-                                                <TableRow key={author.id}>
-                                                    <TableCell className="flex items-center gap-4">
-                                                        <Image src={author.imageUrl} alt={author.name} width={40} height={40} className="rounded-full object-cover"/>
-                                                        <span className="font-medium">{author.name}</span>
-                                                    </TableCell>
-                                                    <TableCell className="line-clamp-2">{author.bio}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => openAuthorDialog(author)}><Edit className="h-4 w-4"/></Button>
-                                                        <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => confirmDeleteAuthor(author)}><Trash2 className="h-4 w-4"/></Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
                     </Tabs>
 
                     <Separator className="my-6"/>
@@ -352,42 +228,6 @@ export default function ManageContentPage() {
                     </Button>
                 </form>
             </Form>
-            
-            <Dialog open={isAuthorDialogOpen} onOpenChange={setIsAuthorDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>{editingAuthor ? "Editar Autor" : "Añadir Nuevo Autor"}</DialogTitle>
-                        <DialogDescription>Completa los detalles del autor.</DialogDescription>
-                    </DialogHeader>
-                    <Form {...authorForm}>
-                        <form onSubmit={authorForm.handleSubmit(onAuthorSubmit)} className="space-y-4">
-                            <FormField control={authorForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={authorForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            {editingAuthor?.imageUrl && <div className="relative w-24 h-24 rounded-full overflow-hidden border"><Image src={editingAuthor.imageUrl} alt="Imagen actual" layout="fill" objectFit="cover" /></div>}
-                            <FormField control={authorForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen</FormLabel><FormControl><Input placeholder="https://ejemplo.com/autor.png" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSavingAuthor}>
-                                    {isSavingAuthor ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                    Guardar Autor
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
-                        <AlertDialogDescription>Esta acción es permanente y eliminará al autor "{authorToDelete?.name}".</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAuthor} className="bg-destructive hover:bg-destructive/90">Eliminar</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
