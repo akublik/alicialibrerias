@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 const teamMemberSchema = z.object({
   name: z.string().min(2, "El nombre es requerido."),
   role: z.string().min(2, "El rol es requerido."),
-  imageUrl: z.string().url("URL de imagen no válida."),
+  imageUrl: z.string().url("URL de imagen no válida.").or(z.literal('')),
   dataAiHint: z.string().optional(),
 });
 
@@ -34,12 +34,12 @@ const benefitSchema = z.object({
 const aboutUsFormSchema = z.object({
   headerTitle: z.string().min(3, "El título es requerido."),
   headerSubtitle: z.string().min(10, "El subtítulo es requerido."),
-  headerImageUrl: z.string().url("URL de imagen no válida."),
+  headerImageUrl: z.string().url("URL de imagen no válida.").or(z.literal('')),
   headerDataAiHint: z.string().optional(),
   missionTitle: z.string().min(3, "El título de misión es requerido."),
   missionParagraph1: z.string().min(10, "El primer párrafo es requerido."),
   missionParagraph2: z.string().min(10, "El segundo párrafo es requerido."),
-  missionImageUrl: z.string().url("URL de imagen no válida."),
+  missionImageUrl: z.string().url("URL de imagen no válida.").or(z.literal('')),
   missionDataAiHint: z.string().optional(),
   team: z.array(teamMemberSchema).optional(),
   whyUsTitle: z.string().min(3, "El título de la sección es requerido."),

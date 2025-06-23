@@ -89,7 +89,7 @@ export default function AboutPage() {
   return (
     <div className="animate-fadeIn">
       <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${content.headerImageUrl}')` }} data-ai-hint={content.headerDataAiHint}></div>
+         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${content.headerImageUrl || 'https://placehold.co/1920x1080.png'}')` }} data-ai-hint={content.headerDataAiHint}></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
             {content.headerTitle}
@@ -113,7 +113,7 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="relative aspect-video rounded-lg overflow-hidden shadow-xl">
-                <Image src={content.missionImageUrl} alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint={content.missionDataAiHint} />
+                <Image src={content.missionImageUrl || 'https://placehold.co/600x400.png'} alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint={content.missionDataAiHint} />
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function AboutPage() {
             {content.team.map((member) => (
               <Card key={member.name} className="text-center overflow-hidden shadow-md hover:shadow-xl transition-shadow">
                 <div className="relative w-full h-56 bg-gray-200">
-                     <Image src={member.imageUrl} alt={member.name} layout="fill" objectFit="cover" data-ai-hint={member.dataAiHint}/>
+                     <Image src={member.imageUrl || 'https://placehold.co/200x200.png'} alt={member.name} layout="fill" objectFit="cover" data-ai-hint={member.dataAiHint}/>
                 </div>
                 <div className="p-6">
                   <h3 className="font-headline text-xl font-medium text-foreground">{member.name}</h3>
