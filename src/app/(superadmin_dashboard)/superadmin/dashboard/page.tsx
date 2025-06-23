@@ -236,7 +236,7 @@ export default function SuperAdminDashboardPage() {
             };
         })
         .sort((a, b) => b.orderCount - a.orderCount)
-        .slice(0, 5);
+        .slice(0, 20);
   }, [allUsers, allOrders, isLoading]);
 
   const handleApproveLibrary = async (libraryId: string) => {
@@ -392,7 +392,7 @@ export default function SuperAdminDashboardPage() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Trophy className="h-5 w-5"/>Top 5 Lectores</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><Trophy className="h-5 w-5"/>Top 20 Lectores</CardTitle>
                    <CardDescription>Ranking por número de pedidos realizados.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
