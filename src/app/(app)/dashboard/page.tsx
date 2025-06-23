@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { placeholderLibraries } from "@/lib/placeholders";
-import type { Book, Library, User, Order } from "@/types";
+import type { Book, Library, User, Order, BookRequest } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle } from "lucide-react";
 import Image from "next/image";
@@ -447,6 +447,32 @@ export default function DashboardPage() {
                 )}
             </CardContent>
           </Card>
+
+           <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center">
+                        <HelpCircle className="mr-2 h-5 w-5 text-primary"/>
+                        ¿No encuentras un libro?
+                    </CardTitle>
+                    <CardDescription>
+                        Si hay algún libro que te gustaría ver en nuestra plataforma, dínoslo. Lo comunicaremos a las librerías.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...requestForm}>
+                        <form onSubmit={requestForm.handleSubmit(onBookRequestSubmit)} className="space-y-4">
+                            <FormField control={requestForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} placeholder="Ej: La vegetariana" /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={requestForm.control} name="bookAuthor" render={({ field }) => ( <FormItem><FormLabel>Autor(a)</FormLabel><FormControl><Input {...field} placeholder="Ej: Han Kang" /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={requestForm.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Cualquier detalle adicional, como la editorial o el año, es útil." /></FormControl><FormMessage /></FormItem> )}/>
+                            <Button type="submit" disabled={isRequesting} className="w-full sm:w-auto">
+                                {isRequesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                                Enviar Solicitud
+                            </Button>
+                        </form>
+                    </Form>
+                </CardContent>
+              </Card>
+
         </div>
 
         {/* Tabs Section */}
@@ -596,32 +622,6 @@ export default function DashboardPage() {
                   </>
                 )}
               </div>
-
-               <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl flex items-center">
-                        <HelpCircle className="mr-2 h-5 w-5 text-primary"/>
-                        ¿No encuentras un libro?
-                    </CardTitle>
-                    <CardDescription>
-                        Si hay algún libro que te gustaría ver en nuestra plataforma, dínoslo. Lo comunicaremos a las librerías.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...requestForm}>
-                        <form onSubmit={requestForm.handleSubmit(onBookRequestSubmit)} className="space-y-4">
-                            <FormField control={requestForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} placeholder="Ej: La vegetariana" /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={requestForm.control} name="bookAuthor" render={({ field }) => ( <FormItem><FormLabel>Autor(a)</FormLabel><FormControl><Input {...field} placeholder="Ej: Han Kang" /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={requestForm.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Cualquier detalle adicional, como la editorial o el año, es útil." /></FormControl><FormMessage /></FormItem> )}/>
-                            <Button type="submit" disabled={isRequesting} className="w-full sm:w-auto">
-                                {isRequesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                Enviar Solicitud
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-              </Card>
-
             </TabsContent>
 
           </Tabs>
