@@ -1,10 +1,8 @@
 // src/lib/firebase.ts
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { getFirestore, type Firestore } from 'firebase/firestore';
+import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
-// Tu configuración de Firebase (obtenida de la consola de Firebase)
-// Deberías almacenar estos valores en variables de entorno (e.g., .env.local)
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -14,56 +12,51 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Verificación de variables de entorno para diagnóstico
-const missingConfigKeys = Object.entries(firebaseConfig)
-  .filter(([, value]) => !value)
-  .map(([key]) => key);
+let app: FirebaseApp | null = null;
+let db: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
-if (missingConfigKeys.length > 0) {
-  const warningMessage = `
+// This function checks if all required config keys are present and valid
+function isFirebaseConfigComplete(config: typeof firebaseConfig): boolean {
+    return Object.values(config).every(value => typeof value === 'string' && value.length > 0);
+}
+
+if (isFirebaseConfigComplete(firebaseConfig)) {
+    if (!getApps().length) {
+      try {
+        app = initializeApp(firebaseConfig);
+      } catch(e) {
+        console.error("Firebase initialization error:", e);
+        // app remains null
+      }
+    } else {
+      app = getApp();
+    }
+
+    if (app) {
+        db = getFirestore(app);
+        storage = getStorage(app);
+    }
+} else {
+    // This warning will be visible in the server logs
+    console.warn(`
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! ATENCIÓN: CONFIGURACIÓN DE FIREBASE INCOMPLETA !!!
+    !!! ATENCIÓN: CONFIGURACIÓN DE FIREBASE INCOMPLETA O INVÁLIDA !!!
     
-    Faltan las siguientes variables de entorno: ${missingConfigKeys.join(', ')}
-    
-    Asegúrate de que tu archivo .env.local o la configuración de entorno de Firebase Studio
-    contengan estas claves con los valores de tu proyecto de Firebase.
+    Faltan una o más variables de entorno NEXT_PUBLIC_FIREBASE_* en tu archivo .env
+    o los valores proporcionados son incorrectos.
     
     La aplicación no podrá conectarse a Firebase hasta que esto se corrija.
+    
+    Valores actuales (revisa si hay 'undefined' o están vacíos):
+    - apiKey: ${firebaseConfig.apiKey}
+    - authDomain: ${firebaseConfig.authDomain}
+    - projectId: ${firebaseConfig.projectId}
+    - storageBucket: ${firebaseConfig.storageBucket}
+    - messagingSenderId: ${firebaseConfig.messagingSenderId}
+    - appId: ${firebaseConfig.appId}
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  `;
-  // Using console.warn to avoid the Next.js error overlay while still providing a clear warning.
-  console.warn(warningMessage);
-}
-
-
-// Inicializar Firebase
-let app;
-if (!getApps().length) {
-  // Solo intenta inicializar si la configuración está completa
-  if (missingConfigKeys.length === 0) {
-    try {
-        app = initializeApp(firebaseConfig);
-    } catch (e) {
-        console.error("Error al inicializar Firebase. Revisa tu 'firebaseConfig'.", e);
-        app = null;
-    }
-  } else {
-    app = null; // No inicializar si falta configuración
-  }
-} else {
-  app = getApp();
-}
-
-// Solo exportar los servicios si la aplicación se inicializó correctamente
-const db = app ? getFirestore(app) : null;
-const storage = app ? getStorage(app) : null;
-
-if (!db) {
-    console.warn("ADVERTENCIA: No se pudo inicializar Firestore. Revisa los mensajes de configuración de Firebase en la consola.");
-}
-if (!storage) {
-    console.warn("ADVERTENCIA: No se pudo inicializar Firebase Storage. Revisa los mensajes de configuración de Firebase en la consola.");
+  `);
 }
 
 
