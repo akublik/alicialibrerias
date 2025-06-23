@@ -2,7 +2,7 @@
 // src/app/(app)/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,6 +29,9 @@ import { bookCategories, bookTags } from '@/lib/options';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { es } from 'date-fns/locale';
 import { BookCard } from "@/components/BookCard";
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { getBookRecommendations } from '@/ai/flows/book-recommendations';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
@@ -65,10 +68,25 @@ export default function DashboardPage() {
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [preferences, setPreferences] = useState('');
+  const [aiRecommendations, setAiRecommendations] = useState<Book[]>([]);
+  const [isLoadingAi, setIsLoadingAi] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
   });
+
+  const readingHistory = useMemo(() => {
+    if (!orders || orders.length === 0) return [];
+    const bookTitles = new Set<string>();
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        bookTitles.add(item.title);
+      });
+    });
+    return Array.from(bookTitles);
+  }, [orders]);
 
   // Effect to load user data from localStorage
   useEffect(() => {
@@ -107,6 +125,8 @@ export default function DashboardPage() {
         });
 
         if (db) {
+            let unsubscribes: (() => void)[] = [];
+
             // Fetch Libraries for name mapping
             const libUnsub = onSnapshot(collection(db, "libraries"), (snapshot) => {
                 const libMap = new Map<string, string>();
@@ -115,6 +135,7 @@ export default function DashboardPage() {
                 });
                 setLibraries(libMap);
             });
+            unsubscribes.push(libUnsub);
 
             // Fetch user's orders
             const ordersRef = collection(db, "orders");
@@ -132,10 +153,16 @@ export default function DashboardPage() {
                 userOrders.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
                 setOrders(userOrders);
             });
+            unsubscribes.push(ordersUnsub);
+
+             const booksUnsub = onSnapshot(collection(db, "books"), (snapshot) => {
+                const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+                setAllBooks(booksData);
+            });
+            unsubscribes.push(booksUnsub);
 
             return () => {
-                libUnsub();
-                ordersUnsub();
+                unsubscribes.forEach(unsub => unsub());
             };
         }
 
@@ -202,12 +229,10 @@ export default function DashboardPage() {
             favoriteTags: values.favoriteTags || [],
         };
 
-        // Use a temp object for update to avoid non-serializable data
         const firestoreUpdateData: any = { ...updatedData };
         if (!firestoreUpdateData.birthdate) {
             delete firestoreUpdateData.birthdate;
         } else {
-             // Ensure it's a string for Firestore if it's a Date object
             firestoreUpdateData.birthdate = updatedData.birthdate;
         }
 
@@ -234,13 +259,60 @@ export default function DashboardPage() {
     }
 }
 
+  const handleGetRecommendations = async () => {
+    if (!user) return;
+    if (!preferences.trim() && readingHistory.length === 0 && (!user.favoriteCategories || user.favoriteCategories.length === 0)) {
+      toast({
+        title: "Más información, por favor",
+        description: "Escribe tus preferencias o realiza una compra para que podamos generar recomendaciones.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingAi(true);
+    setAiRecommendations([]);
+
+    try {
+      const result = await getBookRecommendations({
+        userId: user.id,
+        readingHistory: readingHistory,
+        preferences: `Géneros favoritos: ${user.favoriteCategories?.join(', ') || 'ninguno'}. Temas preferidos: ${user.favoriteTags?.join(', ') || 'ninguno'}. Preferencias adicionales del usuario: ${preferences}`,
+      });
+      
+      const recommendedBooks = result.recommendations.map((title, index) => {
+        const existingBook = allBooks.find(b => b.title.toLowerCase() === title.toLowerCase());
+        if (existingBook) return {...existingBook, id: existingBook.id + `-${index}`};
+        return {
+          id: `rec-${index}-${Date.now()}`,
+          title,
+          authors: ["Autor por IA"],
+          price: Math.floor(Math.random() * 10) + 15,
+          imageUrl: `https://placehold.co/300x450.png`,
+          dataAiHint: "recommended book",
+          libraryId: 'ai-generated'
+        } as Book;
+      }).slice(0, 6);
+      
+      setAiRecommendations(recommendedBooks);
+    } catch (error: any) {
+      console.error("Error getting recommendations:", error);
+      toast({
+        title: "Error de IA",
+        description: "No pudimos generar recomendaciones en este momento. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAi(false);
+    }
+  };
+
 
   if (!isAuthenticated || !user) {
     return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
   }
 
   const mockFavoriteLibraries: Library[] = placeholderLibraries.slice(0, 2).map(l => ({...l, id: l.id + "-fav"}));
-  const mockAiRecommendations: Book[] = placeholderBooks.slice(2, 4).map(b => ({...b, id: b.id + "-airec"}));
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -434,23 +506,55 @@ export default function DashboardPage() {
             <TabsContent value="ai-recommendations">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Recomendaciones para Ti</CardTitle>
+                  <CardTitle className="font-headline text-xl flex items-center">
+                    <Sparkles className="mr-2 h-5 w-5 text-primary" />
+                    Recomendaciones para Ti
+                  </CardTitle>
                   <CardDescription>
-                    Basado en tus gustos e historial, estos libros podrían encantarte.
-                    <Link href="/recommendations" className="ml-2 text-primary hover:underline font-medium">Ajustar preferencias</Link>
+                    Nuestra IA utiliza tus preferencias de perfil, historial de compras y los gustos que nos describas aquí para encontrar tu próxima lectura ideal.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  {mockAiRecommendations.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {mockAiRecommendations.map(book => <BookCard key={book.id} book={book} />)}
+                <CardContent className="space-y-6">
+                    <div>
+                        <Label htmlFor="preferences-ai" className="font-medium">¿Algo más que debamos saber?</Label>
+                        <Textarea
+                            id="preferences-ai"
+                            value={preferences}
+                            onChange={(e) => setPreferences(e.target.value)}
+                            placeholder="Ej: Busco una novela histórica que no sea sobre la Segunda Guerra Mundial, o algo de fantasía con un buen sistema de magia..."
+                            rows={3}
+                            className="mt-2"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Tu historial de compras ({readingHistory.length} libros) y tus géneros favoritos se incluyen automáticamente.
+                        </p>
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground">Aún no tenemos recomendaciones para ti. <Link href="/recommendations" className="text-primary hover:underline">¡Cuéntanos tus gustos!</Link></p>
-                  )}
+                    <Button onClick={handleGetRecommendations} disabled={isLoadingAi} className="w-full sm:w-auto">
+                        {isLoadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        {isLoadingAi ? "Generando..." : "Generar Nuevas Recomendaciones"}
+                    </Button>
                 </CardContent>
               </Card>
+              
+              <div className="mt-6">
+                <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground text-center">Tus Recomendaciones</h3>
+                {isLoadingAi ? (
+                     <div className="flex justify-center items-center py-16">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                     </div>
+                ) : aiRecommendations.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {aiRecommendations.map(book => <BookCard key={book.id} book={book} size="small" />)}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-muted/50 rounded-lg">
+                        <p className="text-muted-foreground">Tus recomendaciones aparecerán aquí.</p>
+                        <p className="text-xs text-muted-foreground">¡Usa el generador para empezar!</p>
+                    </div>
+                  )}
+              </div>
             </TabsContent>
+
           </Tabs>
         </div>
       </div>
