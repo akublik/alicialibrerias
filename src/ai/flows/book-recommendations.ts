@@ -58,7 +58,7 @@ const prompt = ai.definePrompt({
 Un usuario ha proporcionado su historial de lectura y sus preferencias. También se te ha dado una cadena JSON que representa nuestro inventario de libros actual.
 
 Tu tarea es proporcionar dos conjuntos de recomendaciones:
-1.  **foundInInventory**: Busca en el JSON de inventario proporcionado. Encuentra hasta 3 libros que mejor coincidan con la solicitud del usuario. Para cada libro que encuentres, devuelve solo su 'id' y 'title' de los datos del inventario. No inventes libros para esta lista.
+1.  **foundInInventory**: Busca en el JSON de inventario proporcionado. Encuentra hasta 3 libros que coincidan ESTRICTAMENTE con la solicitud del usuario. Para cada libro que encuentres, devuelve solo su 'id' y 'title' de los datos del inventario. Si no encuentras ninguna coincidencia clara y directa en el inventario, deja esta lista \`foundInInventory\` vacía. Es muy importante que no devuelvas libros del inventario si no están estrechamente relacionados con las preferencias del usuario. No inventes libros para esta lista.
 2.  **newSuggestions**: Genera una lista de hasta 10 NUEVAS sugerencias de libros que NO estén en el inventario proporcionado pero que sean una excelente opción para el usuario. Para cada nueva sugerencia, proporciona un título, un autor y una 'rationale' (razón) breve y convincente en español que explique por qué el usuario disfrutaría de este libro.
 
 Preferencias del Usuario:
