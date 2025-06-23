@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/about/page.tsx
 "use client";
 
@@ -103,7 +104,22 @@ export default function ManageAboutPage() {
       try {
         const docSnap = await getDoc(contentDocRef);
         if (docSnap.exists()) {
-          form.reset(docSnap.data() as AboutUsFormValues);
+          const data = docSnap.data() as Partial<AboutUsFormValues>;
+          const formValues: AboutUsFormValues = {
+            headerTitle: data.headerTitle || "",
+            headerSubtitle: data.headerSubtitle || "",
+            headerImageUrl: data.headerImageUrl || "",
+            headerDataAiHint: data.headerDataAiHint || "",
+            missionTitle: data.missionTitle || "",
+            missionParagraph1: data.missionParagraph1 || "",
+            missionParagraph2: data.missionParagraph2 || "",
+            missionImageUrl: data.missionImageUrl || "",
+            missionDataAiHint: data.missionDataAiHint || "",
+            whyUsTitle: data.whyUsTitle || "",
+            team: data.team || [],
+            benefits: data.benefits || [],
+          };
+          form.reset(formValues);
         }
       } catch (error: any) {
         toast({ title: "Error al cargar contenido", description: error.message, variant: "destructive" });
@@ -178,7 +194,7 @@ export default function ManageAboutPage() {
                      <FormField control={form.control} name={`benefits.${index}.icon`} render={({ field }) => ( 
                         <FormItem>
                           <FormLabel>Ícono</FormLabel>
-                           <Select onValueChange={field.onChange} defaultValue={field.value}>
+                           <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Selecciona un ícono" />
