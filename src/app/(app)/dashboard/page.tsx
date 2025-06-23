@@ -12,13 +12,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { placeholderBooks, placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User } from "@/types";
 import { BookCard } from "@/components/BookCard";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -26,15 +24,23 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc } from "firebase/firestore";
-import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
-  birthdate: z.date().optional(),
+  birthdate: z.string().optional().refine((val) => {
+    if (!val || val.trim() === "") return true; // optional field
+    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
+    if (!regex.test(val)) return false;
+    
+    const [day, month, year] = val.split('/').map(Number);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+  }, {
+    message: "Fecha inválida. Usa el formato DD/MM/AAAA.",
+  }),
   favoriteCategories: z.array(z.string()).optional(),
   favoriteTags: z.array(z.string()).optional(),
 });
@@ -97,7 +103,7 @@ export default function DashboardPage() {
     if (user && isEditDialogOpen) {
       form.reset({
         name: user.name || '',
-        birthdate: user.birthdate ? new Date(user.birthdate) : undefined,
+        birthdate: user.birthdate ? format(new Date(user.birthdate), 'dd/MM/yyyy') : '',
         favoriteCategories: user.favoriteCategories || [],
         favoriteTags: user.favoriteTags || [],
       });
@@ -117,11 +123,31 @@ export default function DashboardPage() {
   async function onProfileSubmit(values: ProfileFormValues) {
     if (!user || !db) return;
     setIsSubmitting(true);
+
+    const parseDateString = (dateStr: string): Date | null => {
+        if (!dateStr) return null;
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // JS months are 0-11
+            const year = parseInt(parts[2], 10);
+            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                const date = new Date(year, month, day);
+                if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
+                    return date;
+                }
+            }
+        }
+        return null;
+    };
+
+    const birthdateAsDate = values.birthdate ? parseDateString(values.birthdate) : null;
+    
     try {
         const userRef = doc(db, "users", user.id);
         const updatedData = {
             name: values.name,
-            birthdate: values.birthdate ? values.birthdate.toISOString() : null,
+            birthdate: birthdateAsDate ? birthdateAsDate.toISOString() : null,
             favoriteCategories: values.favoriteCategories || [],
             favoriteTags: values.favoriteTags || [],
         };
@@ -193,7 +219,7 @@ export default function DashboardPage() {
               <CardDescription>Miembro desde: {user.joinDate}</CardDescription>
                {user.birthdate && (
                 <CardDescription>
-                  Cumpleaños: {format(new Date(user.birthdate), "dd/MM/yyyy", { locale: es })}
+                  Cumpleaños: {format(new Date(user.birthdate), "dd/MM/yyyy")}
                 </CardDescription>
               )}
             </CardHeader>
@@ -214,25 +240,19 @@ export default function DashboardPage() {
                    <Form {...form}>
                     <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
                         <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                         <FormField control={form.control} name="birthdate" render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Fecha de Nacimiento</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button variant={"outline"} className={cn("w-[240px] pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
-                                    {field.value ? format(field.value, "dd/MM/yyyy", { locale: es }) : <span>Elige una fecha</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} captionLayout="dropdown-buttons" fromYear={1920} toYear={new Date().getFullYear()} initialFocus />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                         )} />
+                         <FormField
+                            control={form.control}
+                            name="birthdate"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Fecha de Nacimiento</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="DD/MM/AAAA" {...field} value={field.value || ''}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField control={form.control} name="favoriteCategories" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Géneros Favoritos</FormLabel>
@@ -365,5 +385,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
