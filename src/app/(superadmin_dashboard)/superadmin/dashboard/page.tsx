@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/dashboard/page.tsx
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,9 @@ import type { Library, Order, User, Book } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+
 
 interface GlobalStats {
   userCount: number;
@@ -96,6 +100,37 @@ export default function SuperAdminDashboardPage() {
       totalOrders: allOrders.length,
     };
   }, [allUsers, allLibraries, allOrders, allBooks]);
+  
+  const salesChartData = useMemo(() => {
+    const last30Days = Array.from({ length: 30 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      return d;
+    }).reverse();
+
+    const dailySales: { [key: string]: number } = {};
+
+    allOrders.forEach(order => {
+      if (order.createdAt) {
+        const orderDate = new Date(order.createdAt);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        if (orderDate >= thirtyDaysAgo) {
+          const dateKey = format(orderDate, 'yyyy-MM-dd');
+          dailySales[dateKey] = (dailySales[dateKey] || 0) + order.totalPrice;
+        }
+      }
+    });
+
+    return last30Days.map(date => {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      const shortDate = format(date, 'dd/MM');
+      return {
+        date: shortDate,
+        total: dailySales[dateKey] || 0,
+      };
+    });
+  }, [allOrders]);
 
   const librarySales = useMemo(() => {
     const salesByLibrary: { [key: string]: number } = {};
@@ -109,7 +144,7 @@ export default function SuperAdminDashboardPage() {
       name: lib.name,
       imageUrl: lib.imageUrl,
       sales: salesByLibrary[lib.id] || 0,
-    })).sort((a, b) => b.sales - a.sales);
+    })).sort((a, b) => b.sales - a.sales).slice(0, 5); // Top 5
   }, [allLibraries, allOrders]);
   
   const pendingLibraries = useMemo(() => {
@@ -192,48 +227,79 @@ export default function SuperAdminDashboardPage() {
               </CardContent>
           </Card>
       </div>
-
-       <div className="mt-8">
-        <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">Ventas por Librería</h2>
-        <Card className="shadow-lg">
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-16">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Librería</TableHead>
-                    <TableHead className="text-right">Ventas Totales</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {librarySales.map(lib => (
-                    <TableRow key={lib.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Image
-                            src={lib.imageUrl || 'https://placehold.co/40x40.png'}
-                            alt={`Logo de ${lib.name}`}
-                            width={40}
-                            height={40}
-                            className="rounded-full object-cover"
-                          />
-                          <span className="font-medium">{lib.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        ${lib.sales.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mt-8">
+          <Card className="lg:col-span-3 shadow-lg">
+            <CardHeader>
+              <CardTitle>Ventas de los Últimos 30 Días</CardTitle>
+              <CardDescription>Evolución de las ventas totales de la plataforma.</CardDescription>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <ChartContainer config={{
+                total: {
+                  label: "Ventas",
+                  color: "hsl(var(--primary))",
+                },
+              }} className="h-[250px] w-full">
+                <BarChart
+                  data={salesChartData}
+                  margin={{ top: 5, right: 10, left: -10, bottom: 0 }}
+                  accessibilityLayer
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => value}
+                  />
+                  <YAxis
+                    tickFormatter={(value) => `$${value}`}
+                    tickLine={false}
+                    axisLine={false}
+                    width={80}
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={<ChartTooltipContent
+                      formatter={(value) => `$${Number(value).toFixed(2)}`}
+                      indicator="dot"
+                    />}
+                  />
+                  <Bar dataKey="total" fill="var(--color-total)" radius={4} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+          
+          <Card className="lg:col-span-2 shadow-lg">
+            <CardHeader>
+                <CardTitle>Top 5 Librerías con más Ventas</CardTitle>
+                 <CardDescription>Ranking de ventas totales por librería.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+               {isLoading ? (
+                  <div className="flex justify-center items-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                ) : (
+                  <Table>
+                    <TableBody>
+                      {librarySales.map(lib => (
+                        <TableRow key={lib.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                              <span className="font-medium">{lib.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">${lib.sales.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+            </CardContent>
+          </Card>
       </div>
 
     </div>
