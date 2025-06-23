@@ -32,12 +32,12 @@ const FoundBookSchema = z.object({
 const NewSuggestionSchema = z.object({
   title: z.string().describe('The title for a new book suggestion.'),
   author: z.string().describe('The author for the new book suggestion.'),
-  rationale: z.string().describe('A short, compelling reason why this book is recommended for the user.'),
+  rationale: z.string().describe('Una razón breve y convincente en español de por qué este libro se recomienda al usuario.'),
 });
 
 const BookRecommendationsOutputSchema = z.object({
-  foundInInventory: z.array(FoundBookSchema).describe('Books found in our current inventory that match the request.'),
-  newSuggestions: z.array(NewSuggestionSchema).describe('New book suggestions that are not in our inventory but fit the user profile.'),
+  foundInInventory: z.array(FoundBookSchema).describe('Libros encontrados en nuestro inventario actual que coinciden con la solicitud.'),
+  newSuggestions: z.array(NewSuggestionSchema).describe('Nuevas sugerencias de libros que no están en nuestro inventario pero que se ajustan al perfil del usuario.'),
 });
 export type BookRecommendationsOutput = z.infer<typeof BookRecommendationsOutputSchema>;
 
@@ -54,18 +54,18 @@ const prompt = ai.definePrompt({
   name: 'bookRecommendationsPrompt',
   input: {schema: PromptInputSchema},
   output: {schema: BookRecommendationsOutputSchema},
-  prompt: `You are a world-class librarian and book recommendation expert.
-A user has provided their reading history and preferences. You have also been given a JSON string representing our current book inventory.
+  prompt: `Eres un bibliotecario de clase mundial y experto en recomendaciones de libros.
+Un usuario ha proporcionado su historial de lectura y sus preferencias. También se te ha dado una cadena JSON que representa nuestro inventario de libros actual.
 
-Your task is to provide two sets of recommendations:
-1.  **foundInInventory**: Search through the provided inventory JSON. Find up to 3 books that are the best match for the user's request. For each book you find, return only its 'id' and 'title' from the inventory data. Do not invent books for this list.
-2.  **newSuggestions**: Generate a list of 3-5 NEW book suggestions that are NOT in the provided inventory but would be an excellent fit for the user. For each new suggestion, provide a title, an author, and a short, compelling 'rationale' explaining why the user would enjoy it.
+Tu tarea es proporcionar dos conjuntos de recomendaciones:
+1.  **foundInInventory**: Busca en el JSON de inventario proporcionado. Encuentra hasta 3 libros que mejor coincidan con la solicitud del usuario. Para cada libro que encuentres, devuelve solo su 'id' y 'title' de los datos del inventario. No inventes libros para esta lista.
+2.  **newSuggestions**: Genera una lista de hasta 10 NUEVAS sugerencias de libros que NO estén en el inventario proporcionado pero que sean una excelente opción para el usuario. Para cada nueva sugerencia, proporciona un título, un autor y una 'rationale' (razón) breve y convincente en español que explique por qué el usuario disfrutaría de este libro.
 
-User Preferences:
-- Reading History: {{readingHistory}}
-- Stated Preferences: {{preferences}}
+Preferencias del Usuario:
+- Historial de Lectura: {{readingHistory}}
+- Preferencias Declaradas: {{preferences}}
 
-Current Book Inventory (JSON):
+Inventario de Libros Actual (JSON):
 {{{inventory}}}
 `,
 });
