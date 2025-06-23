@@ -498,7 +498,7 @@ export default function DashboardPage() {
                 <CardHeader>
                   <CardTitle className="font-headline text-xl flex items-center">
                     <Sparkles className="mr-2 h-5 w-5 text-primary" />
-                    Recomendaciones para Ti
+                    Alicia te recomienda
                   </CardTitle>
                   <CardDescription>
                     Nuestra IA utiliza tus preferencias de perfil, historial de compras y los gustos que nos describas aquí para encontrar tu próxima lectura ideal.
