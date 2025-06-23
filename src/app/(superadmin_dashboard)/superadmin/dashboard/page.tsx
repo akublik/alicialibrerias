@@ -1,10 +1,13 @@
 // src/app/(superadmin_dashboard)/superadmin/dashboard/page.tsx
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Store, BarChart3, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import type { Library } from "@/types";
 
 interface GlobalStats {
   userCount: number;
@@ -38,6 +41,7 @@ const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title:
 
 export default function SuperAdminDashboardPage() {
   const [stats, setStats] = useState<GlobalStats>({ userCount: 0, libraryCount: 0, totalSales: 0 });
+  const [librarySales, setLibrarySales] = useState<{ id: string; name: string; sales: number, imageUrl?: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -50,23 +54,41 @@ export default function SuperAdminDashboardPage() {
 
     const usersRef = collection(db, "users");
     const unsubUsers = onSnapshot(usersRef, (snapshot) => {
-        setStats(prev => ({ ...prev, userCount: snapshot.size }));
-        setIsLoading(false);
-    }, () => setIsLoading(false));
+      setStats(prev => ({ ...prev, userCount: snapshot.size }));
+    });
     unsubscribes.push(unsubUsers);
     
     const librariesRef = collection(db, "libraries");
-    const unsubLibraries = onSnapshot(librariesRef, (snapshot) => {
-        setStats(prev => ({ ...prev, libraryCount: snapshot.size }));
-    });
-    unsubscribes.push(unsubLibraries);
+    const unsubLibraries = onSnapshot(librariesRef, (librarySnapshot) => {
+      const allLibraries = librarySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
+      setStats(prev => ({ ...prev, libraryCount: librarySnapshot.size }));
 
-    const ordersRef = collection(db, "orders");
-    const unsubOrders = onSnapshot(ordersRef, (snapshot) => {
-        const total = snapshot.docs.reduce((sum, doc) => sum + (doc.data().totalPrice || 0), 0);
+      const ordersRef = collection(db, "orders");
+      const unsubOrders = onSnapshot(ordersRef, (orderSnapshot) => {
+        const total = orderSnapshot.docs.reduce((sum, doc) => sum + (doc.data().totalPrice || 0), 0);
+        
+        const salesByLibrary: { [key: string]: number } = {};
+        orderSnapshot.forEach(doc => {
+          const order = doc.data();
+          if (order.libraryId && order.totalPrice) {
+            salesByLibrary[order.libraryId] = (salesByLibrary[order.libraryId] || 0) + order.totalPrice;
+          }
+        });
+
+        const processedSales = allLibraries.map(lib => ({
+          id: lib.id,
+          name: lib.name,
+          imageUrl: lib.imageUrl,
+          sales: salesByLibrary[lib.id] || 0,
+        })).sort((a, b) => b.sales - a.sales);
+
         setStats(prev => ({ ...prev, totalSales: total }));
-    });
-    unsubscribes.push(unsubOrders);
+        setLibrarySales(processedSales);
+        setIsLoading(false);
+      });
+      unsubscribes.push(unsubOrders);
+    }, () => setIsLoading(false));
+    unsubscribes.push(unsubLibraries);
 
     return () => unsubscribes.forEach(unsub => unsub());
   }, []);
@@ -88,9 +110,47 @@ export default function SuperAdminDashboardPage() {
         <StatCard title="Ventas Totales Históricas" value={`$${stats.totalSales.toFixed(2)}`} icon={BarChart3} isLoading={isLoading} />
       </div>
 
-       <div>
-        <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">Gestión de la Plataforma</h2>
-        <p className="text-muted-foreground">Utiliza el menú de la izquierda para gestionar usuarios, librerías y contenido del sitio.</p>
+       <div className="mt-8">
+        <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">Ventas por Librería</h2>
+        <Card className="shadow-lg">
+          <CardContent className="p-0">
+            {isLoading ? (
+              <div className="flex justify-center items-center py-16">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Librería</TableHead>
+                    <TableHead className="text-right">Ventas Totales</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {librarySales.map(lib => (
+                    <TableRow key={lib.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={lib.imageUrl || 'https://placehold.co/40x40.png'}
+                            alt={`Logo de ${lib.name}`}
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover"
+                          />
+                          <span className="font-medium">{lib.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ${lib.sales.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
     </div>
