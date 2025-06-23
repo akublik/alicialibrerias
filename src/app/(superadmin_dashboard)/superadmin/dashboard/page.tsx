@@ -192,7 +192,7 @@ export default function SuperAdminDashboardPage() {
     return Object.entries(salesCount)
         .map(([bookId, data]) => ({ bookId, ...data }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+        .slice(0, 20);
   }, [allOrders]);
   
   const pendingLibraries = useMemo(() => {
@@ -352,7 +352,7 @@ export default function SuperAdminDashboardPage() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><BookCopy className="h-5 w-5"/>Top 5 Libros Vendidos</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><BookCopy className="h-5 w-5"/>Top 20 Libros Vendidos</CardTitle>
                    <CardDescription>Ranking por unidades vendidas.</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
