@@ -19,7 +19,7 @@ export type LiteraryGamesAIInput = z.infer<typeof LiteraryGamesAIInputSchema>;
 
 // Schema for text-based games
 const GameTextSchema = z.object({
-    type: z.literal('text').describe("El tipo de juego, para juegos basados en texto."),
+    type: z.enum(['text']).describe("El tipo de juego, para juegos basados en texto."),
     title: z.string().describe('El título del juego literario.'),
     description: z.string().describe('Una descripción del juego literario, incluyendo reglas y objetivos.'),
     instructions: z.string().describe('Instrucciones paso a paso sobre cómo jugar.'),
@@ -34,7 +34,7 @@ const QuizQuestionSchema = z.object({
 });
 
 const QuizGameSchema = z.object({
-    type: z.literal('quiz').describe("El tipo de juego, para juegos de trivia o cuestionarios."),
+    type: z.enum(['quiz']).describe("El tipo de juego, para juegos de trivia o cuestionarios."),
     title: z.string().describe('El título del juego de trivia.'),
     description: z.string().describe('Una breve introducción o descripción del juego de trivia.'),
     questions: z.array(QuizQuestionSchema).min(3).max(10).describe("Una lista de 3 a 10 preguntas para el juego."),
