@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BookCard } from "@/components/BookCard";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2 } from "lucide-react";
+import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2, Search } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import type { Book, HomepageContent, SecondaryBannerSlide } from "@/types";
 import { db } from "@/lib/firebase";
@@ -12,6 +12,8 @@ import { collection, getDocs, limit, query, doc, getDoc, where, documentId } fro
 import { Card } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
 
 export default function HomePage() {
@@ -21,6 +23,17 @@ export default function HomePage() {
   const [nationalSectionTitle, setNationalSectionTitle] = useState("Libros Nacionales");
   const [isLoading, setIsLoading] = useState(true);
   const autoplay = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (searchTerm.trim()) {
+          router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      }
+  }
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -114,7 +127,7 @@ export default function HomePage() {
       }
     };
     fetchData();
-  }, []);
+  }, [router]);
 
   const platformBenefits = [
     { title: "Descubre Joyas Literarias", description: "Encuentra libros únicos de editoriales independientes y autores emergentes.", icon: BookHeart },
@@ -126,7 +139,7 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative py-32 md:py-48 bg-gradient-to-br from-primary/10 via-background to-background pt-24 md:pt-40">
+      <section className="relative pb-24 md:pb-32 pt-32 md:pt-48 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
@@ -144,25 +157,38 @@ export default function HomePage() {
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
           </div>
         )}
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4 mt-8 relative z-10">
-          <Link href="/libraries">
-            <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-              Explorar Librerías
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/recommendations">
-            <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-              Obtener Recomendaciones
-              <Sparkles className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
       </section>
+
+      {/* Search Bar Section */}
+      <section className="container mx-auto px-4 -mt-16 relative z-20">
+          <Card className="p-4 md:p-6 shadow-xl border-2 border-primary/10">
+            <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+              <div className="md:col-span-3">
+                <Input
+                  type="text"
+                  placeholder="Busca por título, autor o ISBN..."
+                  className="h-12 text-lg w-full"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  aria-label="Buscar libros"
+                />
+              </div>
+              <Button type="submit" size="lg" className="md:col-span-1 h-12 text-base w-full">
+                <Search className="mr-2 h-5 w-5" /> Buscar Libros
+              </Button>
+              <Link href="/libraries" className="md:col-span-1">
+                <Button variant="outline" size="lg" className="w-full h-12 text-base">
+                  <MapPinned className="mr-2 h-5 w-5" /> Librerías Cercanas
+                </Button>
+              </Link>
+            </form>
+          </Card>
+      </section>
+
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="pb-12 pt-8 bg-muted/30">
+          <section className="pt-24 pb-12 bg-background">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
@@ -211,7 +237,7 @@ export default function HomePage() {
 
 
       {/* 2. Libros Destacados */}
-      <section className="py-16 bg-background">
+      <section className="pt-24 pb-16 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Destacados</h2>
           {isLoading ? (
