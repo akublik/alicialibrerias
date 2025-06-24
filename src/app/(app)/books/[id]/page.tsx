@@ -161,7 +161,7 @@ export default function BookDetailsPage() {
   };
 
   const handleReviewSubmit = async () => {
-      if (!isAuthenticated || !user) {
+      if (!isAuthenticated) {
           toast({ title: "Debes iniciar sesión", description: "Solo los usuarios registrados pueden dejar reseñas.", variant: "destructive" });
           return;
       }
@@ -175,16 +175,18 @@ export default function BookDetailsPage() {
       }
       if (!db || !book) return;
 
-      // Re-fetch user data from localStorage to ensure it's the latest version
-      const userDataString = localStorage.getItem("aliciaLibros_user");
-      if (!userDataString) {
-          toast({ title: "Error de Sesión", description: "No se encontró tu información de usuario. Por favor, inicia sesión de nuevo.", variant: "destructive" });
-          return;
-      }
-      const liveUser: User = JSON.parse(userDataString);
-
       setIsSubmittingReview(true);
       try {
+          const userDataString = localStorage.getItem("aliciaLibros_user");
+          if (!userDataString) throw new Error("No se encontró información de usuario.");
+          const basicUserInfo = JSON.parse(userDataString);
+
+          const userRef = doc(db, "users", basicUserInfo.id);
+          const userSnap = await getDoc(userRef);
+          if (!userSnap.exists()) throw new Error("No se pudo verificar el usuario.");
+
+          const liveUser: User = { id: userSnap.id, ...userSnap.data() } as User;
+
           await addDoc(collection(db, "reviews"), {
               bookId,
               bookTitle: book.title,
