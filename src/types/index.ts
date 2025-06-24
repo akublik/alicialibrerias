@@ -197,3 +197,11 @@ export interface LibraryAnalytics {
   id: string; // This will be the libraryId
   visitCount: number;
 }
+
+export interface SearchLog {
+  id: string;
+  query: string;
+  resultsCount: number;
+  timestamp: any; // Firestore Timestamp
+  userId?: string;
+}

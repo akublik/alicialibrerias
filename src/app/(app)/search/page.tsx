@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { BookCard } from '@/components/BookCard';
 import { db } from '@/lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Book } from '@/types';
 import { Loader2, SearchX } from 'lucide-react';
 
@@ -58,6 +58,42 @@ function SearchResults() {
       (book.isbn?.toLowerCase().includes(lowercasedQuery))
     );
   }, [allBooks, query]);
+
+  useEffect(() => {
+    const logSearch = async () => {
+      if (!query || isLoading) return;
+
+      const loggedKey = `search-logged-${query.toLowerCase()}`;
+      if (sessionStorage.getItem(loggedKey)) {
+        return;
+      }
+      
+      if (!db) return;
+
+      try {
+          let userId = undefined;
+          const userDataString = localStorage.getItem("aliciaLibros_user");
+          if (userDataString) {
+              userId = JSON.parse(userDataString).id;
+          }
+
+          await addDoc(collection(db, 'searchLogs'), {
+              query: query.toLowerCase(),
+              resultsCount: filteredBooks.length,
+              timestamp: serverTimestamp(),
+              userId: userId,
+          });
+          sessionStorage.setItem(loggedKey, 'true');
+      } catch (error) {
+          console.error("Error logging search:", error);
+      }
+    };
+    
+    if (!isLoading) {
+      logSearch();
+    }
+  }, [query, filteredBooks, isLoading]);
+
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
