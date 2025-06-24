@@ -159,12 +159,36 @@ export default function DashboardPage() {
         unsubscribes.push(userUnsub);
 
         // Fetch other related data
-        const libUnsub = onSnapshot(collection(db, "libraries"), (snapshot) => {
-          const libMap = new Map<string, string>();
-          snapshot.forEach(doc => { libMap.set(doc.id, doc.data().name); });
-          setLibraries(libMap);
+        const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
+          const libNameMap = new Map<string, string>();
+          const libInfoMap = new Map<string, {name: string, location: string}>();
+
+          libSnapshot.forEach(doc => {
+            const data = doc.data();
+            libNameMap.set(doc.id, data.name);
+            libInfoMap.set(doc.id, { name: data.name, location: data.location });
+          });
+          setLibraries(libNameMap);
+
+          const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
+            const augmentedBooks = booksSnapshot.docs.map(doc => {
+              const book = { id: doc.id, ...doc.data() } as Book;
+              if (book.libraryId && libInfoMap.has(book.libraryId)) {
+                const libInfo = libInfoMap.get(book.libraryId)!;
+                return { 
+                  ...book, 
+                  libraryName: libInfo.name,
+                  libraryLocation: libInfo.location
+                };
+              }
+              return book;
+            });
+            setAllBooks(augmentedBooks);
+          });
+          unsubscribes.push(booksUnsub);
         });
         unsubscribes.push(libUnsub);
+
 
         const ordersRef = collection(db, "orders");
         const q = query(ordersRef, where("buyerId", "==", initialUserData.id));
@@ -176,11 +200,6 @@ export default function DashboardPage() {
           setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
-
-        const booksUnsub = onSnapshot(collection(db, "books"), (snapshot) => {
-          setAllBooks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
-        });
-        unsubscribes.push(booksUnsub);
 
         return () => {
           unsubscribes.forEach(unsub => unsub());

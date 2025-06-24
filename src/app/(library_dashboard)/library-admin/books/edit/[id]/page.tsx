@@ -171,6 +171,15 @@ export default function EditBookPage() {
     
     try {
       const bookRef = doc(db, "books", bookId);
+      
+      const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
+      if (!libraryDataString) {
+          toast({ title: "Error de librería", description: "No se pudo encontrar la información de la librería registrada. Por favor, vuelve a iniciar sesión.", variant: "destructive" });
+          setIsSubmitting(false);
+          return;
+      }
+      const libraryData = JSON.parse(libraryDataString);
+
       const updatedData = {
           title: values.title,
           authors: values.authors.split(',').map(a => a.trim()),
@@ -185,6 +194,9 @@ export default function EditBookPage() {
           pageCount: values.pageCount ? Number(values.pageCount) : null,
           coverType: values.coverType || null,
           publisher: values.publisher || null,
+          libraryId: book.libraryId,
+          libraryName: libraryData.name,
+          libraryLocation: libraryData.location,
       };
 
       await updateDoc(bookRef, updatedData);
