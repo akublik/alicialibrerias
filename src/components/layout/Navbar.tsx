@@ -1,3 +1,4 @@
+
 // src/components/layout/Navbar.tsx
 "use client";
 
@@ -122,9 +123,9 @@ export function Navbar() {
                   </Link>
                 ))}
               </nav>
-              <div className="mt-auto pt-6 border-t">
+              <div className="mt-auto pt-6 border-t flex flex-col space-y-2">
                 <Link href="/library-login" className={cn(
-                    "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground mb-2",
+                    "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                     "text-foreground/80"
                   )}>
                   <Store className="h-5 w-5" />
@@ -139,15 +140,16 @@ export function Navbar() {
                       <span>Soy Lector</span>
                    </Link>
                 ) : (
-                  <Link href="/login">
-                     <Button variant="default" className="w-full font-body mb-2">
-                        <LogIn className="mr-2 h-4 w-4" />
-                        Ingresar / Registrarse
-                      </Button>
+                  <Link href="/login" className={cn(
+                      "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                       "text-foreground/80"
+                    )}>
+                    <LogIn className="h-5 w-5" />
+                    <span>Ingresar / Registrarse</span>
                   </Link>
                 )}
                 <Link href="/cart" passHref>
-                  <Button variant="ghost" className="w-full justify-start mt-2 text-foreground/80 hover:bg-accent hover:text-accent-foreground relative">
+                  <Button variant="ghost" className="w-full justify-start text-foreground/80 hover:bg-accent hover:text-accent-foreground relative px-3 py-2 h-auto text-base font-medium">
                     <ShoppingCart className="mr-3 h-5 w-5" />
                     <span>Carrito</span>
                      {itemCount > 0 && (
