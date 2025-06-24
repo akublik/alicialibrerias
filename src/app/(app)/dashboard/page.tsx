@@ -12,7 +12,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User, Order, BookRequest } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus } from "lucide-react";
@@ -22,7 +21,7 @@ import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp, getDocs, documentId } from "firebase/firestore";
 import { format } from 'date-fns';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
@@ -81,6 +80,9 @@ export default function DashboardPage() {
   const [foundBooks, setFoundBooks] = useState<Book[]>([]);
   const [newSuggestions, setNewSuggestions] = useState<BookRecommendationsOutput['newSuggestions']>([]);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
+
+  const [favoriteLibraries, setFavoriteLibraries] = useState<Library[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -151,8 +153,6 @@ export default function DashboardPage() {
               dataAiHint: liveUserData.dataAiHint || "user avatar",
             };
             setUser(fullUserData);
-            // This was the source of the race condition. It should not write to localStorage.
-            // localStorage.setItem("aliciaLibros_user", JSON.stringify(fullUserData));
           } else {
             console.error("User document does not exist, logging out.");
             handleLogout();
@@ -202,6 +202,29 @@ export default function DashboardPage() {
           setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
+
+        // Listener for favorite libraries
+        const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', initialUserData.id));
+        const favsUnsub = onSnapshot(favsQuery, async (snapshot) => {
+            setIsLoadingFavorites(true);
+            const libraryIds = snapshot.docs.map(doc => doc.data().libraryId);
+            if (libraryIds.length > 0) {
+                // Chunk the IDs to avoid 'in' query limitations
+                const chunks = [];
+                for (let i = 0; i < libraryIds.length; i += 30) {
+                    chunks.push(libraryIds.slice(i, i + 30));
+                }
+                const libPromises = chunks.map(chunk => getDocs(query(collection(db, 'libraries'), where(documentId(), 'in', chunk))));
+                const libSnapshots = await Promise.all(libPromises);
+                const libs: Library[] = [];
+                libSnapshots.forEach(snap => snap.docs.forEach(doc => libs.push({ id: doc.id, ...doc.data()} as Library)));
+                setFavoriteLibraries(libs);
+            } else {
+                setFavoriteLibraries([]);
+            }
+            setIsLoadingFavorites(false);
+        });
+        unsubscribes.push(favsUnsub);
 
         return () => {
           unsubscribes.forEach(unsub => unsub());
@@ -255,7 +278,7 @@ export default function DashboardPage() {
     
     try {
         const userRef = doc(db, "users", user.id);
-        const dataForFirestore = {
+        const dataForFirestore: Partial<User> = {
             name: values.name,
             avatarUrl: values.avatarUrl,
             birthdate: birthdateAsDate ? birthdateAsDate.toISOString().split('T')[0] : null,
@@ -265,19 +288,15 @@ export default function DashboardPage() {
 
         await updateDoc(userRef, dataForFirestore);
 
-        // To guarantee localStorage is correct, fetch the most recent full user object from storage and merge it.
-        // This is safer than relying on the `user` state variable, which might be stale in this function's closure.
         const currentDataString = localStorage.getItem("aliciaLibros_user");
         const currentUserData = currentDataString ? JSON.parse(currentDataString) : {};
-
-        // Create the new, complete user object for local storage and component state
+        
         const fullyUpdatedUser = {
-             ...currentUserData, // Start with the most recent full user object from storage
-             ...dataForFirestore, // Overwrite with the latest changes from the form
-             id: user.id // Ensure the ID is correctly carried over
+             ...currentUserData,
+             ...dataForFirestore,
+             id: user.id
         };
         
-        // Update the component's state and the browser's local storage with this guaranteed fresh object
         setUser(fullyUpdatedUser as UserData);
         localStorage.setItem("aliciaLibros_user", JSON.stringify(fullyUpdatedUser));
         
@@ -358,8 +377,6 @@ export default function DashboardPage() {
   if (!isAuthenticated || !user) {
     return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
   }
-
-  const mockFavoriteLibraries: Library[] = placeholderLibraries.slice(0, 2).map(l => ({...l, id: l.id + "-fav"}));
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -573,12 +590,16 @@ export default function DashboardPage() {
                   <CardTitle className="font-headline text-xl">Mis Librerías Favoritas</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {mockFavoriteLibraries.length > 0 ? (
+                  {isLoadingFavorites ? (
+                    <div className="flex justify-center items-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                  ) : favoriteLibraries.length > 0 ? (
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {mockFavoriteLibraries.map(library => <LibraryCard key={library.id} library={library} />)}
+                      {favoriteLibraries.map(library => <LibraryCard key={library.id} library={library} />)}
                     </div>
                   ) : (
-                    <p className="text-muted-foreground">Aún no has guardado ninguna librería como favorita.</p>
+                    <p className="text-muted-foreground text-center py-4">Aún no has guardado ninguna librería como favorita.</p>
                   )}
                 </CardContent>
               </Card>
