@@ -8,12 +8,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ShoppingCart, Loader2, PackageOpen, ArrowLeft, FilterX } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, increment } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Order } from "@/types";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+const statusTranslations: Record<Order['status'], string> = {
+  pending: 'Pendiente',
+  shipped: 'Enviado',
+  delivered: 'Entregado',
+  cancelled: 'Cancelado',
+};
 
 export default function LibraryOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -80,10 +87,31 @@ export default function LibraryOrdersPage() {
     setIsUpdatingStatus(orderId);
     const orderRef = doc(db, "orders", orderId);
     try {
+      // Award points if the new status is 'delivered' and the previous status was not
+      const order = orders.find(o => o.id === orderId);
+      if (newStatus === 'delivered' && order && order.status !== 'delivered') {
+        if (order.buyerId) {
+            // Calculate points from subtotal of items
+            const pointsToAward = Math.floor(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0));
+            
+            if (pointsToAward > 0) {
+              const userRef = doc(db, "users", order.buyerId);
+              await updateDoc(userRef, {
+                loyaltyPoints: increment(pointsToAward)
+              });
+              toast({
+                title: "¡Puntos Asignados!",
+                description: `Se han añadido ${pointsToAward} puntos de lealtad al cliente.`,
+              });
+            }
+        }
+      }
+      
+      // Update order status
       await updateDoc(orderRef, { status: newStatus });
       toast({
         title: "Estado Actualizado",
-        description: `El estado del pedido se ha cambiado a "${newStatus}".`,
+        description: `El estado del pedido se ha cambiado a "${statusTranslations[newStatus]}".`,
       });
     } catch (error: any) {
        toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -182,15 +210,15 @@ export default function LibraryOrdersPage() {
                     <TableCell>
                        <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant={getStatusVariant(order.status)} size="sm" className="capitalize" disabled={isUpdatingStatus === order.id}>
+                            <Button variant={getStatusVariant(order.status)} size="sm" className="capitalize w-28" disabled={isUpdatingStatus === order.id}>
                               {isUpdatingStatus === order.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                              {order.status}
+                              {statusTranslations[order.status]}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             {statusOptions.map(status => (
                               <DropdownMenuItem key={status} onSelect={() => handleUpdateStatus(order.id, status)} className="capitalize">
-                                {status}
+                                {statusTranslations[status]}
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
