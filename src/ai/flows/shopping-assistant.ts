@@ -4,6 +4,7 @@
  * @fileOverview A shopping assistant AI agent that can query the book catalog and library directory.
  *
  * - askShoppingAssistant - A function that handles the conversation with the assistant.
+ * - ChatMessage - The type for a single message in the conversation history.
  */
 
 import {ai} from '@/ai/genkit';
@@ -121,27 +122,38 @@ const findLibrariesByCity = ai.defineTool(
 );
 
 
+// Define the message type for the chat history
+export type ChatMessage = {
+    role: 'user' | 'assistant';
+    content: string;
+};
+
 // Main Flow
-const shoppingAssistantPrompt = ai.definePrompt({
-    name: 'shoppingAssistantPrompt',
-    tools: [findBooksInCatalog, findLibrariesByCity], // Now with two tools!
-    system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
-    - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
-    - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
-    - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
-    - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
-    - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
-    - Si una herramienta no devuelve resultados, informa amablemente al usuario.
-    - Sé concisa, conversacional y responde siempre en español.
-    - No inventes información que no puedas obtener con tus herramientas.`,
-    prompt: `{{{query}}}`
-});
+export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
+    // Map frontend roles to Genkit roles ('assistant' -> 'model')
+    const genkitHistory = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
+        content: [{ text: msg.content }]
+    }));
 
-export async function askShoppingAssistant(userQuery: string): Promise<string> {
     try {
-        const response = await shoppingAssistantPrompt({query: userQuery});
+        const response = await ai.generate({
+            tools: [findBooksInCatalog, findLibrariesByCity],
+            history: genkitHistory,
+            system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
+            - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
+            - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
+            - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
+            - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
+            - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
+            - Si una herramienta no devuelve resultados, informa amablemente al usuario.
+            - Sé concisa, conversacional y responde siempre en español.
+            - No inventes información que no puedas obtener con tus herramientas.
+            - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
+        });
+        
         const text = response?.text;
-
+        
         if (text) {
             return text;
         }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -5,13 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
-import { askShoppingAssistant } from '@/ai/flows/shopping-assistant';
+import { askShoppingAssistant, type ChatMessage } from '@/ai/flows/shopping-assistant';
 import { cn } from '@/lib/utils';
 
-type Message = {
-    role: 'user' | 'assistant';
-    content: string;
-};
+type Message = ChatMessage;
 
 export function ShoppingAssistantDialog() {
     const [messages, setMessages] = useState<Message[]>([
@@ -29,12 +27,13 @@ export function ShoppingAssistantDialog() {
         if (!input.trim() || isLoading) return;
 
         const userMessage: Message = { role: 'user', content: input };
-        setMessages(prev => [...prev, userMessage]);
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
         setInput('');
         setIsLoading(true);
 
         try {
-            const assistantResponse = await askShoppingAssistant(input);
+            const assistantResponse = await askShoppingAssistant(newMessages);
             const assistantMessage: Message = { role: 'assistant', content: assistantResponse };
             setMessages(prev => [...prev, assistantMessage]);
         } catch (error) {
