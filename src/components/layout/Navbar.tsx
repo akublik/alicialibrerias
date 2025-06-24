@@ -68,8 +68,9 @@ export function Navbar() {
           </Link>
           {isAuthenticated ? (
             <Link href="/dashboard">
-              <Button variant="ghost" size="icon" aria-label="Dashboard">
-                <UserCircle className="h-6 w-6" />
+              <Button variant="ghost" className="font-body">
+                <UserCircle className="mr-2 h-4 w-4" />
+                Soy Lector
               </Button>
             </Link>
           ) : (
@@ -135,7 +136,7 @@ export function Navbar() {
                        "text-foreground/80"
                     )}>
                       <UserCircle className="h-5 w-5" />
-                      <span>Mi Cuenta Lector</span>
+                      <span>Soy Lector</span>
                    </Link>
                 ) : (
                   <Link href="/register">
