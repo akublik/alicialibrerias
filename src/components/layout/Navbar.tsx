@@ -54,13 +54,76 @@ export function Navbar() {
     { href: "/community", label: "Comunidad", icon: Users },
   ];
 
-  const userDashboardHref =
-    userRole === 'library' ? '/library-admin/dashboard' :
-    userRole === 'superadmin' ? '/superadmin/dashboard' :
-    '/dashboard';
+  const getDashboardLink = () => {
+    if (userRole === 'library') return '/library-admin/dashboard';
+    if (userRole === 'superadmin') return '/superadmin/dashboard';
+    return '/dashboard'; // Default for readers
+  };
+  
+  const renderAuthButtons = () => {
+    if (isAuthenticated) {
+      return (
+        <Link href={getDashboardLink()}>
+          <Button variant="outline" className="font-body">
+             <UserCircle className="mr-2 h-4 w-4" />
+             Mi Panel
+          </Button>
+        </Link>
+      )
+    }
+    
+    // Not authenticated
+    return (
+      <>
+        <Link href="/library-login">
+          <Button variant="ghost" className="font-body">
+            <Store className="mr-2 h-4 w-4" />
+            Soy Librería
+          </Button>
+        </Link>
+        <Link href="/login">
+          <Button variant="outline" className="font-body">
+            <LogIn className="mr-2 h-4 w-4" />
+            Soy Lector
+          </Button>
+        </Link>
+      </>
+    );
+  }
 
-  const userDashboardText =
-    userRole === 'reader' ? 'Soy Lector' : 'Mi Panel';
+  const renderMobileAuthButtons = () => {
+    if (isAuthenticated) {
+      return (
+         <Link href={getDashboardLink()} className={cn(
+            "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+             "text-foreground/80"
+          )}>
+            <UserCircle className="h-5 w-5" />
+            <span>Mi Panel</span>
+         </Link>
+      )
+    }
+
+    // Not authenticated
+    return (
+      <>
+        <Link href="/library-login" className={cn(
+            "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+            "text-foreground/80"
+          )}>
+          <Store className="h-5 w-5" />
+          <span>Soy Librería</span>
+        </Link>
+         <Link href="/login" className={cn(
+            "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+             "text-foreground/80"
+          )}>
+          <LogIn className="h-5 w-5" />
+          <span>Soy Lector</span>
+        </Link>
+      </>
+    )
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
@@ -86,27 +149,7 @@ export function Navbar() {
         </nav>
 
         <div className="hidden md:flex items-center space-x-3">
-          <Link href="/library-login">
-            <Button variant="ghost" className="font-body">
-              <Store className="mr-2 h-4 w-4" />
-              Soy Librería
-            </Button>
-          </Link>
-          {isAuthenticated ? (
-            <Link href={userDashboardHref}>
-              <Button variant="ghost" className="font-body">
-                <UserCircle className="mr-2 h-4 w-4" />
-                {userDashboardText}
-              </Button>
-            </Link>
-          ) : (
-            <Link href="/login">
-              <Button variant="outline" className="font-body">
-                <LogIn className="mr-2 h-4 w-4" />
-                Ingresar
-              </Button>
-            </Link>
-          )}
+          {renderAuthButtons()}
           <Link href="/cart" passHref>
              <Button variant="ghost" size="icon" aria-label="Carrito" className="relative">
                <ShoppingCart className="h-6 w-6" />
@@ -149,30 +192,7 @@ export function Navbar() {
                 ))}
               </nav>
               <div className="mt-auto pt-6 border-t flex flex-col space-y-2">
-                <Link href="/library-login" className={cn(
-                    "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                    "text-foreground/80"
-                  )}>
-                  <Store className="h-5 w-5" />
-                  <span>Soy Librería</span>
-                </Link>
-                {isAuthenticated ? (
-                   <Link href={userDashboardHref} className={cn(
-                      "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                       "text-foreground/80"
-                    )}>
-                      <UserCircle className="h-5 w-5" />
-                      <span>{userDashboardText}</span>
-                   </Link>
-                ) : (
-                  <Link href="/login" className={cn(
-                      "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                       "text-foreground/80"
-                    )}>
-                    <LogIn className="h-5 w-5" />
-                    <span>Ingresar / Registrarse</span>
-                  </Link>
-                )}
+                {renderMobileAuthButtons()}
                 <Link href="/cart" passHref>
                   <Button variant="ghost" className="w-full justify-start text-foreground/80 hover:bg-accent hover:text-accent-foreground relative px-3 py-2 h-auto text-base font-medium">
                     <ShoppingCart className="mr-3 h-5 w-5" />
