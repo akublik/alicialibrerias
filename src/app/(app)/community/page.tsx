@@ -99,14 +99,23 @@ export default function CommunityPage() {
         return;
     }
 
+    // Re-fetch user data from localStorage to ensure it's the latest version
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (!userDataString) {
+        toast({ title: "Error de Sesión", description: "No se encontró tu información de usuario. Por favor, inicia sesión de nuevo.", variant: "destructive" });
+        return;
+    }
+    const liveUser: User = JSON.parse(userDataString);
+
+
     setIsSubmittingReview(true);
     try {
       await addDoc(collection(db, "reviews"), {
         bookTitle: newReviewBookTitle,
-        userId: user.id,
-        userName: user.name,
-        avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
-        dataAiHint: user.dataAiHint || 'user avatar',
+        userId: liveUser.id,
+        userName: liveUser.name,
+        avatarUrl: liveUser.avatarUrl || `https://placehold.co/100x100.png?text=${liveUser.name.charAt(0)}`,
+        dataAiHint: liveUser.dataAiHint || 'user avatar',
         rating: newReviewRating,
         comment: newReviewText,
         createdAt: serverTimestamp()
@@ -205,9 +214,14 @@ export default function CommunityPage() {
                 <Card key={review.id} className="shadow-sm hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-start space-x-4">
-                      {review.avatarUrl && 
-                        <Image src={review.avatarUrl} alt={review.userName} width={48} height={48} className="rounded-full" data-ai-hint={review.dataAiHint}/>
-                      }
+                      <Image 
+                          src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`}
+                          alt={review.userName} 
+                          width={48} 
+                          height={48} 
+                          className="rounded-full" 
+                          data-ai-hint={review.dataAiHint || 'user avatar'}
+                      />
                       <div>
                         <CardTitle className="font-headline text-lg">{review.userName}</CardTitle>
                         <CardDescription>

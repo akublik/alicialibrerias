@@ -175,15 +175,23 @@ export default function BookDetailsPage() {
       }
       if (!db || !book) return;
 
+      // Re-fetch user data from localStorage to ensure it's the latest version
+      const userDataString = localStorage.getItem("aliciaLibros_user");
+      if (!userDataString) {
+          toast({ title: "Error de Sesión", description: "No se encontró tu información de usuario. Por favor, inicia sesión de nuevo.", variant: "destructive" });
+          return;
+      }
+      const liveUser: User = JSON.parse(userDataString);
+
       setIsSubmittingReview(true);
       try {
           await addDoc(collection(db, "reviews"), {
               bookId,
               bookTitle: book.title,
-              userId: user.id,
-              userName: user.name,
-              avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
-              dataAiHint: user.dataAiHint || 'user avatar',
+              userId: liveUser.id,
+              userName: liveUser.name,
+              avatarUrl: liveUser.avatarUrl || `https://placehold.co/100x100.png?text=${liveUser.name.charAt(0)}`,
+              dataAiHint: liveUser.dataAiHint || 'user avatar',
               rating: newReviewRating,
               comment: newReviewText,
               createdAt: serverTimestamp()
