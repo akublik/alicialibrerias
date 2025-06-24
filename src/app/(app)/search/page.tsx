@@ -71,18 +71,26 @@ function SearchResults() {
       if (!db) return;
 
       try {
-          let userId = undefined;
-          const userDataString = localStorage.getItem("aliciaLibros_user");
-          if (userDataString) {
-              userId = JSON.parse(userDataString).id;
-          }
-
-          await addDoc(collection(db, 'searchLogs'), {
+          const searchLogData: {
+              query: string;
+              resultsCount: number;
+              timestamp: any;
+              userId?: string;
+          } = {
               query: query.toLowerCase(),
               resultsCount: filteredBooks.length,
               timestamp: serverTimestamp(),
-              userId: userId,
-          });
+          };
+          
+          const userDataString = localStorage.getItem("aliciaLibros_user");
+          if (userDataString) {
+              const user = JSON.parse(userDataString);
+              if (user.id) {
+                searchLogData.userId = user.id;
+              }
+          }
+
+          await addDoc(collection(db, 'searchLogs'), searchLogData);
           sessionStorage.setItem(loggedKey, 'true');
       } catch (error) {
           console.error("Error logging search:", error);
