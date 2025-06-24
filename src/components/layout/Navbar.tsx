@@ -11,20 +11,37 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import { useCart } from "@/context/CartContext"; 
 
-// Mock authentication status
 const useAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  const [authInfo, setAuthInfo] = React.useState<{
+    isAuthenticated: boolean;
+    userRole: 'reader' | 'library' | 'superadmin' | null;
+  }>({
+    isAuthenticated: false,
+    userRole: null,
+  });
+
   React.useEffect(() => {
     // This effect runs only on the client after hydration
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
-    setIsAuthenticated(authStatus);
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    let role = null;
+    if (authStatus && userDataString) {
+      try {
+        const user = JSON.parse(userDataString);
+        role = user.role || user.rol; // Accommodate legacy 'rol' typo
+      } catch (e) {
+        console.error("Error parsing user data from localStorage", e);
+      }
+    }
+    setAuthInfo({ isAuthenticated: authStatus, userRole: role });
   }, []);
-  return { isAuthenticated };
+  
+  return authInfo;
 };
 
 
 export function Navbar() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userRole } = useAuth();
   const { itemCount } = useCart(); 
   const pathname = usePathname();
 
@@ -36,6 +53,14 @@ export function Navbar() {
     { href: "/games", label: "Juegos", icon: Gamepad2 },
     { href: "/community", label: "Comunidad", icon: Users },
   ];
+
+  const userDashboardHref =
+    userRole === 'library' ? '/library-admin/dashboard' :
+    userRole === 'superadmin' ? '/superadmin/dashboard' :
+    '/dashboard';
+
+  const userDashboardText =
+    userRole === 'reader' ? 'Soy Lector' : 'Mi Panel';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
@@ -68,10 +93,10 @@ export function Navbar() {
             </Button>
           </Link>
           {isAuthenticated ? (
-            <Link href="/dashboard">
+            <Link href={userDashboardHref}>
               <Button variant="ghost" className="font-body">
                 <UserCircle className="mr-2 h-4 w-4" />
-                Soy Lector
+                {userDashboardText}
               </Button>
             </Link>
           ) : (
@@ -132,12 +157,12 @@ export function Navbar() {
                   <span>Soy Librería</span>
                 </Link>
                 {isAuthenticated ? (
-                   <Link href="/dashboard" className={cn(
+                   <Link href={userDashboardHref} className={cn(
                       "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                        "text-foreground/80"
                     )}>
                       <UserCircle className="h-5 w-5" />
-                      <span>Soy Lector</span>
+                      <span>{userDashboardText}</span>
                    </Link>
                 ) : (
                   <Link href="/login" className={cn(
