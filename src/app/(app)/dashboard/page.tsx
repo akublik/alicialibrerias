@@ -151,7 +151,8 @@ export default function DashboardPage() {
               dataAiHint: liveUserData.dataAiHint || "user avatar",
             };
             setUser(fullUserData);
-            localStorage.setItem("aliciaLibros_user", JSON.stringify(fullUserData)); // Keep localStorage updated
+            // This was the source of the race condition. It should not write to localStorage.
+            // localStorage.setItem("aliciaLibros_user", JSON.stringify(fullUserData));
           } else {
             console.error("User document does not exist, logging out.");
             handleLogout();
