@@ -139,7 +139,7 @@ export function Navbar() {
                       <span>Soy Lector</span>
                    </Link>
                 ) : (
-                  <Link href="/register">
+                  <Link href="/login">
                      <Button variant="default" className="w-full font-body mb-2">
                         <LogIn className="mr-2 h-4 w-4" />
                         Ingresar / Registrarse
