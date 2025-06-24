@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Wand2, Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { askShoppingAssistant } from '@/ai/flows/shopping-assistant';
 import { cn } from '@/lib/utils';
 
@@ -57,11 +57,7 @@ export function ShoppingAssistantDialog() {
     }, [messages]);
 
     return (
-        <div className="flex flex-col h-full bg-background">
-            <header className="p-4 border-b flex items-center">
-                <Wand2 className="h-6 w-6 text-primary mr-3" />
-                <h2 className="font-headline text-xl text-primary">Asistente de Compras</h2>
-            </header>
+        <>
             <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
                 <div className="space-y-6">
                     {messages.map((message, index) => (
@@ -110,6 +106,6 @@ export function ShoppingAssistantDialog() {
                     </Button>
                 </form>
             </div>
-        </div>
+        </>
     );
 }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Wand2 } from 'lucide-react';
 import { ShoppingAssistantDialog } from './ShoppingAssistantDialog';
 
@@ -23,9 +23,15 @@ export function ShoppingAssistantTrigger() {
             </SheetTrigger>
             <SheetContent
                 side="right"
-                className="w-[90vw] max-w-md p-0"
+                className="w-[90vw] max-w-md p-0 flex flex-col"
                 onInteractOutside={(e) => e.preventDefault()}
             >
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle className="flex items-center">
+                        <Wand2 className="h-6 w-6 text-primary mr-3" />
+                        <span className="font-headline text-xl text-primary">Asistente de Compras</span>
+                    </SheetTitle>
+                </SheetHeader>
                 <ShoppingAssistantDialog />
             </SheetContent>
         </Sheet>

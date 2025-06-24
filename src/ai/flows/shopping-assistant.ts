@@ -45,27 +45,20 @@ const findBooksInCatalog = ai.defineTool(
     const booksRef = collection(db, 'books');
     let q: Query = query(booksRef);
 
-    // To avoid complex composite indexes, we apply filters sequentially.
-    // A more advanced implementation might apply them all at once if indexes are set up.
+    // To avoid needing complex composite indexes in Firestore, we apply only the most specific filter provided.
+    // This makes the tool slightly less powerful (e.g., can't search by author AND category) but ensures it works without manual index configuration.
     if (input.title) {
-        // Firestore doesn't support native text search. This is a workaround for prefix matching.
         const endTitle = input.title.slice(0, -1) + String.fromCharCode(input.title.charCodeAt(input.title.length - 1) + 1);
         q = query(q, where('title', '>=', input.title), where('title', '<', endTitle));
-    }
-    if (input.author) {
+    } else if (input.author) {
       q = query(q, where('authors', 'array-contains', input.author));
-    }
-    if (input.category) {
+    } else if (input.category) {
       q = query(q, where('categories', 'array-contains', input.category));
-    }
-     if (input.tag) {
+    } else if (input.tag) {
       q = query(q, where('tags', 'array-contains', input.tag));
-    }
-    if (input.maxPrice) {
+    } else if (input.maxPrice) {
       q = query(q, where('price', '<=', input.maxPrice));
-    }
-    if (input.city) {
-      // Assumes libraryLocation is a string like "Quito, Pichincha"
+    } else if (input.city) {
       const endCity = input.city.slice(0, -1) + String.fromCharCode(input.city.charCodeAt(input.city.length - 1) + 1);
       q = query(q, where('libraryLocation', '>=', input.city), where('libraryLocation', '<', endCity));
     }
