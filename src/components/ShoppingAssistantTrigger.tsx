@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Wand2 } from 'lucide-react';
 import { ShoppingAssistantDialog } from './ShoppingAssistantDialog';
+import { AliciaLogoIcon } from './AliciaLogoIcon';
 
 export function ShoppingAssistantTrigger() {
     const [isOpen, setIsOpen] = useState(false);
@@ -15,10 +16,10 @@ export function ShoppingAssistantTrigger() {
                 <Button
                     variant="default"
                     size="lg"
-                    className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-xl z-50 flex items-center justify-center"
+                    className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-xl z-50 flex items-center justify-center p-0"
                     aria-label="Abrir asistente de compras"
                 >
-                    <Wand2 className="h-8 w-8" />
+                    <AliciaLogoIcon className="h-10 w-10" />
                 </Button>
             </SheetTrigger>
             <SheetContent
