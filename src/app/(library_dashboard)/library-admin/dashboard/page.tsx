@@ -1,3 +1,4 @@
+
 // src/app/(library_dashboard)/library-admin/dashboard/page.tsx
 "use client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -291,7 +292,10 @@ export default function LibraryAdminDashboardPage() {
                                             data-ai-hint={follower.dataAiHint || 'user avatar'}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium">{follower.name}</TableCell>
+                                    <TableCell>
+                                        <div className="font-medium">{follower.name}</div>
+                                        <div className="text-xs text-muted-foreground">{follower.email}</div>
+                                    </TableCell>
                                 </TableRow>
                                 )) : (
                                 <TableRow>
