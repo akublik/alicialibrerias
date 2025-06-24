@@ -12,6 +12,8 @@ export interface Book {
   imageUrl: string;
   dataAiHint?: string;
   libraryId?: string; // ID of the library that owns this book
+  libraryName?: string;
+  libraryLocation?: string;
   status?: 'published' | 'unpublished';
   isFeatured?: boolean;
   pageCount?: number | null;

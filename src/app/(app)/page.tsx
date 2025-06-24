@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookHeart, Users, MapPinned, Sparkles, Loader2, Search } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
-import type { Book, HomepageContent, SecondaryBannerSlide } from "@/types";
+import type { Book, HomepageContent, SecondaryBannerSlide, Library } from "@/types";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, limit, query, doc, getDoc, where, documentId } from "firebase/firestore";
 import { Card } from "@/components/ui/card";
@@ -42,6 +42,14 @@ export default function HomePage() {
         return;
       }
       try {
+        // --- Fetch Libraries First ---
+        const librariesSnapshot = await getDocs(collection(db, "libraries"));
+        const librariesMap = new Map<string, { name: string, location: string }>();
+        librariesSnapshot.forEach(doc => {
+            const data = doc.data();
+            librariesMap.set(doc.id, { name: data.name, location: data.location });
+        });
+
         // --- Fetch Homepage Content ---
         const contentDocRef = doc(db, "homepage_content", "sections");
         const contentDocSnap = await getDoc(contentDocRef);
@@ -81,6 +89,16 @@ export default function HomePage() {
              secondaryBannerSlides: [],
            });
         }
+
+        const augmentBooks = (books: Book[]): Book[] => {
+            return books.map(book => {
+                if (book.libraryId && librariesMap.has(book.libraryId)) {
+                    const libInfo = librariesMap.get(book.libraryId)!;
+                    return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
+                }
+                return book;
+            });
+        };
         
         const booksRef = collection(db, "books");
 
@@ -104,18 +122,18 @@ export default function HomePage() {
         // --- Populate Featured Books ---
         if (featuredBookIds.length > 0) {
           const orderedBooks = featuredBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
-          setFeaturedBooks(orderedBooks);
+          setFeaturedBooks(augmentBooks(orderedBooks));
         } else {
            const fallbackBooksQuery = query(collection(db, "books"), limit(4));
            const booksSnapshot = await getDocs(fallbackBooksQuery);
            const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
-           setFeaturedBooks(books);
+           setFeaturedBooks(augmentBooks(books));
         }
 
         // --- Populate National Books ---
         if (nationalBookIds.length > 0) {
           const orderedNationalBooks = nationalBookIds.map(id => allBooks.find(b => b.id === id)).filter(Boolean) as Book[];
-          setNationalBooks(orderedNationalBooks);
+          setNationalBooks(augmentBooks(orderedNationalBooks));
         } else {
           setNationalBooks([]);
         }
@@ -127,7 +145,7 @@ export default function HomePage() {
       }
     };
     fetchData();
-  }, [router]);
+  }, []);
 
   const platformBenefits = [
     { title: "Descubre Joyas Literarias", description: "Encuentra libros únicos de editoriales independientes y autores emergentes.", icon: BookHeart },

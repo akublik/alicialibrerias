@@ -140,6 +140,14 @@ export default function NewBookPage() {
             return;
         }
         
+        const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
+        if (!libraryDataString) {
+            toast({ title: "Error de librería", description: "No se pudo encontrar la información de la librería registrada. Por favor, vuelve a iniciar sesión.", variant: "destructive" });
+            setIsSubmittingManual(false);
+            return;
+        }
+        const libraryData = JSON.parse(libraryDataString);
+
         const imageUrl = values.imageUrl || `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
         const dataAiHint = "book cover";
 
@@ -155,6 +163,8 @@ export default function NewBookPage() {
             imageUrl,
             dataAiHint,
             libraryId,
+            libraryName: libraryData.name,
+            libraryLocation: libraryData.location,
             status: 'published' as const,
             isFeatured: values.isFeatured,
             pageCount: values.pageCount ? Number(values.pageCount) : null,

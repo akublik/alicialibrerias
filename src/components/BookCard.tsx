@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Star, Eye, Heart } from 'lucide-react';
+import { ShoppingCart, Star, Eye, Heart, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext'; // Added useCart
 import { useToast } from "@/hooks/use-toast";
@@ -67,9 +67,22 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
         >
           {book.authors.join(', ')}
         </p>
+
+        {book.libraryName && (
+          <div
+            className={cn(
+              "flex items-center text-muted-foreground mt-1",
+              size === 'small' ? 'text-xs' : 'text-sm'
+            )}
+            title={book.libraryLocation}
+          >
+            <Store className={cn("mr-1.5", size === 'small' ? 'h-3 w-3' : 'h-4 w-4')} />
+            <span className="truncate">{book.libraryName}</span>
+          </div>
+        )}
         
         <div className={cn(
-            "flex items-center space-x-1 text-amber-500 mb-2",
+            "flex items-center space-x-1 text-amber-500 mt-2",
             size === 'small' ? 'text-xs' : 'text-sm'
           )}
         >

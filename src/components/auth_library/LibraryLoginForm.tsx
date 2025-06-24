@@ -150,7 +150,7 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
           
           localStorage.setItem("isLibraryAdminAuthenticated", "true");
           localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
-          localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, name: libraryData.name, imageUrl: libraryData.imageUrl }));
+          localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, ...libraryData }));
           
           toast({
             title: "Inicio de Sesión Exitoso",

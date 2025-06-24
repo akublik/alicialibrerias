@@ -96,7 +96,12 @@ export default function LibraryDetailsPage() {
                 const booksRef = collection(db, "books");
                 const qBooks = query(booksRef, where("libraryId", "==", libraryId));
                 const booksSnapshot = await getDocs(qBooks);
-                const libraryBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+                const libraryBooks = booksSnapshot.docs.map(doc => ({ 
+                    id: doc.id,
+                    ...doc.data(),
+                    libraryName: foundLibrary.name,
+                    libraryLocation: foundLibrary.location,
+                } as Book));
                 setBooks(libraryBooks);
                 
                 // Fetch events for this library

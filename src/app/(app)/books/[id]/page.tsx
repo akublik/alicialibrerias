@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -56,7 +56,21 @@ export default function BookDetailsPage() {
         const bookSnap = await getDoc(bookRef);
 
         if (bookSnap.exists()) {
-          const foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
+          let foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
+
+          let libraryName, libraryLocation;
+          if (foundBook.libraryId) {
+            const libraryRef = doc(db, "libraries", foundBook.libraryId);
+            const librarySnap = await getDoc(libraryRef);
+            if (librarySnap.exists()) {
+              const libraryData = librarySnap.data();
+              libraryName = libraryData.name;
+              libraryLocation = libraryData.location;
+              foundBook.libraryName = libraryName;
+              foundBook.libraryLocation = libraryLocation;
+            }
+          }
+
           setBook(foundBook);
 
           // Mock reviews for now
@@ -73,7 +87,12 @@ export default function BookDetailsPage() {
                 limit(3)
             );
              const relatedSnaps = await getDocs(q);
-             const fetchedRelatedBooks = relatedSnaps.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+             const fetchedRelatedBooks = relatedSnaps.docs.map(doc => ({
+                 id: doc.id,
+                 ...doc.data(),
+                 libraryName,
+                 libraryLocation,
+             } as Book));
              setRelatedBooks(fetchedRelatedBooks);
           }
         } else {
@@ -132,7 +151,14 @@ export default function BookDetailsPage() {
 
         <div className="md:col-span-2">
           <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary mb-2">{book.title}</h1>
-          <p className="text-lg text-foreground/80 mb-4">por <span className="font-semibold">{book.authors.join(', ')}</span></p>
+          <p className="text-lg text-foreground/80 mb-2">por <span className="font-semibold">{book.authors.join(', ')}</span></p>
+
+          {book.libraryName && (
+            <Link href={`/libraries/${book.libraryId}`} className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center mb-4">
+              <Store className="mr-2 h-4 w-4" />
+              Vendido por {book.libraryName}
+            </Link>
+          )}
           
           <div className="flex items-center space-x-2 mb-4">
             <StarRating rating={4.5} /> {/* Placeholder rating */}

@@ -23,8 +23,22 @@ function SearchResults() {
         return;
       }
       try {
+        const librariesSnapshot = await getDocs(collection(db, "libraries"));
+        const librariesMap = new Map<string, { name: string, location: string }>();
+        librariesSnapshot.forEach(doc => {
+            const data = doc.data();
+            librariesMap.set(doc.id, { name: data.name, location: data.location });
+        });
+
         const booksSnapshot = await getDocs(collection(db, "books"));
-        const booksData = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+        const booksData = booksSnapshot.docs.map(doc => {
+            const book = { id: doc.id, ...doc.data() } as Book;
+            if (book.libraryId && librariesMap.has(book.libraryId)) {
+                const libInfo = librariesMap.get(book.libraryId)!;
+                return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
+            }
+            return book;
+        });
         setAllBooks(booksData);
       } catch (error) {
         console.error("Error fetching books for search:", error);
