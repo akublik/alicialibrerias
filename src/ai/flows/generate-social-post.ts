@@ -11,7 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export const GenerateSocialPostInputSchema = z.object({
+const GenerateSocialPostInputSchema = z.object({
   title: z.string().describe('The title of the book.'),
   author: z.string().describe('The author of the book.'),
   description: z.string().optional().describe('A brief description or synopsis of the book.'),
@@ -20,7 +20,7 @@ export const GenerateSocialPostInputSchema = z.object({
 });
 export type GenerateSocialPostInput = z.infer<typeof GenerateSocialPostInputSchema>;
 
-export const GenerateSocialPostOutputSchema = z.object({
+const GenerateSocialPostOutputSchema = z.object({
   postText: z.string().describe('The generated social media post text, including emojis and relevant hashtags. The tone should be engaging and persuasive. The text must be in Spanish.'),
 });
 export type GenerateSocialPostOutput = z.infer<typeof GenerateSocialPostOutputSchema>;
