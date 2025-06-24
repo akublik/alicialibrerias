@@ -79,13 +79,17 @@ export default function BookDetailsPage() {
 
     // Listener for real-time review updates
     const reviewsRef = collection(db, "reviews");
-    const q = query(reviewsRef, where("bookId", "==", bookId), orderBy("createdAt", "desc"));
+    const q = query(reviewsRef, where("bookId", "==", bookId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedReviews = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: doc.data().createdAt?.toDate() || new Date(),
         } as Review));
+        
+        // Sort reviews by date on the client side to avoid needing a composite index
+        fetchedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         setReviews(fetchedReviews);
     });
 
