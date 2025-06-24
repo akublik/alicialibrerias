@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, BookCopy, ShoppingCart, Store, User, CalendarDays } from 'lucide-react';
+import { LogOut, LayoutDashboard, BookCopy, ShoppingCart, Store, User, CalendarDays, LineChart } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
@@ -72,6 +72,7 @@ export default function LibraryDashboardLayout({
     { title: "Mis Libros", href: "/library-admin/books", icon: BookCopy },
     { title: "Pedidos", href: "/library-admin/orders", icon: ShoppingCart },
     { title: "Eventos", href: "/library-admin/events", icon: CalendarDays },
+    { title: "Analíticas", href: "/library-admin/analytics", icon: LineChart },
     { title: "Perfil Librería", href: "/library-admin/profile", icon: Store },
   ];
 
