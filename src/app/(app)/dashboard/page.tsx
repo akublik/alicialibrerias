@@ -263,6 +263,11 @@ export default function DashboardPage() {
         };
 
         await updateDoc(userRef, updatedData);
+
+        // Manually update state and localStorage to avoid race conditions with the listener
+        const updatedUser = { ...user, ...updatedData };
+        setUser(updatedUser as UserData);
+        localStorage.setItem("aliciaLibros_user", JSON.stringify(updatedUser));
         
         toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
         setIsEditDialogOpen(false);
