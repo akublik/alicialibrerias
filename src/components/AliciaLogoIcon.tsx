@@ -12,15 +12,25 @@ export const AliciaLogoIcon = ({ className, ...props }: React.SVGProps<SVGSVGEle
     {...props}
   >
     <text
-      x="50%"
-      y="50%"
+      x="20"
+      y="22"
       dominantBaseline="central"
       textAnchor="middle"
       fontFamily="Belleza, sans-serif"
-      fontSize="36"
-      dy=".1em"
+      fontSize="32"
     >
       A
+    </text>
+    <text
+      x="31"
+      y="29"
+      dominantBaseline="central"
+      textAnchor="middle"
+      fontFamily="Alegreya, serif"
+      fontSize="12"
+      fontWeight="600"
+    >
+      IA
     </text>
   </svg>
 );
