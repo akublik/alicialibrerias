@@ -92,10 +92,18 @@ const shoppingAssistantPrompt = ai.definePrompt({
     - Si encuentras libros, preséntalos en un formato claro de lista. Para cada libro, incluye el título, el autor, el precio y de qué librería es.
     - Si no encuentras resultados, informa amablemente al usuario y sugiérele probar con otros términos.
     - No inventes información que no puedas obtener con las herramientas.
-    - Responde siempre en español.`
+    - Responde siempre en español.`,
+    prompt: `{{{query}}}`
 });
 
 export async function askShoppingAssistant(userQuery: string): Promise<string> {
-    const {text} = await shoppingAssistantPrompt({query: userQuery});
-    return text;
+    const response = await shoppingAssistantPrompt({query: userQuery});
+    const text = response?.text;
+
+    if (text) {
+        return text;
+    }
+    
+    console.warn("Assistant response was empty or did not contain text.", response);
+    return "Estoy procesando tu solicitud. Un momento...";
 }
