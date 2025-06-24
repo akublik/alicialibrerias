@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { placeholderLibraries } from "@/lib/placeholders";
 import type { Book, Library, User, Order, BookRequest } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,7 @@ import { Separator } from '@/components/ui/separator';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
+  avatarUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   birthdate: z.string().optional().refine((val) => {
     if (!val || val.trim() === "") return true; // optional field
     const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
@@ -146,7 +147,7 @@ export default function DashboardPage() {
               id: docSnap.id,
               ...liveUserData,
               joinDate: joinDateStr,
-              avatarUrl: liveUserData.avatarUrl || "https://placehold.co/150x150.png",
+              avatarUrl: liveUserData.avatarUrl || `https://placehold.co/150x150.png?text=${liveUserData.name.charAt(0)}`,
               dataAiHint: liveUserData.dataAiHint || "user avatar",
             };
             setUser(fullUserData);
@@ -220,6 +221,7 @@ export default function DashboardPage() {
     if (user && isEditDialogOpen) {
       form.reset({
         name: user.name || '',
+        avatarUrl: user.avatarUrl && !user.avatarUrl.includes('placehold.co') ? user.avatarUrl : '',
         birthdate: user.birthdate ? format(new Date(user.birthdate), 'dd/MM/yyyy') : '',
         favoriteCategories: user.favoriteCategories || [],
         favoriteTags: user.favoriteTags || [],
@@ -254,6 +256,7 @@ export default function DashboardPage() {
         const userRef = doc(db, "users", user.id);
         const updatedData = {
             name: values.name,
+            avatarUrl: values.avatarUrl,
             birthdate: birthdateAsDate ? birthdateAsDate.toISOString().split('T')[0] : null,
             favoriteCategories: values.favoriteCategories || [],
             favoriteTags: values.favoriteTags || [],
@@ -374,7 +377,7 @@ export default function DashboardPage() {
               {user.joinDate && <CardDescription>Miembro desde: {user.joinDate}</CardDescription>}
                {user.birthdate && (
                 <CardDescription>
-                   Cumpleaños: {format(new Date(user.birthdate), 'dd/MM/yyyy', {locale: es})}
+                   Cumpleaños: {format(new Date(user.birthdate), 'dd MMMM', {locale: es})}
                 </CardDescription>
               )}
             </CardHeader>
@@ -402,6 +405,7 @@ export default function DashboardPage() {
                    <Form {...form}>
                     <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
                         <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="avatarUrl" render={({ field }) => ( <FormItem><FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/> URL de tu Avatar</FormLabel><FormControl><Input placeholder="https://ejemplo.com/tu-foto.jpg" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
                          <FormField
                             control={form.control}
                             name="birthdate"
@@ -539,7 +543,7 @@ export default function DashboardPage() {
                             <TableCell>{libraries.get(order.libraryId) || 'Librería Desconocida'}</TableCell>
                             <TableCell>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
                             <TableCell className="text-right">${order.totalPrice.toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-semibold text-primary">+{Math.floor(order.totalPrice)}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">+{Math.floor(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -653,5 +657,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
