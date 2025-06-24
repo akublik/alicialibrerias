@@ -62,14 +62,25 @@ export function Navbar() {
   
   const renderAuthButtons = () => {
     if (isAuthenticated) {
-      return (
-        <Link href={getDashboardLink()}>
-          <Button variant="outline" className="font-body">
-             <UserCircle className="mr-2 h-4 w-4" />
-             Mi Panel
-          </Button>
-        </Link>
-      )
+        if (userRole === 'reader') {
+             return (
+                <Link href={getDashboardLink()}>
+                  <Button variant="outline" className="font-body">
+                     <UserCircle className="mr-2 h-4 w-4" />
+                     Soy Lector
+                  </Button>
+                </Link>
+             )
+        }
+        // This covers 'library' and 'superadmin'
+        return (
+            <Link href={getDashboardLink()}>
+              <Button variant="outline" className="font-body">
+                 <UserCircle className="mr-2 h-4 w-4" />
+                 Mi Panel
+              </Button>
+            </Link>
+        )
     }
     
     // Not authenticated
@@ -93,6 +104,18 @@ export function Navbar() {
 
   const renderMobileAuthButtons = () => {
     if (isAuthenticated) {
+      if (userRole === 'reader') {
+          return (
+             <Link href={getDashboardLink()} className={cn(
+                "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                 "text-foreground/80"
+              )}>
+                <UserCircle className="h-5 w-5" />
+                <span>Soy Lector</span>
+             </Link>
+          )
+      }
+      // This covers 'library' and 'superadmin'
       return (
          <Link href={getDashboardLink()} className={cn(
             "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
