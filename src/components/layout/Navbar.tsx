@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import React from "react";
@@ -194,12 +194,16 @@ export function Navbar() {
                 <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] bg-background p-6">
-              <Link href="/" className="flex items-center space-x-2 mb-8">
-                <BookOpen className="h-8 w-8 text-primary" />
-                <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
-              </Link>
-              <nav className="flex flex-col space-y-4">
+            <SheetContent side="right" className="w-[280px] bg-background p-6 flex flex-col">
+              <SheetHeader className="text-left">
+                <SheetTitle asChild>
+                  <Link href="/" className="flex items-center space-x-2">
+                    <BookOpen className="h-8 w-8 text-primary" />
+                    <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
+                  </Link>
+                </SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col space-y-4 mt-8">
                 {navItems.map((item) => (
                   <Link
                     key={item.label}
