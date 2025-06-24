@@ -152,13 +152,16 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
             - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
         });
         
-        const text = response?.text;
+        // Safely extract text content from all candidates and parts.
+        const text = response.candidates
+            .map(c => c.content.map(p => p.text ?? '').join(''))
+            .join('');
         
         if (text) {
             return text;
         }
         
-        console.warn("Assistant response was empty or did not contain text.", response);
+        console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
         return "Estoy teniendo dificultades para procesar tu solicitud en este momento. Por favor, intenta reformular tu pregunta.";
 
     } catch (error: any) {
