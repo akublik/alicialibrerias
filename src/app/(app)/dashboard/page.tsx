@@ -262,12 +262,7 @@ export default function DashboardPage() {
             favoriteTags: values.favoriteTags || [],
         };
 
-        const firestoreUpdateData: any = { ...updatedData };
-        if (!firestoreUpdateData.birthdate) {
-            delete firestoreUpdateData.birthdate;
-        }
-
-        await updateDoc(userRef, firestoreUpdateData);
+        await updateDoc(userRef, updatedData);
         
         toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
         setIsEditDialogOpen(false);
