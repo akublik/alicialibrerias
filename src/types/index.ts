@@ -62,7 +62,7 @@ export interface Review {
   bookId: string;
   rating: number;
   comment: string;
-  date: string; // ISO string
+  createdAt: any; // Should be Firestore Timestamp
   avatarUrl?: string;
   dataAiHint?: string;
 }

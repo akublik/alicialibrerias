@@ -4,21 +4,22 @@
 
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
-import { placeholderReviews } from '@/lib/placeholders';
-import type { Book, Review } from '@/types';
+import type { Book, Review, User } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, where, addDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
+import { useToast } from "@/hooks/use-toast";
+import { Textarea } from '@/components/ui/textarea';
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
   return (
@@ -41,6 +42,7 @@ export default function BookDetailsPage() {
   const params = useParams();
   const bookId = params.id as string;
   const { addToCart } = useCart();
+  const { toast } = useToast();
   
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -48,11 +50,47 @@ export default function BookDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUrl, setCurrentUrl] = useState("");
 
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [newReviewText, setNewReviewText] = useState("");
+  const [newReviewRating, setNewReviewRating] = useState(0);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return 0;
+    const total = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return total / reviews.length;
+  }, [reviews]);
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       setCurrentUrl(window.location.href);
+      const authStatus = localStorage.getItem("isAuthenticated") === "true";
+      setIsAuthenticated(authStatus);
+      if (authStatus) {
+        const userDataString = localStorage.getItem("aliciaLibros_user");
+        if(userDataString) setUser(JSON.parse(userDataString));
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (!bookId || !db) return;
+
+    // Listener for real-time review updates
+    const reviewsRef = collection(db, "reviews");
+    const q = query(reviewsRef, where("bookId", "==", bookId), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedReviews = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+        } as Review));
+        setReviews(fetchedReviews);
+    });
+
+    return () => unsubscribe();
+  }, [bookId]);
 
   useEffect(() => {
     if (!bookId || !db) return;
@@ -80,12 +118,7 @@ export default function BookDetailsPage() {
           }
 
           setBook(foundBook);
-
-          // Mock reviews for now
-          const bookReviews = placeholderReviews.filter(r => r.bookId === bookId || r.bookId === '1' || r.bookId === '2');
-          setReviews(bookReviews);
           
-          // Fetch related books from the same library or category
           if (foundBook.libraryId) {
              const booksRef = collection(db, "books");
              const q = query(
@@ -121,6 +154,42 @@ export default function BookDetailsPage() {
     if (book) {
       addToCart(book);
     }
+  };
+
+  const handleReviewSubmit = async () => {
+      if (!isAuthenticated || !user) {
+          toast({ title: "Debes iniciar sesión", description: "Solo los usuarios registrados pueden dejar reseñas.", variant: "destructive" });
+          return;
+      }
+      if (newReviewRating === 0) {
+          toast({ title: "Falta la calificación", description: "Por favor, selecciona de 1 a 5 estrellas.", variant: "destructive" });
+          return;
+      }
+      if (!newReviewText.trim()) {
+          toast({ title: "Falta el comentario", description: "Por favor, escribe tu opinión sobre el libro.", variant: "destructive" });
+          return;
+      }
+      if (!db) return;
+
+      setIsSubmittingReview(true);
+      try {
+          await addDoc(collection(db, "reviews"), {
+              bookId,
+              userId: user.id,
+              userName: user.name,
+              avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
+              rating: newReviewRating,
+              comment: newReviewText,
+              createdAt: serverTimestamp()
+          });
+          toast({ title: "¡Reseña Publicada!", description: "Gracias por compartir tu opinión." });
+          setNewReviewText("");
+          setNewReviewRating(0);
+      } catch (error: any) {
+          toast({ title: "Error al publicar", description: error.message, variant: "destructive" });
+      } finally {
+          setIsSubmittingReview(false);
+      }
   };
 
   if (isLoading) {
@@ -173,8 +242,8 @@ export default function BookDetailsPage() {
           )}
           
           <div className="flex items-center space-x-2 mb-4">
-            <StarRating rating={4.5} /> {/* Placeholder rating */}
-            <span className="text-sm text-muted-foreground">(123 reseñas)</span>
+            <StarRating rating={averageRating} />
+            <span className="text-sm text-muted-foreground">({reviews.length} reseñas)</span>
           </div>
 
           <p className="text-2xl font-bold text-accent mb-6">${book.price.toFixed(2)}</p>
@@ -277,15 +346,48 @@ export default function BookDetailsPage() {
         </TabsList>
 
         <TabsContent value="reviews">
-          <Card>
-            <CardContent className="pt-6 space-y-6">
+          <div className="space-y-8">
+            {isAuthenticated ? (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline text-xl">Escribe tu Reseña</CardTitle>
+                        <CardDescription>Comparte tu opinión sobre este libro con la comunidad.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <label className="font-medium text-sm mb-2 block">Tu Calificación</label>
+                            <StarRating rating={newReviewRating} setRating={setNewReviewRating} interactive={true} />
+                        </div>
+                        <Textarea 
+                            value={newReviewText}
+                            onChange={(e) => setNewReviewText(e.target.value)}
+                            placeholder="¿Qué te pareció el libro?"
+                            rows={4}
+                        />
+                        <Button onClick={handleReviewSubmit} disabled={isSubmittingReview}>
+                            {isSubmittingReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Send className="mr-2 h-4 w-4"/>}
+                            Publicar Reseña
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <Card className="text-center">
+                    <CardContent className="p-6">
+                        <p className="text-muted-foreground">
+                            <Link href={`/login?redirect=/books/${bookId}`} className="text-primary hover:underline font-semibold">Inicia sesión</Link> para dejar una reseña.
+                        </p>
+                    </CardContent>
+                </Card>
+            )}
+
+            <div className="space-y-6">
               {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                   <div className="flex items-start space-x-3 mb-2">
                     {review.avatarUrl && <Image src={review.avatarUrl} alt={review.userName} width={40} height={40} className="rounded-full" data-ai-hint={review.dataAiHint}/>}
                     <div>
                       <p className="font-semibold text-foreground">{review.userName}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(review.date), "PPP", { locale: es })}</p>
+                      <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
                     </div>
                   </div>
                   <StarRating rating={review.rating} />
@@ -295,10 +397,10 @@ export default function BookDetailsPage() {
                   </Button>
                 </div>
               )) : (
-                <p className="text-muted-foreground">Aún no hay reseñas para este libro. ¡Sé el primero!</p>
+                !isLoading && <p className="text-muted-foreground text-center py-4">Aún no hay reseñas para este libro. ¡Sé el primero!</p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="related">
