@@ -139,7 +139,7 @@ export default function HomePage() {
   return (
     <div className="animate-fadeIn">
       {/* 1. Banner (Hero Section) */}
-      <section className="relative pb-24 md:pb-32 pt-32 md:pt-48 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="relative pb-36 md:pb-40 pt-32 md:pt-48 bg-gradient-to-br from-primary/10 via-background to-background">
         {homepageContent ? (
           <>
             <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url('${homepageContent.bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center' }} data-ai-hint={homepageContent.bannerDataAiHint}></div>
@@ -150,6 +150,20 @@ export default function HomePage() {
               <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
                 {homepageContent.bannerSubtitle}
               </p>
+               <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                <Link href="/libraries">
+                  <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+                    Explorar Librerías
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+                <Link href="/recommendations">
+                  <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+                    Obtener Recomendaciones
+                    <Sparkles className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </>
         ) : (
@@ -160,7 +174,7 @@ export default function HomePage() {
       </section>
 
       {/* Search Bar Section */}
-      <section className="container mx-auto px-4 -mt-16 relative z-20">
+      <section className="container mx-auto px-4 -mt-24 relative z-20">
           <Card className="p-4 md:p-6 shadow-xl border-2 border-primary/10">
             <form onSubmit={handleSearch} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
               <div className="md:col-span-3">
