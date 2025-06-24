@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -45,6 +45,13 @@ export default function BookDetailsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [relatedBooks, setRelatedBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentUrl(window.location.href);
+    }
+  }, []);
 
   useEffect(() => {
     if (!bookId || !db) return;
@@ -127,6 +134,10 @@ export default function BookDetailsPage() {
   if (!book) {
     return <div className="container mx-auto px-4 py-8 text-center">Libro no encontrado.</div>;
   }
+  
+  const shareText = encodeURIComponent(`¡Mira este libro que encontré en Alicia Libros: ${book?.title}!`);
+  const encodedUrl = encodeURIComponent(currentUrl);
+
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -167,12 +178,35 @@ export default function BookDetailsPage() {
 
           <p className="text-2xl font-bold text-accent mb-6">${book.price.toFixed(2)}</p>
 
-          <Button size="lg" className="w-full sm:w-auto font-body text-base mb-6 shadow-md hover:shadow-lg transition-shadow" onClick={handleAddToCart}>
-            <ShoppingCart className="mr-2 h-5 w-5" /> Agregar al Carrito
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <Button size="lg" className="w-full sm:w-auto font-body text-base shadow-md hover:shadow-lg transition-shadow" onClick={handleAddToCart}>
+                <ShoppingCart className="mr-2 h-5 w-5" /> Agregar al Carrito
+            </Button>
+            
+            <div className="space-y-2">
+                <h3 className="text-sm font-semibold text-foreground sr-only sm:not-sr-only">Compartir</h3>
+                <div className="flex space-x-2">
+                    <Button asChild variant="outline" size="icon" aria-label="Compartir en Facebook">
+                        <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener noreferrer">
+                            <Facebook className="h-5 w-5" />
+                        </a>
+                    </Button>
+                    <Button asChild variant="outline" size="icon" aria-label="Compartir en X">
+                        <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${shareText}`} target="_blank" rel="noopener noreferrer">
+                            <Twitter className="h-5 w-5" />
+                        </a>
+                    </Button>
+                    <Button asChild variant="outline" size="icon" aria-label="Compartir en WhatsApp">
+                        <a href={`https://api.whatsapp.com/send?text=${shareText}%20${encodedUrl}`} target="_blank" rel="noopener noreferrer">
+                            <MessageSquare className="h-5 w-5" />
+                        </a>
+                    </Button>
+                </div>
+            </div>
+          </div>
 
           {book.description && (
-            <div className="mb-6">
+            <div className="mt-8 mb-6">
               <h2 className="font-headline text-xl font-semibold text-foreground mb-2">Descripción</h2>
               <p className="text-foreground/80 whitespace-pre-line leading-relaxed">{book.description}</p>
             </div>
