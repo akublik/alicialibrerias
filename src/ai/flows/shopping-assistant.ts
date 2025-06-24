@@ -1,6 +1,7 @@
+
 'use server';
 /**
- * @fileOverview A shopping assistant AI agent that can query the book catalog.
+ * @fileOverview A shopping assistant AI agent that can query the book catalog and library directory.
  *
  * - askShoppingAssistant - A function that handles the conversation with the assistant.
  */
@@ -9,9 +10,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {db} from '@/lib/firebase';
 import {collection, query, where, getDocs, limit, type Query} from 'firebase/firestore';
-import type {Book} from '@/types';
+import type {Book, Library} from '@/types';
 
-// Tool Input and Output Schemas
+// Tool 1: Find Books
 const BookSearchInputSchema = z.object({
   title: z.string().optional().describe('The title of the book to search for. Can be a partial match.'),
   author: z.string().optional().describe('The name of the author to search for.'),
@@ -30,23 +31,18 @@ const BookSearchResultSchema = z.object({
 });
 const BookSearchOutputSchema = z.array(BookSearchResultSchema);
 
-// Tool Definition
 const findBooksInCatalog = ai.defineTool(
   {
     name: 'findBooksInCatalog',
-    description: 'Searches the book catalog based on various criteria. Use the most specific criteria available from the user\'s query. If the user asks about availability in a city, use the city parameter.',
+    description: 'Searches the book catalog based on various criteria like title, author, category, price, or city.',
     inputSchema: BookSearchInputSchema,
     outputSchema: BookSearchOutputSchema,
   },
   async (input) => {
-    if (!db) {
-      throw new Error('Database not available.');
-    }
+    if (!db) throw new Error('Database not available.');
     const booksRef = collection(db, 'books');
     let q: Query = query(booksRef);
 
-    // To avoid needing complex composite indexes in Firestore, we apply only the most specific filter provided.
-    // This makes the tool slightly less powerful (e.g., can't search by author AND category) but ensures it works without manual index configuration.
     if (input.title) {
         const endTitle = input.title.slice(0, -1) + String.fromCharCode(input.title.charCodeAt(input.title.length - 1) + 1);
         q = query(q, where('title', '>=', input.title), where('title', '<', endTitle));
@@ -63,7 +59,7 @@ const findBooksInCatalog = ai.defineTool(
       q = query(q, where('libraryLocation', '>=', input.city), where('libraryLocation', '<', endCity));
     }
 
-    q = query(q, limit(10)); // Limit results to 10 to keep responses concise.
+    q = query(q, limit(10));
     const querySnapshot = await getDocs(q);
     const books: z.infer<typeof BookSearchOutputSchema> = [];
     querySnapshot.forEach((doc) => {
@@ -81,30 +77,83 @@ const findBooksInCatalog = ai.defineTool(
   }
 );
 
+
+// Tool 2: Find Libraries
+const LibrarySearchInputSchema = z.object({
+  city: z.string().describe('The city to search for libraries in.'),
+});
+
+const LibrarySearchResultSchema = z.object({
+  name: z.string(),
+  address: z.string().optional(),
+});
+const LibrarySearchOutputSchema = z.array(LibrarySearchResultSchema);
+
+const findLibrariesByCity = ai.defineTool(
+  {
+    name: 'findLibrariesByCity',
+    description: 'Searches for libraries in a specific city.',
+    inputSchema: LibrarySearchInputSchema,
+    outputSchema: LibrarySearchOutputSchema,
+  },
+  async (input) => {
+    if (!db) throw new Error('Database not available.');
+    const librariesRef = collection(db, 'libraries');
+    
+    const q = query(
+      librariesRef, 
+      where('location', '>=', input.city),
+      where('location', '<=', input.city + '\uf8ff'),
+      limit(10)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const libraries: z.infer<typeof LibrarySearchOutputSchema> = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data() as Library;
+      if (data.isActive !== false) { // Only show active libraries
+        libraries.push({ name: data.name, address: data.address });
+      }
+    });
+
+    return libraries;
+  }
+);
+
+
 // Main Flow
 const shoppingAssistantPrompt = ai.definePrompt({
     name: 'shoppingAssistantPrompt',
-    tools: [findBooksInCatalog],
+    tools: [findBooksInCatalog, findLibrariesByCity], // Now with two tools!
     system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
-    - Tu objetivo es ayudar a los usuarios a encontrar libros respondiendo a sus preguntas.
-    - Utiliza la herramienta 'findBooksInCatalog' para buscar en la base de datos cuando el usuario pregunte sobre libros específicos, precios, autores, disponibilidad o ubicación de un libro.
-    - Si un usuario pregunta por una lista de librerías en una ciudad o una pregunta general que no se puede responder con la herramienta de búsqueda de libros, responde amablemente que tu función principal es ayudar a encontrar libros, y que para explorar todas las librerías puede visitar la sección "Librerías" del sitio web.
-    - Sé concisa y conversacional.
-    - Si encuentras libros, preséntalos en un formato claro de lista. Para cada libro, incluye el título, el autor, el precio y de qué librería es.
-    - Si no encuentras resultados, informa amablemente al usuario y sugiérele probar con otros términos.
-    - No inventes información que no puedas obtener con las herramientas.
-    - Responde siempre en español.`,
+    - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
+    - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
+    - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
+    - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
+    - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
+    - Si una herramienta no devuelve resultados, informa amablemente al usuario.
+    - Sé concisa, conversacional y responde siempre en español.
+    - No inventes información que no puedas obtener con tus herramientas.`,
     prompt: `{{{query}}}`
 });
 
 export async function askShoppingAssistant(userQuery: string): Promise<string> {
-    const response = await shoppingAssistantPrompt({query: userQuery});
-    const text = response?.text;
+    try {
+        const response = await shoppingAssistantPrompt({query: userQuery});
+        const text = response?.text;
 
-    if (text) {
-        return text;
+        if (text) {
+            return text;
+        }
+        
+        console.warn("Assistant response was empty or did not contain text.", response);
+        return "Estoy teniendo dificultades para procesar tu solicitud en este momento. Por favor, intenta reformular tu pregunta.";
+
+    } catch (error: any) {
+        console.error("Error fetching from Generative AI:", error);
+        if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
+             return "Lo siento, mis circuitos están un poco sobrecargados en este momento. Por favor, inténtalo de nuevo en unos segundos.";
+        }
+        return "Lo siento, he encontrado un error inesperado y no puedo responder ahora mismo. Por favor, inténtalo de nuevo más tarde.";
     }
-    
-    console.warn("Assistant response was empty or did not contain text.", response);
-    return "Estoy procesando tu solicitud. Un momento...";
 }
