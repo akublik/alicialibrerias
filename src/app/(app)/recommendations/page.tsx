@@ -5,23 +5,34 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { BookCard } from "@/components/BookCard";
-import { placeholderBooks } from "@/lib/placeholders"; // Using placeholders for now
 import type { Book } from "@/types";
 import { Loader2, Sparkles, Wand2 } from "lucide-react";
-import { getBookRecommendations, type BookRecommendationsInput } from "@/ai/flows/book-recommendations";
+import { getBookRecommendations, type BookRecommendationsInput, type BookRecommendationsOutput } from "@/ai/flows/book-recommendations";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function RecommendationsPage() {
   const [preferences, setPreferences] = useState<string>("");
-  const [readingHistory, setReadingHistory] = useState<string[]>(["Cien Años de Soledad", "Don Quijote"]); // Sample history
-  const [recommendations, setRecommendations] = useState<Book[]>([]);
+  const [readingHistory, setReadingHistory] = useState<string[]>(["Cien Años de Soledad"]); // Sample history
+  const [foundBooks, setFoundBooks] = useState<Book[]>([]);
+  const [newSuggestions, setNewSuggestions] = useState<BookRecommendationsOutput['newSuggestions']>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const { toast } = useToast();
 
-  // Effect to load some initial placeholder recommendations or featured books
   useEffect(() => {
-    setRecommendations(placeholderBooks.slice(0,3).map(book => ({...book, id: book.id + '-initial'})));
+    if (!db) return;
+    const fetchBooks = async () => {
+        try {
+            const booksSnapshot = await getDocs(collection(db, "books"));
+            setAllBooks(booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
+        } catch (error) {
+            console.error("Error fetching all books:", error);
+        }
+    };
+    fetchBooks();
   }, []);
 
   const handleGetRecommendations = async () => {
@@ -35,52 +46,43 @@ export default function RecommendationsPage() {
     }
 
     setIsLoading(true);
-    setRecommendations([]); // Clear previous recommendations
+    setFoundBooks([]);
+    setNewSuggestions([]);
 
     const input: BookRecommendationsInput = {
       userId: "currentUser123", // Replace with actual user ID
-      readingHistory: readingHistory,
+      readingHistory: readingHistory.filter(h => h.trim() !== ''),
       preferences: preferences,
     };
 
     try {
       const result = await getBookRecommendations(input);
-      // For now, we're getting titles. We'll map them to placeholderBooks or fetch details.
-      // This is a simplified mapping. In a real app, you'd fetch book details based on titles.
-      const recommendedBooks = result.recommendations.map((title, index) => {
-        const existingBook = placeholderBooks.find(b => b.title.toLowerCase() === title.toLowerCase());
-        if (existingBook) return {...existingBook, id: existingBook.id + `-${index}`};
-        return {
-          id: `rec-${index}-${Date.now()}`,
-          title,
-          authors: ["Autor Desconocido"],
-          price: Math.floor(Math.random() * 10) + 10, // Random price
-          imageUrl: `https://placehold.co/300x450.png`,
-          dataAiHint: "recommended book"
-        } as Book;
-      }).slice(0, 6); // Limit to 6 recommendations for display
       
-      setRecommendations(recommendedBooks);
+      const foundBookDetails = result.foundInInventory
+          .map(found => allBooks.find(b => b.id === found.id))
+          .filter((b): b is Book => !!b);
+      
+      setFoundBooks(foundBookDetails);
+      setNewSuggestions(result.newSuggestions);
+
+      if (foundBookDetails.length === 0 && result.newSuggestions.length === 0) {
+        toast({
+            title: "No se encontraron resultados",
+            description: "Intenta ser más específico o más general en tus preferencias.",
+        });
+      }
+
     } catch (error: any) {
       console.error("Error getting recommendations:", error);
-      
-      // Default user-friendly message
       let toastDescription = "No pudimos generar recomendaciones en este momento. Por favor, inténtalo de nuevo más tarde.";
-
-      // Check for the specific API key error message to provide a hint for the developer in the console, but not to the user.
       if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
-        console.error("DEVELOPER HINT: The AI feature failed because the GOOGLE_API_KEY is not set in your environment variables.");
         toastDescription = "La función de recomendación por IA no está disponible en este momento. Disculpa las molestias."
       }
-      
       toast({
         title: "Error de Recomendación",
         description: toastDescription,
         variant: "destructive",
-        duration: 9000,
       });
-      // Fallback to placeholders if AI fails
-      setRecommendations(placeholderBooks.sort(() => 0.5 - Math.random()).slice(0,3).map(book => ({...book, id: book.id + '-fallback'})));
     } finally {
       setIsLoading(false);
     }
@@ -130,7 +132,7 @@ export default function RecommendationsPage() {
               <Textarea
                 id="history"
                 value={readingHistory.join(", ")}
-                onChange={(e) => setReadingHistory(e.target.value.split(",").map(s => s.trim()).filter(Boolean))}
+                onChange={(e) => setReadingHistory(e.target.value.split(",").map(s => s.trim()))}
                 placeholder="Ej: Cien Años de Soledad, El Hobbit, 1984"
                 rows={2}
                 className="text-base md:text-sm"
@@ -153,21 +155,46 @@ export default function RecommendationsPage() {
         </CardContent>
       </Card>
 
-      {recommendations.length > 0 && (
-        <div>
-          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">
-            {isLoading ? "Buscando tus próximos libros favoritos..." : "Libros Recomendados para Ti"}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {recommendations.map((book) => (
-              <BookCard key={book.id} book={book} size="small" />
-            ))}
-          </div>
-        </div>
-      )}
-       { !isLoading && recommendations.length === 0 && preferences && (
+      {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No hemos encontrado recomendaciones con estos criterios. Intenta ser más específico o más general.</p>
+            <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-lg text-muted-foreground">Buscando tus próximos libros favoritos...</p>
+        </div>
+      ) : (
+        <div className="space-y-12">
+          {foundBooks.length > 0 && (
+            <div>
+              <h2 className="font-headline text-3xl font-semibold text-center mb-8 text-foreground">
+                Encontrado en nuestro catálogo
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                {foundBooks.map((book) => (
+                  <BookCard key={book.id} book={book} size="small" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {newSuggestions.length > 0 && (
+            <div>
+              <h2 className="font-headline text-3xl font-semibold text-center mb-8 text-foreground">
+                Otras sugerencias para ti
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                 {newSuggestions.map((suggestion, index) => (
+                   <Card key={index} className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="font-headline text-lg text-primary">{suggestion.title}</CardTitle>
+                        <CardDescription>por {suggestion.author}</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-foreground/80 italic">"{suggestion.rationale}"</p>
+                      </CardContent>
+                   </Card>
+                 ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
