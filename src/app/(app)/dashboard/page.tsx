@@ -254,7 +254,7 @@ export default function DashboardPage() {
     
     try {
         const userRef = doc(db, "users", user.id);
-        const updatedData = {
+        const dataForFirestore = {
             name: values.name,
             avatarUrl: values.avatarUrl,
             birthdate: birthdateAsDate ? birthdateAsDate.toISOString().split('T')[0] : null,
@@ -262,12 +262,23 @@ export default function DashboardPage() {
             favoriteTags: values.favoriteTags || [],
         };
 
-        await updateDoc(userRef, updatedData);
+        await updateDoc(userRef, dataForFirestore);
 
-        // Manually update state and localStorage to avoid race conditions with the listener
-        const updatedUser = { ...user, ...updatedData };
-        setUser(updatedUser as UserData);
-        localStorage.setItem("aliciaLibros_user", JSON.stringify(updatedUser));
+        // To guarantee localStorage is correct, fetch the most recent full user object from storage and merge it.
+        // This is safer than relying on the `user` state variable, which might be stale in this function's closure.
+        const currentDataString = localStorage.getItem("aliciaLibros_user");
+        const currentUserData = currentDataString ? JSON.parse(currentDataString) : {};
+
+        // Create the new, complete user object for local storage and component state
+        const fullyUpdatedUser = {
+             ...currentUserData, // Start with the most recent full user object from storage
+             ...dataForFirestore, // Overwrite with the latest changes from the form
+             id: user.id // Ensure the ID is correctly carried over
+        };
+        
+        // Update the component's state and the browser's local storage with this guaranteed fresh object
+        setUser(fullyUpdatedUser as UserData);
+        localStorage.setItem("aliciaLibros_user", JSON.stringify(fullyUpdatedUser));
         
         toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
         setIsEditDialogOpen(false);
