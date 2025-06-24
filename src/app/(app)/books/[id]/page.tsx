@@ -182,6 +182,7 @@ export default function BookDetailsPage() {
               userId: user.id,
               userName: user.name,
               avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
+              dataAiHint: user.dataAiHint || 'user avatar',
               rating: newReviewRating,
               comment: newReviewText,
               createdAt: serverTimestamp()
@@ -388,7 +389,14 @@ export default function BookDetailsPage() {
               {reviews.length > 0 ? reviews.map((review) => (
                 <div key={review.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                   <div className="flex items-start space-x-3 mb-2">
-                    {review.avatarUrl && <Image src={review.avatarUrl} alt={review.userName} width={40} height={40} className="rounded-full" data-ai-hint={review.dataAiHint}/>}
+                    <Image 
+                      src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`} 
+                      alt={review.userName} 
+                      width={40} 
+                      height={40} 
+                      className="rounded-full" 
+                      data-ai-hint={review.dataAiHint || 'user avatar'}
+                    />
                     <div>
                       <p className="font-semibold text-foreground">{review.userName}</p>
                       <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
