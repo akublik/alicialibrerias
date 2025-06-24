@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, ImagePlus, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, Save, ImagePlus, Sparkles, Share2 } from "lucide-react";
 import Link from "next/link";
 import Image from 'next/image';
 import { useState, useEffect } from "react";
@@ -32,6 +32,8 @@ import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
 import { generateAutomaticTags } from "@/ai/flows/generate-automatic-tags";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { generateSocialPost } from "@/ai/flows/generate-social-post";
 
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
@@ -56,6 +58,9 @@ export default function EditBookPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [isGeneratingPost, setIsGeneratingPost] = useState(false);
+  const [generatedPost, setGeneratedPost] = useState("");
+  const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
   
   const { toast } = useToast();
   const router = useRouter();
@@ -160,6 +165,31 @@ export default function EditBookPage() {
         });
     } finally {
         setIsGeneratingTags(false);
+    }
+  };
+
+  const handleGeneratePost = async () => {
+    if (!book) return;
+    setIsGeneratingPost(true);
+    try {
+        const result = await generateSocialPost({
+            title: book.title,
+            author: book.authors.join(', '),
+            description: book.description,
+            price: book.price,
+            libraryName: book.libraryName || "nuestra librería",
+        });
+        setGeneratedPost(result.postText);
+        setIsPostDialogOpen(true);
+    } catch (error: any) {
+        console.error("Error generating social post:", error);
+        toast({
+            title: "Error de IA",
+            description: "No se pudo generar la publicación. Inténtalo de nuevo.",
+            variant: "destructive",
+        });
+    } finally {
+        setIsGeneratingPost(false);
     }
   };
 
@@ -394,6 +424,24 @@ export default function EditBookPage() {
                 </CardContent>
             </Card>
 
+             <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Share2/>Herramientas de Marketing</CardTitle>
+                    <CardDescription>Genera contenido para promocionar este libro.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button
+                        type="button"
+                        className="w-full"
+                        onClick={handleGeneratePost}
+                        disabled={isGeneratingPost}
+                    >
+                        {isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}
+                        Generar Post para Redes Sociales
+                    </Button>
+                </CardContent>
+            </Card>
+
             <Button type="submit" disabled={isSubmitting} size="lg" className="w-full">
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {isSubmitting ? 'Guardando Cambios...' : 'Guardar Cambios'}
@@ -401,6 +449,38 @@ export default function EditBookPage() {
           </div>
         </form>
       </Form>
+
+       <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Publicación Sugerida</DialogTitle>
+                <DialogDescription>
+                    Copia este texto y pégalo en tus redes sociales. Puedes editarlo como quieras.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="my-4">
+                <Textarea
+                    readOnly
+                    value={generatedPost}
+                    rows={10}
+                    className="bg-muted"
+                />
+            </div>
+            <DialogFooter>
+                <Button
+                    onClick={() => {
+                        navigator.clipboard.writeText(generatedPost);
+                        toast({ title: "¡Copiado!", description: "El texto se ha copiado a tu portapapeles." });
+                    }}
+                >
+                    Copiar Texto
+                </Button>
+                <Button variant="secondary" onClick={() => setIsPostDialogOpen(false)}>
+                    Cerrar
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
