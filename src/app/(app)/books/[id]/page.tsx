@@ -173,12 +173,13 @@ export default function BookDetailsPage() {
           toast({ title: "Falta el comentario", description: "Por favor, escribe tu opinión sobre el libro.", variant: "destructive" });
           return;
       }
-      if (!db) return;
+      if (!db || !book) return;
 
       setIsSubmittingReview(true);
       try {
           await addDoc(collection(db, "reviews"), {
               bookId,
+              bookTitle: book.title,
               userId: user.id,
               userName: user.name,
               avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,

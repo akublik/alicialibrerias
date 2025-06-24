@@ -5,8 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { placeholderReviews, bookClubs, placeholderBooks } from "@/lib/placeholders";
-import type { Review } from "@/types";
+import type { Review, User } from "@/types";
 import Image from "next/image";
 import { MessageSquare, Users, CalendarDays, Star, ThumbsUp, Send, PlusCircle, Loader2 } from "lucide-react";
 import { format } from 'date-fns';
@@ -14,6 +13,11 @@ import { es } from 'date-fns/locale';
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, limit } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
+// Removed bookClubs and placeholderBooks from here
 
 const StarRating = ({ rating, setRating, interactive = true }: { rating: number, setRating?: (r: number) => void, interactive?: boolean }) => {
   return (
@@ -32,36 +36,98 @@ const StarRating = ({ rating, setRating, interactive = true }: { rating: number,
 };
 
 export default function CommunityPage() {
-  const [reviews, setReviews] = useState<Review[]>(placeholderReviews);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  const [newReviewBookTitle, setNewReviewBookTitle] = useState("");
   const [newReviewText, setNewReviewText] = useState("");
   const [newReviewRating, setNewReviewRating] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-   const [activeTab, setActiveTab] = useState("reviews");
+  const { toast } = useToast();
+  
+  const [activeTab, setActiveTab] = useState("reviews");
+
+  useEffect(() => {
+      // Auth check
+      const authStatus = localStorage.getItem("isAuthenticated") === "true";
+      setIsAuthenticated(authStatus);
+      if (authStatus) {
+          const userDataString = localStorage.getItem("aliciaLibros_user");
+          if(userDataString) setUser(JSON.parse(userDataString));
+      }
+
+      // Firestore listener
+      if (!db) {
+          setIsLoading(false);
+          return;
+      }
+      const reviewsQuery = query(collection(db, "reviews"), orderBy("createdAt", "desc"), limit(20));
+      const unsubscribe = onSnapshot(reviewsQuery, (snapshot) => {
+          const fetchedReviews = snapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate() || new Date(),
+          } as Review));
+          setReviews(fetchedReviews);
+          setIsLoading(false);
+      }, (error) => {
+          console.error("Error fetching reviews:", error);
+          toast({ title: "Error al cargar reseñas", variant: "destructive" });
+          setIsLoading(false);
+      });
+
+      return () => unsubscribe();
+  }, [toast]);
 
   const handlePublishReview = async () => {
-    if (!newReviewText.trim() || newReviewRating === 0) {
-      alert("Por favor escribe tu reseña y asigna una calificación."); // Replace with toast
+    if (!isAuthenticated || !user) {
+      toast({ title: "Debes iniciar sesión para publicar una reseña.", variant: "destructive" });
       return;
     }
+    if (!newReviewBookTitle.trim()) {
+        toast({ title: "Falta el título del libro.", description: "Por favor, escribe el título del libro que estás reseñando.", variant: "destructive" });
+        return;
+    }
+    if (newReviewRating === 0) {
+        toast({ title: "Falta la calificación.", description: "Por favor, selecciona de 1 a 5 estrellas.", variant: "destructive" });
+        return;
+    }
+    if (!newReviewText.trim()) {
+        toast({ title: "Falta el comentario.", description: "Por favor, escribe tu opinión sobre el libro.", variant: "destructive" });
+        return;
+    }
+
     setIsSubmittingReview(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    const newReview: Review = {
-      id: `review-${Date.now()}`,
-      userId: 'currentUser123', // Mock current user
-      userName: "Usuario Actual",
-      bookId: placeholderReviews[0].bookId, // Mock book ID
-      rating: newReviewRating,
-      comment: newReviewText,
-      date: new Date().toISOString(),
-      avatarUrl: 'https://placehold.co/100x100.png',
-      dataAiHint: 'user avatar',
-    };
-    setReviews([newReview, ...reviews]);
-    setNewReviewText("");
-    setNewReviewRating(0);
-    setIsSubmittingReview(false);
+    try {
+      await addDoc(collection(db, "reviews"), {
+        bookTitle: newReviewBookTitle,
+        userId: user.id,
+        userName: user.name,
+        avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
+        dataAiHint: user.dataAiHint || 'user avatar',
+        rating: newReviewRating,
+        comment: newReviewText,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "¡Reseña Publicada!", description: "Gracias por tu opinión." });
+      setNewReviewBookTitle("");
+      setNewReviewText("");
+      setNewReviewRating(0);
+    } catch (error: any) {
+      toast({ title: "Error al publicar", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
+  
+  // Dummy data for book clubs as it's not implemented yet
+  const bookClubs = [
+    { id: '1', name: 'Club de Realismo Mágico', description: 'Exploramos las obras maestras del realismo mágico latinoamericano.', members: 120, imageUrl: 'https://placehold.co/300x200.png', dataAiHint: 'fantasy landscape' },
+    { id: '2', name: 'Poesía Viva', description: 'Un espacio para leer, compartir y crear poesía.', members: 75, imageUrl: 'https://placehold.co/300x200.png', dataAiHint: 'quill paper' },
+    { id: '3', name: 'Debates Literarios Ecuador', description: 'Discutimos sobre literatura ecuatoriana contemporánea e histórica.', members: 90, imageUrl: 'https://placehold.co/300x200.png', dataAiHint: 'discussion group' },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -89,63 +155,93 @@ export default function CommunityPage() {
         </TabsList>
 
         <TabsContent value="reviews">
-          <Card className="mb-8 shadow-md">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl">Escribe tu Reseña</CardTitle>
-              <CardDescription>Comparte tu opinión sobre tu última lectura.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* This would ideally be a select for a book */}
-              <Input placeholder="Título del libro que estás reseñando (ej: Cien Años de Soledad)" className="text-base md:text-sm"/>
-              <Textarea
-                value={newReviewText}
-                onChange={(e) => setNewReviewText(e.target.value)}
-                placeholder="Escribe tu reseña aquí..."
-                rows={4}
-                className="text-base md:text-sm"
-              />
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
-                <StarRating rating={newReviewRating} setRating={setNewReviewRating} />
-                <Button onClick={handlePublishReview} disabled={isSubmittingReview} className="w-full sm:w-auto font-body">
-                  {isSubmittingReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  Publicar Reseña
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {isAuthenticated ? (
+            <Card className="mb-8 shadow-md">
+              <CardHeader>
+                <CardTitle className="font-headline text-xl">Escribe tu Reseña</CardTitle>
+                <CardDescription>Comparte tu opinión sobre tu última lectura.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Input 
+                  placeholder="Título del libro que estás reseñando (ej: Cien Años de Soledad)" 
+                  value={newReviewBookTitle}
+                  onChange={(e) => setNewReviewBookTitle(e.target.value)}
+                  className="text-base md:text-sm"
+                />
+                <Textarea
+                  value={newReviewText}
+                  onChange={(e) => setNewReviewText(e.target.value)}
+                  placeholder="Escribe tu reseña aquí..."
+                  rows={4}
+                  className="text-base md:text-sm"
+                />
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 sm:space-y-0">
+                  <StarRating rating={newReviewRating} setRating={setNewReviewRating} />
+                  <Button onClick={handlePublishReview} disabled={isSubmittingReview} className="w-full sm:w-auto font-body">
+                    {isSubmittingReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    Publicar Reseña
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+             <Card className="mb-8 shadow-md text-center">
+                <CardContent className="p-6">
+                    <p className="text-muted-foreground">
+                        <Link href="/login?redirect=/community" className="text-primary hover:underline font-semibold">Inicia sesión</Link> para publicar una reseña.
+                    </p>
+                </CardContent>
+            </Card>
+          )}
 
           <h2 className="font-headline text-2xl font-semibold mb-6 text-foreground">Últimas Reseñas</h2>
-          <div className="space-y-6">
-            {reviews.map((review) => (
-              <Card key={review.id} className="shadow-sm hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start space-x-4">
-                    {review.avatarUrl && 
-                      <Image src={review.avatarUrl} alt={review.userName} width={48} height={48} className="rounded-full" data-ai-hint={review.dataAiHint}/>
-                    }
-                    <div>
-                      <CardTitle className="font-headline text-lg">{review.userName}</CardTitle>
-                      <CardDescription>
-                        Reseña para: <Link href={`/books/${review.bookId}`} className="text-primary hover:underline">{placeholderBooks.find(b => b.id === review.bookId)?.title || "Libro Desconocido"}</Link> <br/>
-                        {format(new Date(review.date), "PPP", { locale: es })}
-                      </CardDescription>
+          {isLoading ? (
+             <div className="flex justify-center items-center py-16">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {reviews.map((review) => (
+                <Card key={review.id} className="shadow-sm hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start space-x-4">
+                      {review.avatarUrl && 
+                        <Image src={review.avatarUrl} alt={review.userName} width={48} height={48} className="rounded-full" data-ai-hint={review.dataAiHint}/>
+                      }
+                      <div>
+                        <CardTitle className="font-headline text-lg">{review.userName}</CardTitle>
+                        <CardDescription>
+                          Reseña para: {review.bookId ? 
+                            <Link href={`/books/${review.bookId}`} className="text-primary hover:underline">{review.bookTitle}</Link>
+                            : <span className="text-primary">{review.bookTitle}</span>
+                          } <br/>
+                          {review.createdAt && format(new Date(review.createdAt), "PPP", { locale: es })}
+                        </CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-2">
-                    <StarRating rating={review.rating} interactive={false}/>
-                  </div>
-                  <p className="text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
-                </CardContent>
-                <CardFooter className="flex justify-end">
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-                    <ThumbsUp className="mr-2 h-4 w-4" /> Útil (12) {/* Placeholder count */}
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-2">
+                      <StarRating rating={review.rating} interactive={false}/>
+                    </div>
+                    <p className="text-foreground/90 whitespace-pre-wrap">{review.comment}</p>
+                  </CardContent>
+                  <CardFooter className="flex justify-end">
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+                      <ThumbsUp className="mr-2 h-4 w-4" /> Útil (12) {/* Placeholder count */}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+              {reviews.length === 0 && (
+                <Card className="text-center py-12">
+                  <CardContent>
+                    <p className="text-muted-foreground">Aún no hay reseñas. ¡Sé el primero en compartir tu opinión!</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="bookClubs">
