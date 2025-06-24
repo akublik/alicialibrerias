@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/context/CartContext";
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { ShoppingAssistantTrigger } from '@/components/ShoppingAssistantTrigger';
 
 export const metadata: Metadata = {
   title: 'Alicia Libros - Tu marketplace de librerías independientes',
@@ -31,6 +32,7 @@ export default function RootLayout({
             <Footer />
           </div>
           <Toaster />
+          <ShoppingAssistantTrigger />
         </CartProvider>
       </body>
     </html>
