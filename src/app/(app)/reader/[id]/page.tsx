@@ -1,3 +1,4 @@
+
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -74,8 +75,7 @@ export default function ReaderPage() {
   }, [bookId]);
 
   useEffect(() => {
-    if (!book) return;
-    if (!book.epubUrl || !viewerRef.current) {
+    if (!book || !book.epubUrl || !viewerRef.current) {
         setIsRendering(false);
         return;
     }
@@ -83,14 +83,16 @@ export default function ReaderPage() {
     let isMounted = true;
     setIsRendering(true);
     
+    // Clean up previous instance if any
+    if (viewerRef.current.innerHTML) {
+      bookInstanceRef.current?.destroy();
+      viewerRef.current.innerHTML = '';
+    }
+    
     import('epubjs').then(({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
 
-        if (viewerRef.current.innerHTML) {
-            viewerRef.current.innerHTML = '';
-        }
-
-        const bookInstance = ePub(book.epubUrl);
+        const bookInstance = ePub(book.epubUrl!);
         bookInstanceRef.current = bookInstance;
 
         const rendition = bookInstance.renderTo(viewerRef.current, {
@@ -107,42 +109,42 @@ export default function ReaderPage() {
         
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
-
-        const readyPromise = bookInstance.ready.then(() => {
-            return bookInstance.locations.generate(1024);
+        
+        bookInstance.ready.then(() => {
+            return bookInstance.locations.generate(1650); // Standard value for page generation
         }).then(locations => {
             if (isMounted) {
                 setTotalPages(locations.length);
+                rendition.display(); // Display the book only after locations are generated
+            }
+        }).catch((err: Error) => {
+            console.error("Error processing EPUB:", err);
+            if (isMounted) {
+                setError(`Hubo un problema al procesar el archivo EPUB: ${err.message}. Puede ser un problema de CORS o el archivo está dañado.`);
+                setIsRendering(false);
             }
         });
-        
-        const displayedPromise = rendition.display();
 
-        displayedPromise.then(() => {
-            if (isMounted && renditionRef.current && bookInstanceRef.current) {
-                 const currentLocation = renditionRef.current.currentLocation();
-                 if (currentLocation && currentLocation.start) {
+        rendition.on('displayed', () => {
+            if (isMounted) {
+                const currentLocation = renditionRef.current?.currentLocation();
+                 if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
                     const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
                     setLocation(page || 0);
                 }
-            }
-        });
-
-        Promise.all([readyPromise, displayedPromise]).then(() => {
-            if (isMounted) {
                 setIsRendering(false);
             }
         });
 
         rendition.on('relocated', (locationData: any) => {
-            if (isMounted && bookInstanceRef.current) {
+            if (isMounted && bookInstanceRef.current?.locations) {
                 const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
                 setLocation(page || 0);
             }
         });
 
     }).catch(err => {
-        console.error("Failed to load epubjs", err);
+        console.error("Failed to load epubjs module", err);
         if(isMounted) {
             setError("No se pudo cargar el visor de libros.");
             setIsRendering(false);
@@ -157,8 +159,14 @@ export default function ReaderPage() {
     };
   }, [book, fontSize, theme]);
 
-  const goNext = () => !isRendering && renditionRef.current?.next();
-  const goPrev = () => !isRendering && renditionRef.current?.prev();
+  const goNext = () => {
+    if(isRendering || !renditionRef.current) return;
+    renditionRef.current.next();
+  }
+  const goPrev = () => {
+    if(isRendering || !renditionRef.current) return;
+    renditionRef.current.prev();
+  }
   
   const changeFontSize = (newSize: number) => {
     const clampedSize = Math.max(80, Math.min(200, newSize)); // Clamp between 80% and 200%
