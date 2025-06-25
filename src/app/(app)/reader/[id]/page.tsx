@@ -110,28 +110,8 @@ export default function ReaderPage() {
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
         
-        bookInstance.ready.then(() => {
-            return bookInstance.locations.generate(1650); // Standard value for page generation
-        }).then(locations => {
-            if (isMounted) {
-                setTotalPages(locations.length);
-                rendition.display(); // Display the book only after locations are generated
-            }
-        }).catch((err: Error) => {
-            console.error("Error processing EPUB:", err);
-            if (isMounted) {
-                setError(`Hubo un problema al procesar el archivo EPUB: ${err.message}. Puede ser un problema de CORS o el archivo está dañado.`);
-                setIsRendering(false);
-            }
-        });
-
         rendition.on('displayed', () => {
             if (isMounted) {
-                const currentLocation = renditionRef.current?.currentLocation();
-                 if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
-                    const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
-                    setLocation(page || 0);
-                }
                 setIsRendering(false);
             }
         });
@@ -140,6 +120,30 @@ export default function ReaderPage() {
             if (isMounted && bookInstanceRef.current?.locations) {
                 const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
                 setLocation(page || 0);
+            }
+        });
+        
+        bookInstance.ready.then(() => {
+            if (!isMounted) return;
+            
+            bookInstance.locations.generate(1650).then(locations => {
+                if (isMounted) {
+                    setTotalPages(locations.length);
+                    const currentLocation = renditionRef.current?.currentLocation();
+                    if (currentLocation && currentLocation.start) {
+                        const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
+                        setLocation(page || 0);
+                    }
+                }
+            });
+
+            rendition.display();
+
+        }).catch((err: Error) => {
+            console.error("Error processing EPUB:", err);
+            if (isMounted) {
+                setError(`Hubo un problema al procesar el archivo EPUB: ${err.message}. Esto puede ser un problema de CORS si el libro está alojado en otro servidor, o el archivo podría estar dañado.`);
+                setIsRendering(false);
             }
         });
 
