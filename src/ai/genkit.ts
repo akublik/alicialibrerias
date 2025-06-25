@@ -8,7 +8,6 @@ const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 if (apiKey) {
   ai = genkit({
     plugins: [googleAI()],
-    model: 'googleai/gemini-2.0-flash',
   });
 } else {
   console.warn(`
