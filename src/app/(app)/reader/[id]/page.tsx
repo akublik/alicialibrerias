@@ -76,7 +76,7 @@ export default function ReaderPage() {
 
   useEffect(() => {
     if (!book || !book.epubUrl || !viewerRef.current) {
-        setIsRendering(false);
+        setIsRendering(book?.epubUrl ? true : false);
         return;
     }
     
@@ -111,22 +111,19 @@ export default function ReaderPage() {
         rendition.themes.fontSize(`${fontSize}%`);
         
         rendition.on('displayed', () => {
-            if (isMounted) {
-                setIsRendering(false);
-
-                // Generate locations in the background after displaying
-                bookInstance.ready.then(() => bookInstance.locations.generate(1650))
-                .then(locations => {
-                    if (isMounted) {
-                        setTotalPages(locations.length);
-                        const currentLocation = renditionRef.current?.currentLocation();
-                        if (currentLocation && currentLocation.start) {
-                            const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
-                            setLocation(page || 0);
-                        }
+             // Generate locations in the background after displaying
+            bookInstance.ready.then(() => bookInstance.locations.generate(1650))
+            .then(locations => {
+                if (isMounted) {
+                    setTotalPages(locations.length);
+                    // Update location after generation
+                    const currentLocation = renditionRef.current?.currentLocation();
+                    if (currentLocation && currentLocation.start) {
+                        const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
+                        setLocation(page || 0);
                     }
-                }).catch(err => console.warn("Could not generate book locations:", err));
-            }
+                }
+            }).catch(err => console.warn("Could not generate book locations:", err));
         });
 
         rendition.on('relocated', (locationData: any) => {
@@ -136,7 +133,11 @@ export default function ReaderPage() {
             }
         });
 
-        rendition.display().catch((err: Error) => {
+        rendition.display().then(() => {
+          if (isMounted) {
+            setIsRendering(false);
+          }
+        }).catch((err: Error) => {
              if (isMounted) {
                 console.error("Error displaying rendition:", err);
                 setError(`Hubo un problema al mostrar el libro. Esto puede ser un problema de CORS si el libro está alojado en otro servidor. Error: ${err.message}.`);
@@ -158,7 +159,20 @@ export default function ReaderPage() {
       renditionRef.current = null;
       bookInstanceRef.current = null;
     };
-  }, [book, fontSize, theme]);
+  }, [book]);
+
+  useEffect(() => {
+    if (renditionRef.current) {
+        renditionRef.current.themes.fontSize(`${fontSize}%`);
+    }
+  }, [fontSize]);
+
+  useEffect(() => {
+    if (renditionRef.current) {
+        renditionRef.current.themes.select(theme);
+    }
+  }, [theme]);
+
 
   const goNext = () => {
     if(isRendering || !renditionRef.current) return;
