@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,7 +27,7 @@ export default function LibrariesPage() {
         setIsLoading(true);
         try {
             const librariesRef = collection(db, "libraries");
-            const q = query(librariesRef);
+            const q = query(librariesRef, where("isActive", "==", true));
             const querySnapshot = await getDocs(q);
             const libraries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
             setAllLibraries(libraries);
