@@ -95,13 +95,13 @@ export default function NewDigitalBookPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="El Aleph" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input placeholder="Jorge Luis Borges" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="El Aleph" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input placeholder="Jorge Luis Borges" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               
-              <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="pdfUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo PDF (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.pdf" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="pdfUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo PDF (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.pdf" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
