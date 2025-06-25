@@ -106,7 +106,7 @@ export default function ReaderPage() {
           setBook(bookData);
           setChatMessages([{
             role: 'assistant',
-            content: `¡Hola! Soy AlicIA, tu asistente de lectura experta. Estoy aquí para ayudarte a conversar sobre "${bookData.title}". ¿Qué te gustaría explorar o preguntar sobre el libro? También puedo definir palabras del texto si lo necesitas.`
+            content: `¡Hola! Soy AlicIA, tu asistente de lectura experta. Estoy aquí para ayudarte a conversar sobre "${bookData.title}". ¿Qué te gustaría explorar o preguntar sobre el libro?`
           }]);
 
           // Fetch reviews by book title
@@ -141,12 +141,10 @@ export default function ReaderPage() {
         return;
     }
 
-    // Ensure the viewer is empty before rendering
     if (viewerRef.current) {
         viewerRef.current.innerHTML = '';
     }
 
-    // Destroy any previous instance
     if (bookInstanceRef.current) {
         bookInstanceRef.current.destroy();
     }
@@ -175,7 +173,6 @@ export default function ReaderPage() {
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
         
-        // Priority 1: Display the book as fast as possible
         rendition.display().then(() => {
             if (isMounted) setIsRendering(false);
         }).catch((err: Error) => {
@@ -187,7 +184,6 @@ export default function ReaderPage() {
             }
         });
         
-        // Priority 2: In the background, generate locations for page numbers
         bookInstance.ready.then(() => {
           return bookInstance.locations.generate(1650);
         }).then(locations => {
@@ -267,21 +263,27 @@ export default function ReaderPage() {
     if (!chatInput.trim() || isChatLoading || !book) return;
 
     const userMessage: Message = { role: 'user', content: chatInput };
-    const newMessages = [...chatMessages, userMessage];
-    setChatMessages(newMessages);
+    setChatMessages(prev => [...prev, userMessage]);
     setChatInput('');
     setIsChatLoading(true);
 
     try {
-        const genkitHistory = newMessages.slice(0,-1).map(msg => ({
+        const currentHistory = [...chatMessages, userMessage];
+        // The AI requires history to start with a user message.
+        // We filter out our initial UI greeting message.
+        const historyForAI = currentHistory.filter((msg, index) => {
+            return msg.role === 'user' || (msg.role === 'assistant' && index > 0);
+        });
+
+        // Map to the format Genkit expects.
+        const genkitHistory = historyForAI.map(msg => ({
             role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
             content: [{ text: msg.content }]
         }));
         
         const assistantResponse = await converseWithBook({
             bookTitle: book.title,
-            bookAuthor: book.author,
-            history: [...genkitHistory, { role: 'user', content: [{text: userMessage.content}]}],
+            history: genkitHistory,
         });
         const assistantMessage: Message = { role: 'assistant', content: assistantResponse };
         setChatMessages(prev => [...prev, assistantMessage]);
