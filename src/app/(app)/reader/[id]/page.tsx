@@ -9,8 +9,8 @@ import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, BookOpen, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import ePub from 'epubjs';
 import type { Rendition } from 'epubjs';
+import type Book from 'epubjs/types/book';
 
 export default function ReaderPage() {
   const params = useParams();
@@ -20,6 +20,7 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
+  const bookInstanceRef = useRef<Book | null>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -51,24 +52,40 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!book || !book.epubUrl || !viewerRef.current) return;
     
-    // Clear previous rendition if it exists
-    if (viewerRef.current.innerHTML) {
-        viewerRef.current.innerHTML = '';
-    }
+    let isMounted = true;
+    
+    import('epubjs').then(({ default: ePub }) => {
+        if (!isMounted || !viewerRef.current) return;
 
-    const bookInstance = ePub(book.epubUrl);
-    const rendition = bookInstance.renderTo(viewerRef.current, {
-      width: "100%",
-      height: "100%",
-      flow: "paginated",
-      spread: "auto",
+        if (viewerRef.current.innerHTML) {
+            viewerRef.current.innerHTML = '';
+        }
+
+        const bookInstance = ePub(book.epubUrl);
+        bookInstanceRef.current = bookInstance;
+
+        const rendition = bookInstance.renderTo(viewerRef.current, {
+          width: "100%",
+          height: "100%",
+          flow: "paginated",
+          spread: "auto",
+        });
+
+        renditionRef.current = rendition;
+        rendition.display();
+
+    }).catch(err => {
+        console.error("Failed to load epubjs", err);
+        if(isMounted) {
+            setError("No se pudo cargar el visor de libros.");
+        }
     });
 
-    renditionRef.current = rendition;
-    rendition.display();
-
     return () => {
-      bookInstance.destroy();
+      isMounted = false;
+      if (bookInstanceRef.current) {
+        bookInstanceRef.current.destroy();
+      }
     };
   }, [book]);
 
