@@ -40,20 +40,19 @@ export default function LibrariesPage() {
     fetchLibraries();
   }, []);
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term.toLowerCase());
-  };
-
   const filteredLibraries = useMemo(() => {
+    const lowercasedSearchTerm = searchTerm.toLowerCase();
+    
     return allLibraries.filter((library) => {
       const name = library.name || "";
       const description = library.description || "";
       const location = library.location || "";
       
-      const matchesSearchTerm =
-        name.toLowerCase().includes(searchTerm) ||
-        description.toLowerCase().includes(searchTerm) ||
-        location.toLowerCase().includes(searchTerm);
+      const matchesSearchTerm = lowercasedSearchTerm
+        ? name.toLowerCase().includes(lowercasedSearchTerm) ||
+          description.toLowerCase().includes(lowercasedSearchTerm) ||
+          location.toLowerCase().includes(lowercasedSearchTerm)
+        : true;
       
       const matchesLocation =
         selectedLocation === "Todas" || location.includes(selectedLocation);
@@ -83,7 +82,7 @@ export default function LibrariesPage() {
                 type="text"
                 placeholder="Ej: El Gato Lector, libros infantiles..."
                 value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-grow text-base md:text-sm"
                 aria-label="Buscar librería"
               />
