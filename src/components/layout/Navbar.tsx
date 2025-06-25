@@ -1,9 +1,8 @@
-
 // src/components/layout/Navbar.tsx
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
@@ -46,13 +45,17 @@ export function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "Inicio", icon: Home },
-    { href: "/libraries", label: "Librerías", icon: Library },
-    { href: "/about", label: "Nosotros", icon: Info },
-    { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles },
-    { href: "/games", label: "Juegos", icon: Gamepad2 },
-    { href: "/community", label: "Comunidad", icon: Users },
+    { href: "/", label: "Inicio", icon: Home, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/libraries", label: "Librerías", icon: Library, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/my-library", label: "Mi Biblioteca", icon: BookHeart, roles: ['reader'] },
+    { href: "/about", label: "Nosotros", icon: Info, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/games", label: "Juegos", icon: Gamepad2, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/community", label: "Comunidad", icon: Users, roles: ['reader', 'library', 'superadmin', null] },
   ];
+
+  const visibleNavItems = navItems.filter(item => item.roles.includes(userRole));
+
 
   const getDashboardLink = () => {
     if (userRole === 'library') return '/library-admin/dashboard';
@@ -157,7 +160,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Link
               key={item.label}
               href={item.href}
@@ -204,7 +207,7 @@ export function Navbar() {
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-4 mt-8">
-                {navItems.map((item) => (
+                {visibleNavItems.map((item) => (
                   <Link
                     key={item.label}
                     href={item.href}

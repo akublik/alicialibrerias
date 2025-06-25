@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info, MailQuestion, LineChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info, MailQuestion, LineChart, BookHeart } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
@@ -72,6 +72,7 @@ export default function SuperAdminDashboardLayout({
     { title: "Dashboard", href: "/superadmin/dashboard", icon: LayoutDashboard },
     { title: "Gestionar Usuarios", href: "/superadmin/users", icon: Users },
     { title: "Gestionar Librerías", href: "/superadmin/libraries", icon: Store },
+    { title: "Biblioteca Digital", href: "/superadmin/digital-library", icon: BookHeart },
     { title: "Solicitudes de Libros", href: "/superadmin/requests", icon: MailQuestion },
     { title: "Analíticas Búsqueda", href: "/superadmin/analytics", icon: LineChart },
     { title: "Contenido Homepage", href: "/superadmin/content", icon: FilePenLine },
@@ -95,7 +96,7 @@ export default function SuperAdminDashboardLayout({
                   href={item.href}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
-                    pathname === item.href && "bg-muted text-primary"
+                    pathname.startsWith(item.href) && "bg-muted text-primary"
                   )}
                 >
                   <item.icon className="h-4 w-4" />

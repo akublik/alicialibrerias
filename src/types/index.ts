@@ -1,5 +1,6 @@
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -20,6 +21,16 @@ export interface Book {
   pageCount?: number | null;
   coverType?: string | null;
   publisher?: string | null;
+}
+
+export interface DigitalBook {
+  id: string;
+  title: string;
+  author: string;
+  description?: string;
+  coverImageUrl: string;
+  epubUrl: string; // URL to the EPUB file in storage
+  createdAt: any;
 }
 
 export interface Library {
