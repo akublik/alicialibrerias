@@ -1,6 +1,6 @@
 
 {
   "dependencies": {
-    "@genkit-ai/google-ai": "latest"
+    "genkitx-google-ai": "latest"
   }
 }
