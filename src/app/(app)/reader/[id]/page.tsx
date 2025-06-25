@@ -113,36 +113,33 @@ export default function ReaderPage() {
         rendition.on('displayed', () => {
             if (isMounted) {
                 setIsRendering(false);
+
+                // Generate locations in the background after displaying
+                bookInstance.ready.then(() => bookInstance.locations.generate(1650))
+                .then(locations => {
+                    if (isMounted) {
+                        setTotalPages(locations.length);
+                        const currentLocation = renditionRef.current?.currentLocation();
+                        if (currentLocation && currentLocation.start) {
+                            const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
+                            setLocation(page || 0);
+                        }
+                    }
+                }).catch(err => console.warn("Could not generate book locations:", err));
             }
         });
 
         rendition.on('relocated', (locationData: any) => {
-            if (isMounted && bookInstanceRef.current?.locations) {
+            if (isMounted && bookInstanceRef.current?.locations?.length > 0) {
                 const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
                 setLocation(page || 0);
             }
         });
-        
-        bookInstance.ready.then(() => {
-            if (!isMounted) return;
-            
-            bookInstance.locations.generate(1650).then(locations => {
-                if (isMounted) {
-                    setTotalPages(locations.length);
-                    const currentLocation = renditionRef.current?.currentLocation();
-                    if (currentLocation && currentLocation.start) {
-                        const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
-                        setLocation(page || 0);
-                    }
-                }
-            });
 
-            rendition.display();
-
-        }).catch((err: Error) => {
-            console.error("Error processing EPUB:", err);
-            if (isMounted) {
-                setError(`Hubo un problema al procesar el archivo EPUB: ${err.message}. Esto puede ser un problema de CORS si el libro está alojado en otro servidor, o el archivo podría estar dañado.`);
+        rendition.display().catch((err: Error) => {
+             if (isMounted) {
+                console.error("Error displaying rendition:", err);
+                setError(`Hubo un problema al mostrar el libro. Esto puede ser un problema de CORS si el libro está alojado en otro servidor. Error: ${err.message}.`);
                 setIsRendering(false);
             }
         });
@@ -190,7 +187,7 @@ export default function ReaderPage() {
       <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
         <h1 className="text-2xl font-bold text-destructive mb-2">Ocurrió un error</h1>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-muted-foreground max-w-lg">{error}</p>
         <Link href="/my-library" className="mt-6">
           <Button>Volver a la Biblioteca</Button>
         </Link>
