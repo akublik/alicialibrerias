@@ -10,13 +10,13 @@ import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query } from "firebase/firestore";
 
-const locations = ["Todas", "Quito", "Guayaquil", "Cuenca", "Bogotá", "Lima"]; 
-
 export default function LibrariesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("Todas");
   const [allLibraries, setAllLibraries] = useState<Library[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [locations, setLocations] = useState<string[]>(["Todas"]);
 
   useEffect(() => {
     const fetchLibraries = async () => {
@@ -31,6 +31,19 @@ export default function LibrariesPage() {
             const querySnapshot = await getDocs(q);
             const libraries = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Library));
             setAllLibraries(libraries);
+
+            // Dynamically generate location list
+            const uniqueLocations = new Set<string>();
+            libraries.forEach(lib => {
+                if (lib.location) {
+                    const city = lib.location.split(',')[0].trim();
+                    if (city) {
+                       uniqueLocations.add(city);
+                    }
+                }
+            });
+            setLocations(["Todas", ...Array.from(uniqueLocations).sort()]);
+
         } catch (error) {
             console.error("Error fetching libraries:", error);
         } finally {
@@ -123,7 +136,7 @@ export default function LibrariesPage() {
           <Search className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="font-headline text-2xl font-semibold text-foreground mb-2">No se encontraron librerías</h3>
           <p className="text-muted-foreground">
-            No hay librerías registradas o ninguna coincide con tu búsqueda. ¡Registra una!
+            No hay librerías que coincidan con tus filtros. Intenta con otros términos.
           </p>
         </div>
       )}
