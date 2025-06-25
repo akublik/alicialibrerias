@@ -91,8 +91,9 @@ export default function ReaderPage() {
     
     import('epubjs').then(({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
-
-        const bookInstance = ePub(book.epubUrl!);
+        
+        const proxiedUrl = `/api/proxy-epub?url=${encodeURIComponent(book.epubUrl!)}`;
+        const bookInstance = ePub(proxiedUrl);
         bookInstanceRef.current = bookInstance;
 
         const rendition = bookInstance.renderTo(viewerRef.current, {
@@ -102,28 +103,31 @@ export default function ReaderPage() {
           spread: "auto",
         });
         renditionRef.current = rendition;
-
+        
         rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
         rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
         rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
         
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
+
+        bookInstance.ready.then(() => {
+          return bookInstance.locations.generate(1650);
+        }).then(locations => {
+          if (isMounted) {
+            setTotalPages(locations.length);
+          }
+        }).catch(err => console.warn("Could not generate book locations:", err));
         
         rendition.on('displayed', () => {
-             // Generate locations in the background after displaying
-            bookInstance.ready.then(() => bookInstance.locations.generate(1650))
-            .then(locations => {
-                if (isMounted) {
-                    setTotalPages(locations.length);
-                    // Update location after generation
-                    const currentLocation = renditionRef.current?.currentLocation();
-                    if (currentLocation && currentLocation.start) {
-                        const page = bookInstanceRef.current?.locations.locationFromCfi(currentLocation.start.cfi);
-                        setLocation(page || 0);
-                    }
-                }
-            }).catch(err => console.warn("Could not generate book locations:", err));
+          if (isMounted) {
+            const currentLocation = renditionRef.current?.currentLocation();
+            if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
+                const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
+                setLocation(page || 0);
+            }
+            setIsRendering(false);
+          }
         });
 
         rendition.on('relocated', (locationData: any) => {
@@ -133,14 +137,10 @@ export default function ReaderPage() {
             }
         });
 
-        rendition.display().then(() => {
-          if (isMounted) {
-            setIsRendering(false);
-          }
-        }).catch((err: Error) => {
+        rendition.display().catch((err: Error) => {
              if (isMounted) {
                 console.error("Error displaying rendition:", err);
-                setError(`Hubo un problema al mostrar el libro. Esto puede ser un problema de CORS si el libro está alojado en otro servidor. Error: ${err.message}.`);
+                setError(`Hubo un problema al mostrar el libro. Error: ${err.message}.`);
                 setIsRendering(false);
             }
         });
