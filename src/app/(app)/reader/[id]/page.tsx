@@ -106,7 +106,7 @@ export default function ReaderPage() {
           setBook(bookData);
           setChatMessages([{
             role: 'assistant',
-            content: `¡Hola! Soy ${bookData.author}. He vuelto para hablar sobre mi libro, "${bookData.title}". ¿Sobre qué te gustaría conversar? También puedo definir palabras del texto si lo necesitas.`
+            content: `¡Hola! Soy AlicIA, tu asistente de lectura experta. Estoy aquí para ayudarte a conversar sobre "${bookData.title}". ¿Qué te gustaría explorar o preguntar sobre el libro? También puedo definir palabras del texto si lo necesitas.`
           }]);
 
           // Fetch reviews by book title
@@ -140,15 +140,18 @@ export default function ReaderPage() {
         setIsRendering(false);
         return;
     }
+
+    // Ensure the viewer is empty before rendering
+    if (viewerRef.current) {
+        viewerRef.current.innerHTML = '';
+    }
+
+    // Destroy any previous instance
+    if (bookInstanceRef.current) {
+        bookInstanceRef.current.destroy();
+    }
     
     setIsRendering(true);
-    
-    if (bookInstanceRef.current) {
-      bookInstanceRef.current.destroy();
-    }
-    if (viewerRef.current) {
-      viewerRef.current.innerHTML = '';
-    }
     
     import('epubjs').then(({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
@@ -172,6 +175,7 @@ export default function ReaderPage() {
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
         
+        // Priority 1: Display the book as fast as possible
         rendition.display().then(() => {
             if (isMounted) setIsRendering(false);
         }).catch((err: Error) => {
@@ -183,6 +187,7 @@ export default function ReaderPage() {
             }
         });
         
+        // Priority 2: In the background, generate locations for page numbers
         bookInstance.ready.then(() => {
           return bookInstance.locations.generate(1650);
         }).then(locations => {
@@ -372,7 +377,7 @@ export default function ReaderPage() {
                             <span className="font-headline text-xl text-primary">Conversa con "{book.title}"</span>
                         </SheetTitle>
                         <SheetDescription>
-                            Estás hablando con una IA que representa a {book.author}.
+                            Estás hablando con AlicIA, tu asistente de lectura experta.
                         </SheetDescription>
                     </SheetHeader>
                     <ScrollArea className="flex-grow p-4" ref={chatScrollAreaRef}>

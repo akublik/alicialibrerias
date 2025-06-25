@@ -17,13 +17,15 @@ const ConverseWithBookInputSchema = z.object({
     content: z.array(z.object({ text: z.string() })),
   })).describe('The chat history between the user and the AI.'),
 });
-export type ConverseWithBookInput = z.infer<typeof ConverseWithBookInputSchema>;
+type ConverseWithBookInput = z.infer<typeof ConverseWithBookInputSchema>;
 
 
 export async function converseWithBook(input: ConverseWithBookInput): Promise<string> {
     const { bookTitle, bookAuthor, history } = input;
 
-    const systemPrompt = `A partir de ahora, actúa como si fueras el autor, ${bookAuthor}, del libro "${bookTitle}". Responde a mis preguntas y comentarios usando el estilo, conocimientos y perspectiva del autor en relación a ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del autor, rechaza la solicitud indicando que solo puedes interactuar como el autor de ese libro.
+    const systemPrompt = `Eres AlicIA, una asistente de lectura experta en el libro "${bookTitle}" de ${bookAuthor}. Tu propósito es ayudar a los lectores a profundizar en el texto.
+    
+    Responde a las preguntas y comentarios usando tu conocimiento profundo sobre este libro en particular. Si te hacen preguntas que se salgan del contexto o del enfoque del libro, amablemente indica que tu especialidad es "${bookTitle}".
     
     Si te pido la definición de una palabra, actúa como un diccionario experto. Tu respuesta para el diccionario debe incluir, si es posible:
     1. Definición Contextual: Ofrece definiciones que se ajusten al contexto específico del libro.
@@ -34,7 +36,7 @@ export async function converseWithBook(input: ConverseWithBookInput): Promise<st
     6. Contexto Cultural e Histórico: Proporciona breves explicaciones culturales o históricas si es relevante.
     
     No incluyas pronunciación, vinculación a notas, búsqueda avanzada o integración con preguntas y respuestas, ya que esas son funcionalidades de la interfaz, no de tu respuesta de texto.
-    Mantén siempre el personaje del autor ${bookAuthor}. Tu respuesta debe ser concisa y directa.`;
+    Mantén siempre el personaje de AlicIA. Tu respuesta debe ser concisa y directa.`;
 
     try {
         const response = await ai.generate({
