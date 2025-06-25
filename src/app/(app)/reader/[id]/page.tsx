@@ -33,6 +33,7 @@ export default function ReaderPage() {
   const bookId = params.id as string;
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +74,14 @@ export default function ReaderPage() {
   }, [bookId]);
 
   useEffect(() => {
-    if (!book || !book.epubUrl || !viewerRef.current) return;
+    if (!book) return;
+    if (!book.epubUrl || !viewerRef.current) {
+        setIsRendering(false);
+        return;
+    }
     
     let isMounted = true;
+    setIsRendering(true);
     
     import('epubjs').then(({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
@@ -95,26 +101,36 @@ export default function ReaderPage() {
         });
         renditionRef.current = rendition;
 
-        // Register themes for later use
         rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
         rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
         rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
         
-        // Initial setup
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
 
-        bookInstance.ready.then(() => {
-            if (!isMounted) return;
+        const readyPromise = bookInstance.ready.then(() => {
             return bookInstance.locations.generate(1024);
         }).then(locations => {
             if (isMounted) {
                 setTotalPages(locations.length);
-                const currentLocation = rendition.currentLocation();
+            }
+        });
+        
+        const displayedPromise = rendition.display();
+
+        displayedPromise.then(() => {
+            if (isMounted && renditionRef.current && bookInstanceRef.current) {
+                 const currentLocation = renditionRef.current.currentLocation();
                  if (currentLocation && currentLocation.start) {
-                    const page = bookInstance.locations.locationFromCfi(currentLocation.start.cfi);
+                    const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
                     setLocation(page || 0);
                 }
+            }
+        });
+
+        Promise.all([readyPromise, displayedPromise]).then(() => {
+            if (isMounted) {
+                setIsRendering(false);
             }
         });
 
@@ -125,12 +141,11 @@ export default function ReaderPage() {
             }
         });
 
-        rendition.display();
-
     }).catch(err => {
         console.error("Failed to load epubjs", err);
         if(isMounted) {
             setError("No se pudo cargar el visor de libros.");
+            setIsRendering(false);
         }
     });
 
@@ -140,18 +155,10 @@ export default function ReaderPage() {
       renditionRef.current = null;
       bookInstanceRef.current = null;
     };
-  }, [book]);
+  }, [book, fontSize, theme]);
 
-  useEffect(() => {
-    renditionRef.current?.themes.select(theme);
-  }, [theme]);
-
-  useEffect(() => {
-    renditionRef.current?.themes.fontSize(`${fontSize}%`);
-  }, [fontSize]);
-
-  const goNext = () => renditionRef.current?.next();
-  const goPrev = () => renditionRef.current?.prev();
+  const goNext = () => !isRendering && renditionRef.current?.next();
+  const goPrev = () => !isRendering && renditionRef.current?.prev();
   
   const changeFontSize = (newSize: number) => {
     const clampedSize = Math.max(80, Math.min(200, newSize)); // Clamp between 80% and 200%
@@ -260,10 +267,15 @@ export default function ReaderPage() {
 
       <main className="flex-grow relative">
          <div id="viewer" ref={viewerRef} className="w-full h-full" />
-         <Button variant="ghost" onClick={goPrev} className="absolute left-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity" aria-label="Página anterior">
+         {isRendering && (
+            <div className="absolute inset-0 bg-background/80 flex justify-center items-center z-10">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+         )}
+         <Button variant="ghost" onClick={goPrev} disabled={isRendering} className="absolute left-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity z-20" aria-label="Página anterior">
             <ArrowLeft className="h-8 w-8" />
          </Button>
-         <Button variant="ghost" onClick={goNext} className="absolute right-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity" aria-label="Página siguiente">
+         <Button variant="ghost" onClick={goNext} disabled={isRendering} className="absolute right-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity z-20" aria-label="Página siguiente">
             <ArrowRight className="h-8 w-8" />
         </Button>
       </main>
@@ -274,13 +286,13 @@ export default function ReaderPage() {
         theme === 'dark' && 'bg-zinc-900 border-zinc-800',
         theme === 'sepia' && 'bg-[#e9e3d8] border-[#dcd3c5]'
        )}>
-            <Button variant="ghost" onClick={goPrev} aria-label="Página anterior">
+            <Button variant="ghost" onClick={goPrev} disabled={isRendering} aria-label="Página anterior">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="text-sm text-muted-foreground tabular-nums">
-                Página {location} de {totalPages > 0 ? totalPages : '-'}
+                Página {isRendering ? '-' : location} de {isRendering ? '-' : (totalPages > 0 ? totalPages : '-')}
             </div>
-            <Button variant="ghost" onClick={goNext} aria-label="Página siguiente">
+            <Button variant="ghost" onClick={goNext} disabled={isRendering} aria-label="Página siguiente">
               <ArrowRight className="h-5 w-5" />
             </Button>
       </footer>
