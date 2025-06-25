@@ -41,21 +41,21 @@ export default function LibrariesPage() {
   }, []);
 
   const filteredLibraries = useMemo(() => {
-    const lowercasedSearchTerm = searchTerm.toLowerCase();
+    const searchWords = searchTerm.toLowerCase().split(' ').filter(word => word.length > 0);
     
     return allLibraries.filter((library) => {
-      const name = library.name || "";
-      const description = library.description || "";
-      const location = library.location || "";
-      
-      const matchesSearchTerm = lowercasedSearchTerm
-        ? name.toLowerCase().includes(lowercasedSearchTerm) ||
-          description.toLowerCase().includes(lowercasedSearchTerm) ||
-          location.toLowerCase().includes(lowercasedSearchTerm)
+      const searchableText = [
+        library.name,
+        library.description,
+        library.location
+      ].join(' ').toLowerCase();
+
+      const matchesSearchTerm = searchWords.length > 0
+        ? searchWords.every(word => searchableText.includes(word))
         : true;
       
       const matchesLocation =
-        selectedLocation === "Todas" || location.includes(selectedLocation);
+        selectedLocation === "Todas" || (library.location || "").includes(selectedLocation);
       
       return matchesSearchTerm && matchesLocation;
     });
