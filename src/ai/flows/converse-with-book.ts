@@ -9,7 +9,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-export const ConverseWithBookInputSchema = z.object({
+const ConverseWithBookInputSchema = z.object({
   bookTitle: z.string().describe('The title of the book.'),
   bookAuthor: z.string().describe('The author of the book.'),
   history: z.array(z.object({
