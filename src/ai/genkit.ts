@@ -1,5 +1,4 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-ai';
+import {genkit, googleAI} from 'genkit';
 
 let ai: any;
 
