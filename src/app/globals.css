@@ -4,34 +4,34 @@
 
 @layer base {
   :root {
-    --background: 60 56% 95%; /* beige #F5F5DC */
+    --background: 240 5.9% 95.9%; /* soft light beige #F5F5DC - adjusted for more neutrality */
     --foreground: 25 57% 10%; /* darker brown for text on beige */
 
-    --muted: 60 30% 90%; /* lighter beige */
+    --muted: 240 4.8% 90%;
     --muted-foreground: 25 30% 40%; /* softer brown */
 
-    --popover: 60 56% 98%;
-    --popover-foreground: 25 57% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
 
-    --card: 60 56% 98%; /* slightly lighter beige for cards */
-    --card-foreground: 25 57% 10%;
+    --card: 0 0% 100%; /* slightly lighter beige for cards */
+    --card-foreground: 222.2 84% 4.9%;
 
-    --border: 30 30% 80%; /* soft brown border */
-    --input: 30 30% 85%; /* soft brown input background */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
 
-    --primary: 25 70% 50%; /* terracotta #D2691E */
-    --primary-foreground: 60 56% 98%; /* very light beige for text on terracotta */
+    --primary: 25 80% 50%; /* #D2691E - Earthy Orange */
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 30 50% 90%; /* a lighter, less saturated terracotta/brown */
     --secondary-foreground: 25 57% 10%;
 
-    --accent: 25 57% 30%; /* dark brown #8B4513 */
-    --accent-foreground: 60 56% 98%; /* very light beige for text on dark brown */
+    --accent: 25 57% 30%; /* #8B4513 - Dark Brown */
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 25 70% 50%; /* terracotta for focus rings */
+    --ring: 25 80% 50%; /* terracotta for focus rings */
 
     --radius: 0.5rem;
 
@@ -52,29 +52,29 @@
   }
 
   .dark {
-    --background: 25 57% 10%; /* dark brown */
-    --foreground: 60 56% 95%; /* beige */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
 
-    --muted: 25 30% 20%;
-    --muted-foreground: 60 30% 70%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --popover: 25 57% 15%;
-    --popover-foreground: 60 56% 95%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
 
-    --card: 25 57% 15%;
-    --card-foreground: 60 56% 95%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
 
-    --border: 30 30% 30%;
-    --input: 30 30% 25%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
 
     --primary: 25 70% 50%; /* terracotta */
-    --primary-foreground: 60 56% 98%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 30 50% 30%;
-    --secondary-foreground: 60 56% 95%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
     --accent: 25 70% 60%; /* lighter terracotta for dark mode accent */
-    --accent-foreground: 25 57% 10%;
+    --accent-foreground: 222.2 84% 4.9%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
