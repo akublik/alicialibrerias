@@ -1,5 +1,5 @@
-
 // src/app/(superadmin_dashboard)/superadmin/digital-library/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +8,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2 } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,7 +132,11 @@ export default function ManageDigitalLibraryPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem disabled>Editar (Próximamente)</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/superadmin/digital-library/edit/${book.id}`}>
+                                    <Edit className="mr-2 h-4 w-4" /> Editar
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive" onClick={() => setBookToDelete(book)}>
                               <Trash2 className="mr-2 h-4 w-4" /> Eliminar
