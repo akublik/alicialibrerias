@@ -5,8 +5,8 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import type { DigitalBook } from '@/types';
+import { doc, getDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import type { DigitalBook, Review } from '@/types';
 import { 
   Loader2, 
   AlertTriangle, 
@@ -19,7 +19,9 @@ import {
   Moon,
   Book,
   Minus,
-  Plus
+  Plus,
+  Star,
+  ThumbsUp
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,27 @@ import type BookType from 'epubjs/types/book';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import Image from 'next/image';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
+  return (
+    <div className="flex space-x-1">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`w-5 h-5 transition-colors ${
+            star <= rating ? "text-amber-400 fill-amber-400" : "text-muted-foreground"
+          } ${interactive ? "cursor-pointer hover:text-amber-300" : ""}`}
+          onClick={() => interactive && setRating && setRating(star)}
+        />
+      ))}
+    </div>
+  );
+};
+
 
 export default function ReaderPage() {
   const params = useParams();
@@ -37,6 +60,7 @@ export default function ReaderPage() {
   const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   // Reader state
   const renditionRef = useRef<Rendition | null>(null);
@@ -60,7 +84,21 @@ export default function ReaderPage() {
         const bookRef = doc(db, "digital_books", bookId);
         const docSnap = await getDoc(bookRef);
         if (docSnap.exists()) {
-          setBook({ id: docSnap.id, ...docSnap.data() } as DigitalBook);
+          const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+          setBook(bookData);
+
+          // Fetch reviews by book title
+          const reviewsRef = collection(db, "reviews");
+          const q = query(reviewsRef, where("bookTitle", "==", bookData.title), limit(5));
+          const reviewsSnapshot = await getDocs(q);
+          const fetchedReviews = reviewsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
+          } as Review));
+          fetchedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setReviews(fetchedReviews);
+          
         } else {
           setError("Libro no encontrado en la biblioteca digital.");
         }
@@ -110,14 +148,6 @@ export default function ReaderPage() {
         
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
-
-        bookInstance.ready.then(() => {
-          return bookInstance.locations.generate(1650);
-        }).then(locations => {
-          if (isMounted) {
-            setTotalPages(locations.length);
-          }
-        }).catch(err => console.warn("Could not generate book locations:", err));
         
         rendition.on('displayed', () => {
           if (isMounted) {
@@ -137,12 +167,28 @@ export default function ReaderPage() {
             }
         });
 
-        rendition.display().catch((err: Error) => {
-             if (isMounted) {
-                console.error("Error displaying rendition:", err);
-                setError(`Hubo un problema al mostrar el libro. Error: ${err.message}.`);
-                setIsRendering(false);
+        bookInstance.ready.then(() => {
+            return bookInstance.locations.generate(1650);
+        }).then(locations => {
+            if (isMounted) {
+                setTotalPages(locations.length);
+                rendition.display().catch((err: Error) => {
+                    if (isMounted) {
+                        console.error("Error displaying rendition:", err);
+                        setError(`Hubo un problema al mostrar el libro. Error: ${err.message}.`);
+                        setIsRendering(false);
+                    }
+                });
             }
+        }).catch(err => {
+            console.warn("Could not generate book locations, displaying anyway.", err);
+            rendition.display().catch((displayErr: Error) => {
+                if (isMounted) {
+                    console.error("Error displaying rendition after location generation failed:", displayErr);
+                    setError(`Hubo un problema al mostrar el libro. Error: ${displayErr.message}.`);
+                    setIsRendering(false);
+                }
+            });
         });
 
     }).catch(err => {
@@ -290,6 +336,39 @@ export default function ReaderPage() {
 
       <main className="flex-grow relative">
          <div id="viewer" ref={viewerRef} className="w-full h-full" />
+
+        {reviews.length > 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-30">
+            <Card className="max-h-[40vh] overflow-y-auto shadow-xl">
+              <CardHeader className="p-4">
+                <CardTitle className="text-lg">Reseñas de Lectores</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0 space-y-4">
+                {reviews.map((review) => (
+                  <div key={review.id} className="border-t pt-4 first:border-t-0 first:pt-0">
+                    <div className="flex items-start space-x-3 mb-2">
+                      <Image
+                        src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`}
+                        alt={review.userName}
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                        data-ai-hint={review.dataAiHint || 'user avatar'}
+                      />
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{review.userName}</p>
+                        <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
+                      </div>
+                    </div>
+                    <StarRating rating={review.rating} />
+                    <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
          {isRendering && (
             <div className="absolute inset-0 bg-background/80 flex justify-center items-center z-10">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
