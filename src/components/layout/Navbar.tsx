@@ -47,7 +47,7 @@ export function Navbar() {
   const navItems = [
     { href: "/", label: "Inicio", icon: Home, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/libraries", label: "Librerías", icon: Library, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/my-library", label: "Mi Biblioteca", icon: BookHeart, roles: ['reader'] },
+    { href: "/my-library", label: "Mi Biblioteca", icon: BookHeart, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/about", label: "Nosotros", icon: Info, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/games", label: "Juegos", icon: Gamepad2, roles: ['reader', 'library', 'superadmin', null] },
