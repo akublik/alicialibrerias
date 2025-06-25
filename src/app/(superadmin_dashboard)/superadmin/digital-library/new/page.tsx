@@ -29,7 +29,11 @@ const digitalBookFormSchema = z.object({
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubUrl: z.string().url("La URL del archivo EPUB es requerida y debe ser válida."),
+  epubUrl: z.string().url("La URL del EPUB no es válida.").optional().or(z.literal('')),
+  pdfUrl: z.string().url("La URL del PDF no es válida.").optional().or(z.literal('')),
+}).refine(data => data.epubUrl || data.pdfUrl, {
+  message: "Debes proporcionar al menos una URL (EPUB o PDF).",
+  path: ["epubUrl"], // Show the error under one of the fields
 });
 
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
@@ -47,6 +51,7 @@ export default function NewDigitalBookPage() {
       description: "",
       coverImageUrl: "",
       epubUrl: "",
+      pdfUrl: "",
     },
   });
 
@@ -94,7 +99,9 @@ export default function NewDigitalBookPage() {
               <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input placeholder="Jorge Luis Borges" {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              
+              <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="pdfUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo PDF (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.pdf" {...field} /></FormControl><FormMessage /></FormItem> )} />
               
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}

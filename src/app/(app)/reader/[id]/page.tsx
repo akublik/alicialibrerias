@@ -68,9 +68,16 @@ export default function ReaderPage() {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold">{book?.title}</h1>
       <p className="text-lg text-muted-foreground">{book?.author}</p>
-      <div className="mt-8 border rounded-lg p-8 text-center">
+      <div className="mt-8 border rounded-lg p-8 text-center space-y-4">
         <p className="text-xl">El lector de E-books se implementará aquí.</p>
-        <p className="mt-2 text-muted-foreground">URL del EPUB: <a href={book?.epubUrl} className="text-primary underline" target="_blank" rel="noopener noreferrer">{book?.epubUrl}</a></p>
+        <div className="space-y-2">
+            {book?.epubUrl && (
+            <p className="text-muted-foreground">URL del EPUB: <a href={book.epubUrl} className="text-primary underline" target="_blank" rel="noopener noreferrer">{book.epubUrl}</a></p>
+            )}
+            {book?.pdfUrl && (
+            <p className="text-muted-foreground">URL del PDF: <a href={book.pdfUrl} className="text-primary underline" target="_blank" rel="noopener noreferrer">{book.pdfUrl}</a></p>
+            )}
+        </div>
       </div>
     </div>
   );
