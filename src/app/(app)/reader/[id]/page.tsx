@@ -121,9 +121,10 @@ export default function ReaderPage() {
     let isMounted = true;
     setIsRendering(true);
     
-    // Clean up previous instance if any
-    if (viewerRef.current.innerHTML) {
-      bookInstanceRef.current?.destroy();
+    if (bookInstanceRef.current) {
+      bookInstanceRef.current.destroy();
+    }
+    if (viewerRef.current) {
       viewerRef.current.innerHTML = '';
     }
     
@@ -149,15 +150,32 @@ export default function ReaderPage() {
         rendition.themes.select(theme);
         rendition.themes.fontSize(`${fontSize}%`);
         
-        rendition.on('displayed', () => {
-          if (isMounted) {
-            const currentLocation = renditionRef.current?.currentLocation();
-            if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
-                const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
-                setLocation(page || 0);
+        bookInstance.ready.then(() => {
+          return bookInstance.locations.generate(1650);
+        }).then(locations => {
+            if (isMounted) {
+                setTotalPages(locations.length);
             }
-            setIsRendering(false);
-          }
+        }).catch(err => {
+            console.warn("Could not generate book locations, page numbers will be unavailable.", err);
+        });
+
+        rendition.display().then(() => {
+            if (isMounted) {
+                setIsRendering(false);
+                 const currentLocation = renditionRef.current?.currentLocation();
+                if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
+                    const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
+                    setLocation(page || 0);
+                }
+            }
+        }).catch((err: Error) => {
+            if (isMounted) {
+                console.error("Error displaying rendition:", err);
+                const proxyErrorHint = "Please check browser console for CORS or network errors. If the EPUB file is on a different domain, a proxy might be needed.";
+                setError(`Hubo un problema al mostrar el libro. ${proxyErrorHint}`);
+                setIsRendering(false);
+            }
         });
 
         rendition.on('relocated', (locationData: any) => {
@@ -165,30 +183,6 @@ export default function ReaderPage() {
                 const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
                 setLocation(page || 0);
             }
-        });
-
-        bookInstance.ready.then(() => {
-            return bookInstance.locations.generate(1650);
-        }).then(locations => {
-            if (isMounted) {
-                setTotalPages(locations.length);
-                rendition.display().catch((err: Error) => {
-                    if (isMounted) {
-                        console.error("Error displaying rendition:", err);
-                        setError(`Hubo un problema al mostrar el libro. Error: ${err.message}.`);
-                        setIsRendering(false);
-                    }
-                });
-            }
-        }).catch(err => {
-            console.warn("Could not generate book locations, displaying anyway.", err);
-            rendition.display().catch((displayErr: Error) => {
-                if (isMounted) {
-                    console.error("Error displaying rendition after location generation failed:", displayErr);
-                    setError(`Hubo un problema al mostrar el libro. Error: ${displayErr.message}.`);
-                    setIsRendering(false);
-                }
-            });
         });
 
     }).catch(err => {
@@ -337,33 +331,46 @@ export default function ReaderPage() {
       <main className="flex-grow relative">
          <div id="viewer" ref={viewerRef} className="w-full h-full" />
 
-        {reviews.length > 0 && (
+        {(book.description || reviews.length > 0) && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-30">
             <Card className="max-h-[40vh] overflow-y-auto shadow-xl">
-              <CardHeader className="p-4">
-                <CardTitle className="text-lg">Reseñas de Lectores</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0 space-y-4">
-                {reviews.map((review) => (
-                  <div key={review.id} className="border-t pt-4 first:border-t-0 first:pt-0">
-                    <div className="flex items-start space-x-3 mb-2">
-                      <Image
-                        src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`}
-                        alt={review.userName}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
-                        data-ai-hint={review.dataAiHint || 'user avatar'}
-                      />
-                      <div>
-                        <p className="font-semibold text-foreground text-sm">{review.userName}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
-                      </div>
-                    </div>
-                    <StarRating rating={review.rating} />
-                    <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
+              <CardContent className="p-6 space-y-6">
+                {book.description && (
+                  <div>
+                    <h3 className="font-headline text-xl mb-2 text-primary">Descripción del Libro</h3>
+                    <p className="text-foreground/90 whitespace-pre-wrap text-sm">{book.description}</p>
                   </div>
-                ))}
+                )}
+                
+                {book.description && reviews.length > 0 && <Separator />}
+
+                {reviews.length > 0 && (
+                  <div>
+                    <h3 className="font-headline text-xl mb-2 text-primary">Reseñas de Lectores</h3>
+                    <div className="space-y-4">
+                      {reviews.map((review) => (
+                        <div key={review.id} className="border-t pt-4 first:border-t-0">
+                           <div className="flex items-start space-x-3 mb-2">
+                              <Image
+                                src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`}
+                                alt={review.userName}
+                                width={40}
+                                height={40}
+                                className="rounded-full"
+                                data-ai-hint={review.dataAiHint || 'user avatar'}
+                              />
+                              <div>
+                                <p className="font-semibold text-foreground text-sm">{review.userName}</p>
+                                <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
+                              </div>
+                            </div>
+                            <StarRating rating={review.rating} />
+                            <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
