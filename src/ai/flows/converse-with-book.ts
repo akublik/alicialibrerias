@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview AI agent that converses as AlicIA, an expert on a specific book.
+ * @fileOverview AI agent that converses as the book's author.
  *
  * - converseWithBook - A function that handles the conversation.
  */
@@ -21,13 +21,8 @@ type ConverseWithBookInput = z.infer<typeof ConverseWithBookInputSchema>;
 export async function converseWithBook(input: ConverseWithBookInput): Promise<string> {
     const { bookTitle, history } = input;
 
-    const systemPrompt = `Eres AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Tu propósito es ayudar a los lectores a profundizar en el texto.
-    
-Responde a las preguntas y comentarios usando tu conocimiento profundo sobre este libro en particular. Si te hacen preguntas que se salgan del contexto o del enfoque del libro, amablemente indica que tu especialidad es "${bookTitle}".
-
-Si un usuario te pide la definición de una palabra, actúa como un diccionario experto y proporciona una definición clara y concisa.
-    
-Mantén siempre el personaje de AlicIA. Tu respuesta debe ser útil y directa.`;
+    const systemPrompt = `Eres el autor del libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu estilo, conocimientos y perspectiva en relación a ese libro.
+    Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como el autor de ese libro.`;
 
     try {
         const response = await ai.generate({

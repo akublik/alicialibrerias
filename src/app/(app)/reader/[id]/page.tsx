@@ -22,9 +22,6 @@ import {
   Plus,
   Star,
   ThumbsUp,
-  Bot,
-  Send,
-  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -37,10 +34,6 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Input } from '@/components/ui/input';
-import { converseWithBook } from '@/ai/flows/converse-with-book';
 
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
@@ -57,11 +50,6 @@ const StarRating = ({ rating, interactive = false, setRating }: { rating: number
       ))}
     </div>
   );
-};
-
-export type Message = {
-    role: 'user' | 'assistant';
-    content: string;
 };
 
 export default function ReaderPage() {
@@ -82,13 +70,6 @@ export default function ReaderPage() {
   const [location, setLocation] = useState<string | number>('-');
   const [totalPages, setTotalPages] = useState(0);
 
-  // Chat state
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const chatScrollAreaRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!bookId || !db) {
       setIsLoading(false);
@@ -104,10 +85,6 @@ export default function ReaderPage() {
         if (docSnap.exists()) {
           const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
           setBook(bookData);
-          setChatMessages([{
-            role: 'assistant',
-            content: `¡Hola! Soy AlicIA, tu asistente de lectura experta. Estoy aquí para ayudarte a conversar sobre "${bookData.title}". ¿Qué te gustaría explorar o preguntar sobre el libro?`
-          }]);
 
           // Fetch reviews by book title
           const reviewsRef = collection(db, "reviews");
@@ -233,16 +210,6 @@ export default function ReaderPage() {
         renditionRef.current.themes.select(theme);
     }
   }, [theme]);
-  
-  useEffect(() => {
-      if (isChatOpen && chatScrollAreaRef.current) {
-          chatScrollAreaRef.current.scrollTo({
-              top: chatScrollAreaRef.current.scrollHeight,
-              behavior: 'smooth',
-          });
-      }
-  }, [chatMessages, isChatOpen]);
-
 
   const goNext = () => {
     if(isRendering || !renditionRef.current) return;
@@ -258,44 +225,6 @@ export default function ReaderPage() {
     setFontSize(clampedSize);
   };
   
-  const handleChatSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim() || isChatLoading || !book) return;
-
-    const userMessage: Message = { role: 'user', content: chatInput };
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-    setIsChatLoading(true);
-
-    try {
-        const currentHistory = [...chatMessages, userMessage];
-        // The AI requires history to start with a user message.
-        // We filter out our initial UI greeting message.
-        const historyForAI = currentHistory.filter((msg, index) => {
-            return msg.role === 'user' || (msg.role === 'assistant' && index > 0);
-        });
-
-        // Map to the format Genkit expects.
-        const genkitHistory = historyForAI.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
-            content: [{ text: msg.content }]
-        }));
-        
-        const assistantResponse = await converseWithBook({
-            bookTitle: book.title,
-            history: genkitHistory,
-        });
-        const assistantMessage: Message = { role: 'assistant', content: assistantResponse };
-        setChatMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-        console.error("Error calling chat flow:", error);
-        const errorMessage: Message = { role: 'assistant', content: 'Lo siento, he tenido un problema y no puedo responder ahora mismo.' };
-        setChatMessages(prev => [...prev, errorMessage]);
-    } finally {
-        setIsChatLoading(false);
-    }
-  };
-
 
   if (isLoading) {
     return (
@@ -364,104 +293,35 @@ export default function ReaderPage() {
             <h1 className="font-headline text-lg font-semibold text-primary truncate">{book.title}</h1>
             <p className="text-sm text-muted-foreground truncate">{book.author}</p>
         </div>
-        <div className="flex items-center gap-2">
-            <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <Bot className="mr-2 h-4 w-4" />
-                        Conversa con el libro
-                    </Button>
-                </SheetTrigger>
-                <SheetContent className="w-[90vw] max-w-md p-0 flex flex-col">
-                     <SheetHeader className="p-4 border-b">
-                        <SheetTitle className="flex items-center">
-                            <Bot className="h-6 w-6 text-primary mr-3" />
-                            <span className="font-headline text-xl text-primary">Conversa con "{book.title}"</span>
-                        </SheetTitle>
-                        <SheetDescription>
-                            Estás hablando con AlicIA, tu asistente de lectura experta.
-                        </SheetDescription>
-                    </SheetHeader>
-                    <ScrollArea className="flex-grow p-4" ref={chatScrollAreaRef}>
-                        <div className="space-y-6">
-                            {chatMessages.map((message, index) => (
-                                <div key={index} className={cn("flex items-start gap-3", message.role === 'user' ? 'justify-end' : 'justify-start')}>
-                                {message.role === 'assistant' && (
-                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Bot className="w-5 h-5 text-primary" />
-                                    </div>
-                                )}
-                                <div className={cn(
-                                    "p-3 rounded-lg max-w-[80%] text-sm whitespace-pre-wrap",
-                                    message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
-                                )}>
-                                    {message.content}
-                                </div>
-                                {message.role === 'user' && (
-                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                        <User className="w-5 h-5 text-muted-foreground" />
-                                    </div>
-                                )}
-                                </div>
-                            ))}
-                            {isChatLoading && (
-                                <div className="flex items-start gap-3 justify-start">
-                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Bot className="w-5 h-5 text-primary" />
-                                    </div>
-                                    <div className="p-3 rounded-lg bg-muted flex items-center">
-                                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </ScrollArea>
-                    <div className="p-4 border-t">
-                        <form onSubmit={handleChatSubmit} className="flex items-center gap-2">
-                            <Input
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
-                                placeholder="Escribe tu pregunta..."
-                                disabled={isChatLoading}
-                                autoComplete="off"
-                            />
-                            <Button type="submit" disabled={isChatLoading || !chatInput.trim()}>
-                                <Send className="h-4 w-4" />
-                            </Button>
-                        </form>
-                    </div>
-                </SheetContent>
-            </Sheet>
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm">
-                        <Settings className="mr-2 h-4 w-4" />
-                        Ajustes
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64">
-                    <div className="space-y-4">
-                        <div>
-                            <h4 className="font-medium leading-none mb-2">Tema</h4>
-                            <div className="grid grid-cols-3 gap-2">
-                                <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('light')}><Sun className="mr-2 h-4 w-4"/>Claro</Button>
-                                <Button variant={theme === 'sepia' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('sepia')}><Book className="mr-2 h-4 w-4"/>Sepia</Button>
-                                <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('dark')}><Moon className="mr-2 h-4 w-4"/>Oscuro</Button>
-                            </div>
-                        </div>
-                        <Separator />
-                        <div>
-                            <h4 className="font-medium leading-none mb-2">Tamaño de Fuente</h4>
-                            <div className="flex items-center gap-2">
-                               <Button variant="outline" size="icon" onClick={() => changeFontSize(fontSize - 10)}><Minus className="h-4 w-4"/></Button>
-                               <span className="text-sm font-medium w-12 text-center">{fontSize}%</span>
-                               <Button variant="outline" size="icon" onClick={() => changeFontSize(fontSize + 10)}><Plus className="h-4 w-4"/></Button>
-                            </div>
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Ajustes
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64">
+                <div className="space-y-4">
+                    <div>
+                        <h4 className="font-medium leading-none mb-2">Tema</h4>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Button variant={theme === 'light' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('light')}><Sun className="mr-2 h-4 w-4"/>Claro</Button>
+                            <Button variant={theme === 'sepia' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('sepia')}><Book className="mr-2 h-4 w-4"/>Sepia</Button>
+                            <Button variant={theme === 'dark' ? 'default' : 'outline'} size="sm" onClick={() => setTheme('dark')}><Moon className="mr-2 h-4 w-4"/>Oscuro</Button>
                         </div>
                     </div>
-                </PopoverContent>
-            </Popover>
-        </div>
+                    <Separator />
+                    <div>
+                        <h4 className="font-medium leading-none mb-2">Tamaño de Fuente</h4>
+                        <div className="flex items-center gap-2">
+                           <Button variant="outline" size="icon" onClick={() => changeFontSize(fontSize - 10)}><Minus className="h-4 w-4"/></Button>
+                           <span className="text-sm font-medium w-12 text-center">{fontSize}%</span>
+                           <Button variant="outline" size="icon" onClick={() => changeFontSize(fontSize + 10)}><Plus className="h-4 w-4"/></Button>
+                        </div>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
       </header>
 
       <main className="flex-grow relative">
