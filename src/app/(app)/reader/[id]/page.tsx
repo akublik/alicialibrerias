@@ -2,26 +2,13 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, X, Home } from 'lucide-react';
+import { Loader2, AlertTriangle, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReactReader } from "react-reader";
-import type { Rendition } from 'epubjs';
-
-// Custom styles to override the default reader styles.
-const readerStyles = {
-  // This will hide the default Table of Contents button provided by the library.
-  tocButton: {
-    display: 'none'
-  },
-  // This will hide the default arrows provided by the library.
-  arrow: {
-    display: 'none'
-  }
-};
 
 export default function ReaderPage() {
   const params = useParams();
@@ -31,10 +18,10 @@ export default function ReaderPage() {
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [location, setLocation] = useState<string | number>(0);
-  const [showToc, setShowToc] = useState(false);
   
-  const [rendition, setRendition] = useState<Rendition | null>(null);
+  const [location, setLocation] = useState<string | number>(0);
+  
+  const readerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -67,19 +54,41 @@ export default function ReaderPage() {
 
     fetchBook();
   }, [bookId]);
-  
-  const handlePrevPage = () => {
-    if (rendition) {
-      rendition.prev();
+
+  // This effect finds the reader's default TOC button and hides it.
+  useEffect(() => {
+    // We use a MutationObserver to wait for the reader's internal elements to be rendered.
+    const observer = new MutationObserver((mutations, obs) => {
+      if (readerContainerRef.current) {
+        // The default TOC button in react-reader has a specific aria-label.
+        const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]');
+        if (tocButton) {
+          // Hide the default button
+          (tocButton as HTMLElement).style.display = 'none';
+          obs.disconnect(); // Stop observing once we've found and hidden the button.
+          return;
+        }
+      }
+    });
+
+    if (readerContainerRef.current) {
+      observer.observe(readerContainerRef.current, {
+        childList: true,
+        subtree: true
+      });
     }
+
+    return () => observer.disconnect();
+  }, [isLoading]); // Re-run when loading state changes, i.e., after the book loads.
+
+  // Function to programmatically click the hidden default TOC button
+  const handleToggleToc = () => {
+      if (readerContainerRef.current) {
+          const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]') as HTMLElement | null;
+          tocButton?.click();
+      }
   };
 
-  const handleNextPage = () => {
-    if (rendition) {
-      rendition.next();
-    }
-  };
-  
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen bg-muted">
@@ -106,7 +115,7 @@ export default function ReaderPage() {
   return (
     <div className="h-screen flex flex-col font-body antialiased bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between p-2 bg-card border-b shrink-0 z-20">
+      <header className="flex items-center justify-between p-2 bg-card border-b shrink-0 z-30">
         <Button variant="ghost" size="sm" onClick={() => router.push('/my-library')} title="Volver a la biblioteca">
            <Home className="h-5 w-5 mr-2" />
            <span className="hidden sm:inline">Mi Biblioteca</span>
@@ -115,58 +124,26 @@ export default function ReaderPage() {
             <h1 className="font-headline text-lg font-bold text-primary truncate">{book.title}</h1>
             <p className="text-sm text-muted-foreground truncate">por {book.author}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setShowToc(!showToc)}>
-          {showToc ? (
-            <>
-              <X className="h-5 w-5 mr-2" />
-              <span>Cerrar</span>
-            </>
-          ) : (
+        <Button variant="outline" size="sm" onClick={handleToggleToc}>
+            <Menu className="mr-2 h-5 w-5"/>
             <span>Índice</span>
-          )}
         </Button>
       </header>
       
       {/* Main Reader Area */}
       <main className="flex-1 relative">
-        {/* Reader Component Container */}
-        <div className="absolute top-0 left-0 right-0 bottom-0 h-full w-full z-10">
+        <div className="absolute top-0 left-0 right-0 bottom-0 h-full w-full z-10" ref={readerContainerRef}>
             <ReactReader
+                key={book.id}
                 url={`/epubs/${book.epubFilename}`}
                 location={location}
                 locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-                getRendition={setRendition}
-                showToc={showToc}
                 loadingView={
                     <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     </div>
                 }
-                styles={readerStyles}
             />
-        </div>
-        
-        {/* Custom Navigation Overlays. They have a higher z-index to be on top of the reader. */}
-        {/* Left overlay is hidden when TOC is visible to prevent interaction conflicts */}
-        {!showToc && (
-          <div 
-            className="absolute left-0 top-0 h-full w-1/4 z-20 cursor-pointer group"
-            onClick={handlePrevPage}
-            aria-label="Página anterior"
-          >
-            <div className="flex items-center justify-start h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <ArrowLeft className="h-16 w-16 text-primary" />
-            </div>
-          </div>
-        )}
-        <div 
-          className="absolute right-0 top-0 h-full w-1/4 z-20 cursor-pointer group"
-          onClick={handleNextPage}
-          aria-label="Página siguiente"
-        >
-          <div className="flex items-center justify-end h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowRight className="h-16 w-16 text-primary" />
-          </div>
         </div>
       </main>
     </div>
