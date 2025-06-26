@@ -6,8 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, Home, Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { ReactReader } from "react-reader";
 
 export default function ReaderPage() {
@@ -20,7 +19,6 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [location, setLocation] = useState<string | number>(0);
-  
   const readerContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -55,17 +53,35 @@ export default function ReaderPage() {
     fetchBook();
   }, [bookId]);
 
-  // This effect finds the reader's default TOC button and hides it.
   useEffect(() => {
-    // We use a MutationObserver to wait for the reader's internal elements to be rendered.
+    // This effect runs after the component mounts and finds the reader's internal elements.
     const observer = new MutationObserver((mutations, obs) => {
       if (readerContainerRef.current) {
-        // The default TOC button in react-reader has a specific aria-label.
+        // Find the library's default TOC button
         const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]');
         if (tocButton) {
-          // Hide the default button
-          (tocButton as HTMLElement).style.display = 'none';
-          obs.disconnect(); // Stop observing once we've found and hidden the button.
+          // Found the button, now modify it as requested by the user.
+          tocButton.innerHTML = 'ÍNDICE';
+          tocButton.setAttribute('style', `
+            font-family: 'Belleza', sans-serif;
+            font-size: 1rem;
+            padding: 0.25rem 0.75rem;
+            background: white;
+            color: #D2691E;
+            border: 1px solid #D2691E;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            z-index: 2;
+          `);
+          
+          // The user also requested to remove the default navigation arrows.
+          const prevArrow = readerContainerRef.current.querySelector('#prev');
+          if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
+
+          const nextArrow = readerContainerRef.current.querySelector('#next');
+          if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
+          
+          obs.disconnect(); // We're done, stop observing.
           return;
         }
       }
@@ -74,20 +90,12 @@ export default function ReaderPage() {
     if (readerContainerRef.current) {
       observer.observe(readerContainerRef.current, {
         childList: true,
-        subtree: true
+        subtree: true,
       });
     }
 
     return () => observer.disconnect();
-  }, [isLoading]); // Re-run when loading state changes, i.e., after the book loads.
-
-  // Function to programmatically click the hidden default TOC button
-  const handleToggleToc = () => {
-      if (readerContainerRef.current) {
-          const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]') as HTMLElement | null;
-          tocButton?.click();
-      }
-  };
+  }, [isLoading]); // Rerun when book is loaded to ensure reader is in DOM
 
   if (isLoading) {
     return (
@@ -113,39 +121,21 @@ export default function ReaderPage() {
   if (!book) return null;
 
   return (
-    <div className="h-screen flex flex-col font-body antialiased bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between p-2 bg-card border-b shrink-0 z-30">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/my-library')} title="Volver a la biblioteca">
-           <Home className="h-5 w-5 mr-2" />
-           <span className="hidden sm:inline">Mi Biblioteca</span>
-        </Button>
-        <div className="text-center truncate px-2">
-            <h1 className="font-headline text-lg font-bold text-primary truncate">{book.title}</h1>
-            <p className="text-sm text-muted-foreground truncate">por {book.author}</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleToggleToc}>
-            <Menu className="mr-2 h-5 w-5"/>
-            <span>Índice</span>
-        </Button>
-      </header>
-      
-      {/* Main Reader Area */}
-      <main className="flex-1 relative">
-        <div className="absolute top-0 left-0 right-0 bottom-0 h-full w-full z-10" ref={readerContainerRef}>
-            <ReactReader
-                key={book.id}
-                url={`/epubs/${book.epubFilename}`}
-                location={location}
-                locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-                loadingView={
-                    <div className="flex justify-center items-center h-full">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    </div>
-                }
-            />
-        </div>
-      </main>
+    // The reader needs a container with a defined height.
+    <div className="h-screen w-screen" ref={readerContainerRef}>
+      <ReactReader
+        key={book.id}
+        url={`/epubs/${book.epubFilename}`}
+        location={location}
+        locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+        // By not providing custom headers/arrows, we let the library use its defaults,
+        // which we then modify with the useEffect hook above.
+        loadingView={
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+        }
+      />
     </div>
   );
 }
