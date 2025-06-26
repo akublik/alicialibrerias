@@ -30,7 +30,11 @@ export async function converseWithBook(input: ConverseWithBookInput): Promise<st
             history: history,
         });
 
-        const text = response.text;
+        // Use a more robust way to extract text content from all candidates and parts.
+        const text = response.candidates
+            .map(c => c.content.map(p => p.text ?? '').join(''))
+            .join('');
+
         if (!text) {
           return "No he podido generar una respuesta en este momento. Inténtalo de nuevo."
         }
@@ -44,6 +48,11 @@ export async function converseWithBook(input: ConverseWithBookInput): Promise<st
         console.error("Error Message:", error.message);
         console.error("Error object:", JSON.stringify(error, null, 2));
         console.error("----------------------------------------------");
-        return "Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos.";
+        
+        // Provide user-friendly error messages
+        if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
+             return "Lo siento, mis circuitos están un poco sobrecargados en este momento. Por favor, inténtalo de nuevo en unos segundos.";
+        }
+        return "Lo siento, he encontrado un error inesperado y no puedo responder ahora mismo. Por favor, inténtalo de nuevo más tarde.";
     }
 }
