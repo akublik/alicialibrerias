@@ -27,7 +27,7 @@ export async function generateAutomaticTags(input: GenerateAutomaticTagsInput): 
 
 const prompt = ai.definePrompt({
   name: 'generateAutomaticTagsPrompt',
-  model: 'google/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: GenerateAutomaticTagsInputSchema},
   output: {schema: GenerateAutomaticTagsOutputSchema},
   prompt: `You are an expert librarian. Generate 5 relevant tags for the following book description:\n\nDescription: {{{description}}}`,
