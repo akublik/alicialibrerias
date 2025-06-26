@@ -13,12 +13,12 @@ import type { Rendition } from 'epubjs';
 
 // Custom styles to override the default reader styles.
 const readerStyles = {
-  // Hide the default arrows provided by the library, we use custom ones.
-  arrow: {
+  // This will hide the default Table of Contents button provided by the library.
+  tocButton: {
     display: 'none'
   },
-  // Hide the default toc button provided by the library
-  tocButton: {
+  // This will hide the default arrows provided by the library.
+  arrow: {
     display: 'none'
   }
 };
@@ -34,8 +34,6 @@ export default function ReaderPage() {
   const [location, setLocation] = useState<string | number>(0);
   const [showToc, setShowToc] = useState(false);
   
-  // Use state to hold the rendition object, forcing re-render when it's ready.
-  // This is safer for ensuring controls are linked to a ready rendition.
   const [rendition, setRendition] = useState<Rendition | null>(null);
 
   useEffect(() => {
