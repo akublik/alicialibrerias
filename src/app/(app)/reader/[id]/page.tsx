@@ -316,7 +316,7 @@ export default function ReaderPage() {
               location={location}
               locationChanged={(epubcfi: string) => {
                 setLocation(epubcfi);
-                if (renditionRef.current) {
+                if (renditionRef.current && renditionRef.current.locations) {
                   const page = renditionRef.current.locations.locationFromCfi(epubcfi);
                   setCurrentPage(page);
                 }
@@ -329,7 +329,9 @@ export default function ReaderPage() {
                 _rendition.themes.select(theme);
                 _rendition.themes.fontSize(`${fontSize}%`);
                 _rendition.book.ready.then(() => {
-                    setTotalPages(_rendition.book.locations.length());
+                    if (_rendition.book.locations) {
+                        setTotalPages(_rendition.book.locations.length());
+                    }
                 });
               }}
               readerStyles={readerStyles}
