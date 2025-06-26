@@ -42,7 +42,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             .join('');
 
         if (!text) {
-          return "No he podido generar una respuesta en este momento. Inténtalo de nuevo."
+          console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
+          return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
         }
         return text;
 
@@ -58,14 +59,6 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Error object:", JSON.stringify(error, null, 2));
         console.error("----------------------------------------------");
         
-        // Let the specific API key error message pass through
-        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
-            return error.message;
-        }
-        
-        if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
-             return "Lo siento, mis circuitos están un poco sobrecargados en este momento. Por favor, inténtalo de nuevo en unos segundos.";
-        }
-        return "Lo siento, he encontrado un error inesperado y no puedo responder ahora mismo. Por favor, inténtalo de nuevo más tarde.";
+        return `Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos. Mensaje: ${error.message}`;
     }
 }

@@ -163,19 +163,18 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         }
         
         console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
-        return "Estoy teniendo dificultades para procesar tu solicitud en este momento. Por favor, intenta reformular tu pregunta.";
+        return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
 
     } catch (error: any) {
-        console.error("Error fetching from Generative AI:", error);
+        console.error("----------- DETAILED AI SHOPPING ASSISTANT ERROR -----------");
+        console.error("Flow: askShoppingAssistant");
+        console.error("Timestamp:", new Date().toISOString());
+        console.error("History:", JSON.stringify(history, null, 2));
+        console.error("Error Name:", error.name);
+        console.error("Error Message:", error.message);
+        console.error("Error object:", JSON.stringify(error, null, 2));
+        console.error("----------------------------------------------------------");
         
-        // Let the specific API key error message pass through
-        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
-            return error.message;
-        }
-
-        if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
-             return "Lo siento, mis circuitos están un poco sobrecargados en este momento. Por favor, inténtalo de nuevo en unos segundos.";
-        }
-        return "Lo siento, he encontrado un error inesperado y no puedo responder ahora mismo. Por favor, inténtalo de nuevo más tarde.";
+        return `Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos. Mensaje: ${error.message}`;
     }
 }
