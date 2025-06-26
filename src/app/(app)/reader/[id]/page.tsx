@@ -1,25 +1,29 @@
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
-import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, BookOpen } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, List, X, Home } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ReactReader } from "react-reader";
+import { ReactReader, type IReactReaderStyle } from "react-reader";
+import type { Rendition } from 'epubjs';
 
 export default function ReaderPage() {
   const params = useParams();
+  const router = useRouter();
   const bookId = params.id as string;
+  
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // location is the only state needed for the reader component itself
   const [location, setLocation] = useState<string | number>(0);
+  const [showToc, setShowToc] = useState(false);
+  
+  const renditionRef = useRef<Rendition | null>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -34,7 +38,12 @@ export default function ReaderPage() {
         const bookRef = doc(db, "digital_books", bookId);
         const docSnap = await getDoc(bookRef);
         if (docSnap.exists()) {
-          setBook({ id: docSnap.id, ...docSnap.data() } as DigitalBook);
+          const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+          if (!bookData.epubFilename) {
+            setError("Este libro no tiene un archivo EPUB disponible para leer.");
+          } else {
+            setBook(bookData);
+          }
         } else {
           setError("Libro no encontrado en la biblioteca digital.");
         }
@@ -47,7 +56,44 @@ export default function ReaderPage() {
 
     fetchBook();
   }, [bookId]);
+  
+  const handlePrevPage = () => {
+    if (renditionRef.current) {
+      renditionRef.current.prev();
+    }
+  };
 
+  const handleNextPage = () => {
+    if (renditionRef.current) {
+      renditionRef.current.next();
+    }
+  };
+
+  const readerStyles: IReactReaderStyle = {
+    ...ReactReader.defaultStyles,
+    readerArea: {
+      ...ReactReader.defaultStyles.readerArea,
+      backgroundColor: '#F5F5DC', // beige background
+    },
+    titleArea: {
+      ...ReactReader.defaultStyles.titleArea,
+      color: '#4B2A1A' // dark brown text
+    },
+    tocArea: {
+        ...ReactReader.defaultStyles.tocArea,
+        background: '#FFFFFF',
+    },
+    tocButton: {
+        ...ReactReader.defaultStyles.tocButton,
+        background: '#D2691E',
+        color: 'white',
+    },
+    arrow: {
+        ...ReactReader.defaultStyles.arrow,
+        color: '#8B4513'
+    }
+  };
+  
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen bg-muted">
@@ -71,32 +117,56 @@ export default function ReaderPage() {
 
   if (!book) return null;
 
-  if (!book.epubFilename) {
-    return (
-         <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
-            <BookOpen className="h-16 w-16 text-primary mb-4" />
-            <h1 className="text-2xl font-bold text-primary mb-2">{book.title}</h1>
-            <p className="text-muted-foreground mb-6">Este libro no está disponible en formato EPUB para el lector integrado.</p>
-             <Link href="/my-library" className="mt-4">
-                <Button variant="link">Volver a la Biblioteca</Button>
-            </Link>
-        </div>
-    )
-  }
-
   return (
-    // A simple, full-height container for the reader
-    <div style={{ height: '100vh' }}>
-      <ReactReader
-        url={`/epubs/${book.epubFilename}`}
-        location={location}
-        locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-        loadingView={
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
-        }
-      />
+    <div className="relative h-screen flex flex-col font-body antialiased">
+      <header className="flex items-center justify-between p-2 bg-card border-b z-20 shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => router.push('/my-library')} title="Volver a la biblioteca">
+           <Home className="h-5 w-5 mr-2" />
+           <span className="hidden sm:inline">Mi Biblioteca</span>
+        </Button>
+        <div className="text-center truncate px-2">
+            <h1 className="font-headline text-lg font-bold text-primary truncate">{book.title}</h1>
+            <p className="text-sm text-muted-foreground truncate">por {book.author}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowToc(!showToc)}>
+          {showToc ? <X className="h-5 w-5 mr-2" /> : <List className="h-5 w-5 mr-2" />}
+          <span className="hidden sm:inline">Índice</span>
+        </Button>
+      </header>
+      
+      <div className="relative flex-grow h-full w-full">
+         <Button
+            variant="ghost"
+            onClick={handlePrevPage}
+            className="absolute left-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
+            aria-label="Página anterior"
+          >
+            <ArrowLeft className="h-12 w-12" />
+          </Button>
+        <ReactReader
+            url={`/epubs/${book.epubFilename}`}
+            location={location}
+            locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+            getRendition={(rendition) => {
+              renditionRef.current = rendition;
+            }}
+            showToc={showToc}
+            readerStyles={readerStyles}
+            loadingView={
+                <div className="flex justify-center items-center h-full">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+            }
+        />
+        <Button
+          variant="ghost"
+          onClick={handleNextPage}
+          className="absolute right-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
+          aria-label="Página siguiente"
+        >
+          <ArrowRight className="h-12 w-12" />
+        </Button>
+      </div>
     </div>
   );
 }
