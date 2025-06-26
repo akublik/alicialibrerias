@@ -18,8 +18,14 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
 
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
     
+    // The chat history must start with a 'user' message.
+    // The client-side code sends the initial assistant greeting, so we filter it out here.
+    const validHistory = history.length > 0 && history[0].role === 'assistant' 
+      ? history.slice(1) 
+      : history;
+
     // Map frontend roles to Genkit roles ('assistant' -> 'model')
-    const genkitHistory = history.map(msg => ({
+    const genkitHistory = validHistory.map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
         content: [{ text: msg.content }]
     }));
@@ -45,7 +51,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Flow: converseWithBook");
         console.error("Timestamp:", new Date().toISOString());
         console.error("Input bookTitle:", bookTitle);
-        console.error("Input history:", JSON.stringify(history, null, 2));
+        console.error("Original history from client:", JSON.stringify(history, null, 2));
+        console.error("Processed history sent to Genkit:", JSON.stringify(genkitHistory, null, 2));
         console.error("Error Name:", error.name);
         console.error("Error Message:", error.message);
         console.error("Error object:", JSON.stringify(error, null, 2));
