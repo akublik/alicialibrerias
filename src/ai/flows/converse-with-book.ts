@@ -25,7 +25,7 @@ export async function converseWithBook(input: ConverseWithBookInput): Promise<st
     
     try {
         const response = await ai.generate({
-            model: 'googleai/gemini-1.5-flash',
+            model: 'gemini-1.5-flash',
             system: systemPrompt,
             history: history,
         });
