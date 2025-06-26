@@ -131,7 +131,10 @@ export type ChatMessage = {
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
     // Map frontend roles to Genkit roles ('assistant' -> 'model')
-    const genkitHistory = history.map(msg => ({
+    // Added a filter to ensure no undefined or malformed messages cause a crash.
+    const genkitHistory = history
+      .filter(msg => msg && typeof msg === 'object' && 'content' in msg)
+      .map(msg => ({
         role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
         content: [{ text: msg.content }]
     }));
@@ -172,6 +175,10 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         console.error("Error object:", JSON.stringify(error, null, 2));
         console.error("----------------------------------------------------------");
         
+        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
+            return error.message;
+        }
+
         return `Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos. Mensaje: ${error.message}`;
     }
 }
