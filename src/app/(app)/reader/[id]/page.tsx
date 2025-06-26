@@ -8,8 +8,9 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { ReactReader } from "react-reader";
+import { ReactReader, type IReactReaderProps } from "react-reader";
 import { Button } from '@/components/ui/button';
+import { ConverseWithBookTrigger } from '@/components/ConverseWithBookTrigger';
 
 export default function ReaderPage() {
   const params = useParams();
@@ -22,6 +23,7 @@ export default function ReaderPage() {
   
   const [location, setLocation] = useState<string | number>(0);
   const readerContainerRef = useRef<HTMLDivElement>(null);
+  const renditionRef = useRef<IReactReaderProps['rendition'] | null>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -71,18 +73,12 @@ export default function ReaderPage() {
             border: '1px solid hsl(var(--primary))',
             borderRadius: '0.5rem',
             cursor: 'pointer',
-            zIndex: '2',
+            zIndex: '100', // Ensure it's on top of reader
             textTransform: 'uppercase',
             top: '1rem',
             left: '1rem',
         });
       }
-      
-      const prevArrow = readerContainerRef.current?.querySelector('#prev');
-      if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
-
-      const nextArrow = readerContainerRef.current?.querySelector('#next');
-      if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
     });
 
     if (readerContainerRef.current) {
@@ -139,12 +135,39 @@ export default function ReaderPage() {
                 url={`/epubs/${book.epubFilename}`}
                 location={location}
                 locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+                getRendition={(rendition) => {
+                  renditionRef.current = rendition;
+                }}
                 loadingView={
                     <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     </div>
                 }
+                // Hide default arrows
+                readerStyles={{
+                  ...ReactReader.defaultStyles,
+                  arrow: {
+                    display: 'none',
+                  },
+                }}
             />
+        </div>
+        
+        {/* Chat Trigger */}
+        <ConverseWithBookTrigger bookTitle={book.title} />
+
+        {/* Navigation Arrows */}
+        <div 
+            className="fixed left-0 top-0 h-full w-1/4 z-10 cursor-pointer group"
+            onClick={() => renditionRef.current?.prev()}
+        >
+            <ArrowLeft className="fixed left-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
+        </div>
+        <div 
+            className="fixed right-0 top-0 h-full w-1/4 z-10 cursor-pointer group"
+            onClick={() => renditionRef.current?.next()}
+        >
+            <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
         </div>
     </div>
   );
