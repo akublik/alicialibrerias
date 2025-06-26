@@ -138,7 +138,7 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
 
     try {
         const response = await ai.generate({
-            model: 'gemini-1.5-flash',
+            model: 'googleai/gemini-1.5-flash',
             tools: [findBooksInCatalog, findLibrariesByCity],
             history: genkitHistory,
             system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
