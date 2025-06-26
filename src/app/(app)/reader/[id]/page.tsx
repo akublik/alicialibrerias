@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
@@ -21,8 +21,7 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   const [location, setLocation] = useState<string | number>(0);
   const [showToc, setShowToc] = useState(false);
-  
-  const renditionRef = useRef<Rendition | null>(null);
+  const [rendition, setRendition] = useState<Rendition | null>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -57,14 +56,14 @@ export default function ReaderPage() {
   }, [bookId]);
   
   const handlePrevPage = () => {
-    if (renditionRef.current) {
-      renditionRef.current.prev();
+    if (rendition) {
+      rendition.prev();
     }
   };
 
   const handleNextPage = () => {
-    if (renditionRef.current) {
-      renditionRef.current.next();
+    if (rendition) {
+      rendition.next();
     }
   };
   
@@ -82,9 +81,9 @@ export default function ReaderPage() {
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
         <h1 className="text-2xl font-bold text-destructive mb-2">Ocurrió un error</h1>
         <p className="text-muted-foreground max-w-lg whitespace-pre-wrap">{error}</p>
-        <Link href="/my-library" className="mt-6">
-          <Button>Volver a la Biblioteca</Button>
-        </Link>
+        <button onClick={() => router.push('/my-library')} className="mt-6 bg-primary text-white px-4 py-2 rounded">
+          Volver a la Biblioteca
+        </button>
       </div>
     );
   }
@@ -92,7 +91,7 @@ export default function ReaderPage() {
   if (!book) return null;
 
   return (
-    <div className="relative h-screen flex flex-col font-body antialiased">
+    <div className="h-screen flex flex-col font-body antialiased">
       <header className="flex items-center justify-between p-2 bg-card border-b z-20 shrink-0">
         <Button variant="ghost" size="sm" onClick={() => router.push('/my-library')} title="Volver a la biblioteca">
            <Home className="h-5 w-5 mr-2" />
@@ -108,15 +107,13 @@ export default function ReaderPage() {
         </Button>
       </header>
       
-      <div className="relative flex-grow">
-        <div className="h-full w-full">
+      <main className="flex-1 relative">
+        <div className="absolute top-0 left-0 right-0 bottom-0">
             <ReactReader
                 url={`/epubs/${book.epubFilename}`}
                 location={location}
                 locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-                getRendition={(rendition) => {
-                  renditionRef.current = rendition;
-                }}
+                getRendition={setRendition}
                 showToc={showToc}
                 loadingView={
                     <div className="flex justify-center items-center h-full">
@@ -125,24 +122,28 @@ export default function ReaderPage() {
                 }
             />
         </div>
-
-         <Button
-            variant="ghost"
-            onClick={handlePrevPage}
-            className="absolute left-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
-            aria-label="Página anterior"
-          >
-            <ArrowLeft className="h-12 w-12" />
-          </Button>
-        <Button
-          variant="ghost"
-          onClick={handleNextPage}
-          className="absolute right-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
-          aria-label="Página siguiente"
-        >
-          <ArrowRight className="h-12 w-12" />
-        </Button>
-      </div>
+        
+        {rendition && (
+            <>
+                <Button
+                    variant="ghost"
+                    onClick={handlePrevPage}
+                    className="absolute left-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
+                    aria-label="Página anterior"
+                >
+                    <ArrowLeft className="h-12 w-12" />
+                </Button>
+                <Button
+                    variant="ghost"
+                    onClick={handleNextPage}
+                    className="absolute right-0 top-0 bottom-0 z-10 w-1/4 h-full text-primary/50 hover:text-primary hover:bg-transparent opacity-0 hover:opacity-100 transition-opacity"
+                    aria-label="Página siguiente"
+                >
+                    <ArrowRight className="h-12 w-12" />
+                </Button>
+            </>
+        )}
+      </main>
     </div>
   );
 }
