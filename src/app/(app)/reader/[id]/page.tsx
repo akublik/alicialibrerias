@@ -179,8 +179,7 @@ export default function ReaderPage() {
         }).catch((err: Error) => {
              if (isMounted) {
                 console.error("Error displaying rendition:", err);
-                const proxyErrorHint = "Please check browser console for CORS or network errors. If the EPUB file is on a different domain, a proxy might be needed.";
-                setError(`Hubo un problema al mostrar el libro. ${proxyErrorHint}`);
+                setError(`Hubo un problema al mostrar el libro. Esto puede deberse a un problema de red o de formato del archivo EPUB.`);
                 setIsRendering(false);
             }
         });
