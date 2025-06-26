@@ -1,4 +1,5 @@
-import { genkit, googleAI } from 'genkit';
+import { genkit } from 'genkit';
+import { googleAI } from '@genkit-ai/googleai';
 
 let ai: any;
 
@@ -7,7 +8,7 @@ const apiKey = process.env.GOOGLE_API_KEY;
 if (apiKey) {
   // Initialize Genkit with the Google AI plugin.
   ai = genkit({
-    plugins: [googleAI],
+    plugins: [googleAI()],
   });
 } else {
   console.warn(`
