@@ -153,10 +153,7 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
             - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
         });
         
-        // Safely extract text content from all candidates and parts.
-        const text = response.candidates
-            .map(c => c.content.map(p => p.text ?? '').join(''))
-            .join('');
+        const text = response.text;
         
         if (text) {
             return text;

@@ -32,14 +32,12 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     
     try {
         const response = await ai.generate({
-            model: 'google/gemini-1.5-flash',
+            model: 'googleai/gemini-1.5-flash',
             system: systemPrompt,
             history: genkitHistory,
         });
 
-        const text = response.candidates
-            .map(c => c.content.map(p => p.text ?? '').join(''))
-            .join('');
+        const text = response.text;
 
         if (!text) {
           console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
