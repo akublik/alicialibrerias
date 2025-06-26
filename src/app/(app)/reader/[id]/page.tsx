@@ -1,4 +1,3 @@
-
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -30,8 +29,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
-import type BookType from 'epubjs/types/book';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
@@ -44,13 +43,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { converseWithBook } from '@/ai/flows/converse-with-book';
 
-
 // Define chat message type locally
 type ChatMessage = {
   role: 'user' | 'model';
   content: { text: string }[];
 };
-
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
   return (
@@ -73,17 +70,14 @@ export default function ReaderPage() {
   const bookId = params.id as string;
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRendering, setIsRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const viewerRef = useRef<HTMLDivElement>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
 
   // Reader state
-  const renditionRef = useRef<Rendition | null>(null);
-  const bookInstanceRef = useRef<BookType | null>(null);
+  const [rendition, setRendition] = useState<Rendition | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>('light');
   const [fontSize, setFontSize] = useState(100); // as a percentage
-  const [location, setLocation] = useState<string | number>('-');
+  const [location, setLocation] = useState<string | number>(0);
   const [totalPages, setTotalPages] = useState(0);
 
   // Chat state
@@ -135,120 +129,24 @@ export default function ReaderPage() {
 
     fetchBook();
   }, [bookId]);
+  
+  useEffect(() => {
+    if (rendition) {
+      rendition.themes.fontSize(`${fontSize}%`);
+    }
+  }, [fontSize, rendition]);
 
   useEffect(() => {
-    let isMounted = true;
-    if (!book || !book.epubFilename || !viewerRef.current) {
-        setIsRendering(false);
-        return;
+    if (rendition) {
+        rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
+        rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
+        rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
+        rendition.themes.select(theme);
     }
-
-    if (viewerRef.current) {
-        viewerRef.current.innerHTML = '';
-    }
-
-    if (bookInstanceRef.current) {
-        bookInstanceRef.current.destroy();
-    }
-    
-    setIsRendering(true);
-    
-    import('epubjs').then(async ({ default: ePub }) => {
-        if (!isMounted || !viewerRef.current) return;
-        
-        const bookPath = `/epubs/${book.epubFilename}`;
-        
-        try {
-            const response = await fetch(bookPath);
-            if (!response.ok) {
-                if (response.status === 404) {
-                    throw new Error(`Error 404: No se pudo encontrar el libro en la ruta: ${bookPath}. Por favor, verifica que el nombre del archivo ("${book.epubFilename}") sea exacto (mayúsculas/minúsculas) y que esté en la carpeta /public/epubs/.`);
-                }
-                throw new Error(`Error al buscar el archivo del libro. Estado: ${response.status}`);
-            }
-            const bookDataBuffer = await response.arrayBuffer();
-            
-            const bookInstance = ePub(bookDataBuffer);
-            bookInstanceRef.current = bookInstance;
-
-            const rendition = bookInstance.renderTo(viewerRef.current, {
-              width: "100%",
-              height: "100%",
-              flow: "paginated",
-              spread: "auto",
-            });
-            renditionRef.current = rendition;
-            
-            rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
-            rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
-            rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
-            
-            rendition.themes.select(theme);
-            rendition.themes.fontSize(`${fontSize}%`);
-
-            await rendition.display();
-            if (isMounted) setIsRendering(false);
-
-            const locations = await bookInstance.locations.generate(1650);
-             if (isMounted) {
-                setTotalPages(locations.length);
-                const currentLocation = renditionRef.current?.currentLocation();
-                if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
-                    const page = bookInstanceRef.current.locations.locationFromCfi(currentLocation.start.cfi);
-                    setLocation(page || 0);
-                }
-            }
-            
-            rendition.on('relocated', (locationData: any) => {
-                if (isMounted && bookInstanceRef.current?.locations?.length > 0) {
-                    const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
-                    setLocation(page || 0);
-                }
-            });
-
-        } catch (err: any) {
-             if (isMounted) {
-                console.error("Error displaying rendition:", err);
-                setError(`Hubo un problema al mostrar el libro. Error: ${err.message}. Asegúrate de que el archivo "${book.epubFilename}" exista y sea un EPUB válido.`);
-                setIsRendering(false);
-            }
-        }
-    }).catch(err => {
-        console.error("Failed to load epubjs module", err);
-        if(isMounted) {
-            setError("No se pudo cargar el visor de libros.");
-            setIsRendering(false);
-        }
-    });
-
-    return () => {
-      isMounted = false;
-      bookInstanceRef.current?.destroy();
-      renditionRef.current = null;
-      bookInstanceRef.current = null;
-    };
-  }, [book]);
-
-  useEffect(() => {
-    if (renditionRef.current) {
-        renditionRef.current.themes.fontSize(`${fontSize}%`);
-    }
-  }, [fontSize]);
-
-  useEffect(() => {
-    if (renditionRef.current) {
-        renditionRef.current.themes.select(theme);
-    }
-  }, [theme]);
-
-  const goNext = () => {
-    if(isRendering || !renditionRef.current) return;
-    renditionRef.current.next();
-  }
-  const goPrev = () => {
-    if(isRendering || !renditionRef.current) return;
-    renditionRef.current.prev();
-  }
+  }, [theme, rendition]);
+  
+  const goNext = () => rendition?.next();
+  const goPrev = () => rendition?.prev();
   
   const changeFontSize = (newSize: number) => {
     const clampedSize = Math.max(80, Math.min(200, newSize)); // Clamp between 80% and 200%
@@ -398,96 +296,39 @@ export default function ReaderPage() {
          </div>
       </header>
 
-      <main className="flex-grow relative">
-         <div id="viewer" ref={viewerRef} className="w-full h-full" />
-
-        {hasInfoToDisplay && !isRendering && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-20">
-            <Card className="max-h-[60vh] overflow-y-auto shadow-xl bg-background/80 backdrop-blur-sm">
-              <CardContent className="p-6 space-y-6">
-                {book.description && (
-                  <div>
-                    <h3 className="font-headline text-xl mb-2 text-primary">Descripción del Libro</h3>
-                    <p className="text-foreground/90 whitespace-pre-wrap text-sm">{book.description}</p>
-                  </div>
-                )}
-                
-                {(book.format || (book.categories && book.categories.length > 0) || (book.tags && book.tags.length > 0)) && (
-                    <div>
-                        <h3 className="font-headline text-xl mb-2 text-primary">Ficha Técnica</h3>
-                        <div className="space-y-2 text-sm">
-                            {book.format && (
-                                <p className="flex items-center">
-                                    <FileText className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
-                                    <span className="font-semibold text-foreground mr-1">Formato:</span>
-                                    <span className="text-muted-foreground">{book.format}</span>
-                                </p>
-                            )}
-                            {book.categories && book.categories.length > 0 && (
-                                <p className="flex items-start">
-                                    <BookOpenCheck className="mr-2 h-4 w-4 mt-0.5 text-foreground flex-shrink-0" />
-                                    <span className="font-semibold text-foreground mr-1">Categorías:</span>
-                                    <span className="text-muted-foreground">{book.categories.join(', ')}</span>
-                                </p>
-                            )}
-                            {book.tags && book.tags.length > 0 && (
-                                <p className="flex items-start">
-                                    <Tag className="mr-2 h-4 w-4 mt-0.5 text-foreground flex-shrink-0" />
-                                    <span className="font-semibold text-foreground mr-1">Etiquetas:</span>
-                                    <span className="text-muted-foreground">
-                                        {book.tags.map(tag => (
-                                            <span key={tag} className="inline-block bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs mr-1 mb-1">{tag}</span>
-                                        ))}
-                                    </span>
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {reviews.length > 0 && (
-                  <div>
-                    <h3 className="font-headline text-xl mb-2 text-primary">Reseñas de Lectores</h3>
-                    <div className="space-y-4">
-                      {reviews.map((review) => (
-                        <div key={review.id} className="border-t pt-4 first:border-t-0">
-                          <div className="flex items-start space-x-3 mb-2">
-                            <Image 
-                              src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`} 
-                              alt={review.userName} 
-                              width={40} 
-                              height={40} 
-                              className="rounded-full" 
-                              data-ai-hint={review.dataAiHint || 'user avatar'}
-                            />
-                            <div>
-                              <p className="font-semibold text-foreground text-sm">{review.userName}</p>
-                              <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
-                            </div>
-                          </div>
-                          <StarRating rating={review.rating} />
-                          <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-         {isRendering && (
-            <div className="absolute inset-0 bg-background/80 flex justify-center items-center z-10">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-         )}
-         <Button variant="ghost" onClick={goPrev} disabled={isRendering} className="absolute left-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity z-20" aria-label="Página anterior">
-            <ArrowLeft className="h-8 w-8" />
-         </Button>
-         <Button variant="ghost" onClick={goNext} disabled={isRendering} className="absolute right-0 top-0 h-full w-1/5 max-w-[100px] text-muted-foreground/5 opacity-0 hover:opacity-100 transition-opacity z-20" aria-label="Página siguiente">
-            <ArrowRight className="h-8 w-8" />
-        </Button>
+      <main className="flex-grow relative h-full">
+         <div className="h-full">
+           <ReactReader
+              url={`/epubs/${book.epubFilename}`}
+              location={location}
+              locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+              getRendition={(_rendition) => {
+                setRendition(_rendition);
+                _rendition.hooks.content.register((contents: any) => {
+                    setTotalPages(contents.book.locations.length());
+                });
+              }}
+              readerStyles={{
+                reader: {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    right: 0,
+                    height: 'auto',
+                    width: 'auto',
+                },
+                view: {
+                    background: 'transparent'
+                }
+              }}
+              loadingView={
+                <div className="absolute inset-0 flex justify-center items-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                </div>
+              }
+            />
+         </div>
       </main>
 
        <footer className={cn(
@@ -496,13 +337,13 @@ export default function ReaderPage() {
         theme === 'dark' && 'bg-zinc-900 border-zinc-800',
         theme === 'sepia' && 'bg-[#e9e3d8] border-[#dcd3c5]'
        )}>
-            <Button variant="ghost" onClick={goPrev} disabled={isRendering} aria-label="Página anterior">
+            <Button variant="ghost" onClick={goPrev} aria-label="Página anterior">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="text-sm text-muted-foreground tabular-nums">
-                Página {isRendering ? '-' : location} de {isRendering ? '-' : (totalPages > 0 ? totalPages : '-')}
+                Página {typeof location === 'string' ? '-' : location} de {totalPages || '-'}
             </div>
-            <Button variant="ghost" onClick={goNext} disabled={isRendering} aria-label="Página siguiente">
+            <Button variant="ghost" onClick={goNext} aria-label="Página siguiente">
               <ArrowRight className="h-5 w-5" />
             </Button>
       </footer>
@@ -563,4 +404,3 @@ export default function ReaderPage() {
     </div>
   );
 }
-
