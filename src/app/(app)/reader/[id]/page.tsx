@@ -7,7 +7,6 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, List, X, Home } from 'lucide-react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ReactReader, type IReactReaderStyle } from "react-reader";
 import type { Rendition } from 'epubjs';
@@ -72,20 +71,48 @@ export default function ReaderPage() {
   const readerStyles: IReactReaderStyle = {
     readerArea: {
       backgroundColor: '#F5F5DC', // beige background
+      position: 'relative',
+      height: '100%',
+      width: '100%'
     },
     titleArea: {
-      color: '#4B2A1A' // dark brown text
+      color: '#4B2A1A', // dark brown text
+      textAlign: 'center',
+      padding: '1rem',
+      fontSize: '1.25rem'
     },
     tocArea: {
         background: '#FFFFFF',
+        color: '#000000',
     },
     tocButton: {
-        background: '#D2691E',
+        background: '#D2691E', // primary color
         color: 'white',
+        border: 'none',
+        borderRadius: '2px',
+        padding: '10px 20px',
+        cursor: 'pointer'
     },
     arrow: {
-        color: '#8B4513'
-    }
+        color: '#8B4513' // accent color
+    },
+    // Adding other potentially required fields with default-like values
+    container: {
+      overflow: "hidden",
+      height: "100%",
+    },
+    tocContainer: {
+      padding: '1rem'
+    },
+    tocEntry: {
+      color: '#000000'
+    },
+    loadingView: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%)',
+    },
   };
   
   if (isLoading) {
