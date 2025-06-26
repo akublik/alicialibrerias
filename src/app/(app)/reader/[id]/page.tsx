@@ -1,4 +1,3 @@
-
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -25,6 +24,8 @@ import {
   Bot,
   Send,
   User,
+  Tag,
+  BookOpenCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -329,6 +330,8 @@ export default function ReaderPage() {
     )
   }
 
+  const hasInfoToDisplay = book.description || book.format || book.categories?.length || book.tags?.length || reviews.length > 0;
+
   return (
     <div className={cn(
       "flex flex-col h-screen font-body transition-colors",
@@ -392,9 +395,9 @@ export default function ReaderPage() {
       <main className="flex-grow relative">
          <div id="viewer" ref={viewerRef} className="w-full h-full" />
 
-        {(book.description || reviews.length > 0) && !isRendering && (
+        {hasInfoToDisplay && !isRendering && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-20">
-            <Card className="max-h-[40vh] overflow-y-auto shadow-xl bg-background/80 backdrop-blur-sm">
+            <Card className="max-h-[60vh] overflow-y-auto shadow-xl bg-background/80 backdrop-blur-sm">
               <CardContent className="p-6 space-y-6">
                 {book.description && (
                   <div>
@@ -403,7 +406,38 @@ export default function ReaderPage() {
                   </div>
                 )}
                 
-                {book.description && reviews.length > 0 && <Separator />}
+                {(book.format || (book.categories && book.categories.length > 0) || (book.tags && book.tags.length > 0)) && (
+                    <div>
+                        <h3 className="font-headline text-xl mb-2 text-primary">Ficha Técnica</h3>
+                        <div className="space-y-2 text-sm">
+                            {book.format && (
+                                <p className="flex items-center">
+                                    <FileText className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                                    <span className="font-semibold text-foreground mr-1">Formato:</span>
+                                    <span className="text-muted-foreground">{book.format}</span>
+                                </p>
+                            )}
+                            {book.categories && book.categories.length > 0 && (
+                                <p className="flex items-start">
+                                    <BookOpenCheck className="mr-2 h-4 w-4 mt-0.5 text-foreground flex-shrink-0" />
+                                    <span className="font-semibold text-foreground mr-1">Categorías:</span>
+                                    <span className="text-muted-foreground">{book.categories.join(', ')}</span>
+                                </p>
+                            )}
+                            {book.tags && book.tags.length > 0 && (
+                                <p className="flex items-start">
+                                    <Tag className="mr-2 h-4 w-4 mt-0.5 text-foreground flex-shrink-0" />
+                                    <span className="font-semibold text-foreground mr-1">Etiquetas:</span>
+                                    <span className="text-muted-foreground">
+                                        {book.tags.map(tag => (
+                                            <span key={tag} className="inline-block bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs mr-1 mb-1">{tag}</span>
+                                        ))}
+                                    </span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {reviews.length > 0 && (
                   <div>
@@ -411,22 +445,22 @@ export default function ReaderPage() {
                     <div className="space-y-4">
                       {reviews.map((review) => (
                         <div key={review.id} className="border-t pt-4 first:border-t-0">
-                           <div className="flex items-start space-x-3 mb-2">
-                              <Image
-                                src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`}
-                                alt={review.userName}
-                                width={40}
-                                height={40}
-                                className="rounded-full"
-                                data-ai-hint={review.dataAiHint || 'user avatar'}
-                              />
-                              <div>
-                                <p className="font-semibold text-foreground text-sm">{review.userName}</p>
-                                <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
-                              </div>
+                          <div className="flex items-start space-x-3 mb-2">
+                            <Image 
+                              src={review.avatarUrl || `https://placehold.co/100x100.png?text=${review.userName.charAt(0)}`} 
+                              alt={review.userName} 
+                              width={40} 
+                              height={40} 
+                              className="rounded-full" 
+                              data-ai-hint={review.dataAiHint || 'user avatar'}
+                            />
+                            <div>
+                              <p className="font-semibold text-foreground text-sm">{review.userName}</p>
+                              <p className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "PPP", { locale: es })}</p>
                             </div>
-                            <StarRating rating={review.rating} />
-                            <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
+                          </div>
+                          <StarRating rating={review.rating} />
+                          <p className="text-foreground/90 mt-2 whitespace-pre-wrap text-sm">{review.comment}</p>
                         </div>
                       ))}
                     </div>
