@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI agent that converses as "AlicIA" about a book.
@@ -19,18 +20,18 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     try {
         const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
         
-        // The chat history must start with a 'user' message.
-        // The client-side code sends the initial assistant greeting, so we filter it out here.
-        const validHistory = history.length > 0 && history[0].role === 'assistant' 
-          ? history.slice(1) 
-          : history;
+        // Ensure history is a clean array of valid messages, starting with a user message.
+        const cleanedHistory = (Array.isArray(history) ? history : []).filter(
+            (msg) => msg && typeof msg === 'object' && msg.role && typeof msg.content === 'string'
+        );
+        const startIndex = cleanedHistory.findIndex(msg => msg.role === 'user');
+        const validHistory = startIndex === -1 ? [] : cleanedHistory.slice(startIndex);
 
         // Map frontend roles to Genkit roles ('assistant' -> 'model')
-        genkitHistory = validHistory
-            .map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
-                content: [{ text: msg.content }]
-            }));
+        genkitHistory = validHistory.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
+            content: [{ text: msg.content }]
+        }));
         
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',

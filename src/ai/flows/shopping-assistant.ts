@@ -132,8 +132,15 @@ export type ChatMessage = {
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
     let genkitHistory;
     try {
+        // Ensure history is a clean array of valid messages, starting with a user message.
+        const cleanedHistory = (Array.isArray(history) ? history : []).filter(
+            (msg) => msg && typeof msg === 'object' && msg.role && typeof msg.content === 'string'
+        );
+        const startIndex = cleanedHistory.findIndex(msg => msg.role === 'user');
+        const validHistory = startIndex === -1 ? [] : cleanedHistory.slice(startIndex);
+
         // Map frontend roles to Genkit roles ('assistant' -> 'model')
-        genkitHistory = history.map(msg => ({
+        genkitHistory = validHistory.map(msg => ({
             role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
             content: [{ text: msg.content }]
         }));
