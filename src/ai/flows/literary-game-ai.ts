@@ -54,6 +54,7 @@ export async function literaryGamesAI(input: LiteraryGamesAIInput): Promise<Lite
 
 const prompt = ai.definePrompt({
   name: 'literaryGamesAIPrompt',
+  model: 'google/gemini-1.5-flash-latest',
   input: {schema: LiteraryGamesAIInputSchema},
   output: {schema: LiteraryGamesAIOutputSchema},
   prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
