@@ -70,26 +70,20 @@ export default function ReaderPage() {
   };
 
   const readerStyles: IReactReaderStyle = {
-    ...ReactReader.defaultStyles,
     readerArea: {
-      ...ReactReader.defaultStyles.readerArea,
       backgroundColor: '#F5F5DC', // beige background
     },
     titleArea: {
-      ...ReactReader.defaultStyles.titleArea,
       color: '#4B2A1A' // dark brown text
     },
     tocArea: {
-        ...ReactReader.defaultStyles.tocArea,
         background: '#FFFFFF',
     },
     tocButton: {
-        ...ReactReader.defaultStyles.tocButton,
         background: '#D2691E',
         color: 'white',
     },
     arrow: {
-        ...ReactReader.defaultStyles.arrow,
         color: '#8B4513'
     }
   };
