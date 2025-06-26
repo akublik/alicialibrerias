@@ -3,11 +3,13 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { ReactReader } from "react-reader";
+import { Button } from '@/components/ui/button';
 
 export default function ReaderPage() {
   const params = useParams();
@@ -54,45 +56,41 @@ export default function ReaderPage() {
   }, [bookId]);
 
   useEffect(() => {
-    const observer = new MutationObserver((mutations) => {
-      if (readerContainerRef.current) {
-        const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]');
-        
-        // Check if the button exists and hasn't been modified yet
-        if (tocButton && tocButton.innerHTML !== 'ÍNDICE') {
-          tocButton.innerHTML = 'ÍNDICE';
-          tocButton.setAttribute('style', `
-            font-family: 'Belleza', sans-serif;
-            font-size: 1rem;
-            padding: 0.25rem 0.75rem;
-            background: white;
-            color: #D2691E;
-            border: 1px solid #D2691E;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            z-index: 2;
-          `);
-        }
-        
-        // Hide default arrows
-        const prevArrow = readerContainerRef.current.querySelector('#prev');
-        if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
+    if (isLoading) return;
 
-        const nextArrow = readerContainerRef.current.querySelector('#next');
-        if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
+    const observer = new MutationObserver((mutations) => {
+      const tocButton = readerContainerRef.current?.querySelector('button[aria-label="Table of Contents"]');
+      if (tocButton && tocButton.textContent !== 'ÍNDICE') {
+        tocButton.textContent = 'ÍNDICE';
+        Object.assign(tocButton.style, {
+            fontFamily: "'Belleza', sans-serif",
+            fontSize: '1rem',
+            padding: '0.25rem 0.75rem',
+            background: 'hsl(var(--card))',
+            color: 'hsl(var(--primary))',
+            border: '1px solid hsl(var(--primary))',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            zIndex: '2',
+            textTransform: 'uppercase',
+            top: '1rem',
+            left: '1rem',
+        });
       }
+      
+      const prevArrow = readerContainerRef.current?.querySelector('#prev');
+      if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
+
+      const nextArrow = readerContainerRef.current?.querySelector('#next');
+      if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
     });
 
     if (readerContainerRef.current) {
-      observer.observe(readerContainerRef.current, {
-        childList: true,
-        subtree: true,
-      });
+      observer.observe(readerContainerRef.current, { childList: true, subtree: true });
     }
 
-    // Disconnect the observer when the component unmounts
     return () => observer.disconnect();
-  }, [isLoading]); // Re-run if loading state changes, to catch the initial render
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -118,18 +116,36 @@ export default function ReaderPage() {
   if (!book) return null;
 
   return (
-    <div className="h-screen w-screen" ref={readerContainerRef}>
-      <ReactReader
-        key={book.id}
-        url={`/epubs/${book.epubFilename}`}
-        location={location}
-        locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-        loadingView={
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
-        }
-      />
+    <div className="flex flex-col h-screen w-screen bg-muted">
+        <header className="flex-shrink-0 bg-background shadow-md z-20">
+            <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                <Link href="/my-library" passHref>
+                    <Button variant="outline">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Volver a la Biblioteca
+                    </Button>
+                </Link>
+                <div className="text-center hidden sm:block">
+                    <h1 className="font-headline text-xl font-bold text-primary truncate">{book.title}</h1>
+                    <p className="text-sm text-muted-foreground truncate">{book.author}</p>
+                </div>
+                <div className="w-48 hidden sm:block"></div> {/* Spacer to keep title centered */}
+            </div>
+        </header>
+        
+        <div className="flex-grow h-full w-full" ref={readerContainerRef}>
+            <ReactReader
+                key={book.id}
+                url={`/epubs/${book.epubFilename}`}
+                location={location}
+                locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+                loadingView={
+                    <div className="flex justify-center items-center h-full">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    </div>
+                }
+            />
+        </div>
     </div>
   );
 }
