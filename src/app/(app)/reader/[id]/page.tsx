@@ -137,7 +137,7 @@ export default function ReaderPage() {
 
   useEffect(() => {
     let isMounted = true;
-    if (!book || !book.epubUrl || !viewerRef.current) {
+    if (!book || !book.epubFilename || !viewerRef.current) {
         setIsRendering(false);
         return;
     }
@@ -155,8 +155,8 @@ export default function ReaderPage() {
     import('epubjs').then(({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
         
-        const proxiedUrl = `/api/proxy-epub?url=${encodeURIComponent(book.epubUrl!)}`;
-        const bookInstance = ePub(proxiedUrl);
+        const bookPath = `/epubs/${book.epubFilename}`;
+        const bookInstance = ePub(bookPath);
         bookInstanceRef.current = bookInstance;
 
         const rendition = bookInstance.renderTo(viewerRef.current, {
@@ -179,7 +179,7 @@ export default function ReaderPage() {
         }).catch((err: Error) => {
              if (isMounted) {
                 console.error("Error displaying rendition:", err);
-                setError(`Hubo un problema al mostrar el libro. Esto puede deberse a un problema de red o de formato del archivo EPUB.`);
+                setError(`Hubo un problema al mostrar el libro. Asegúrate de que el archivo "${book.epubFilename}" exista en la carpeta /public/epubs/.`);
                 setIsRendering(false);
             }
         });
@@ -308,14 +308,14 @@ export default function ReaderPage() {
 
   if (!book) return null;
 
-  if (!book.epubUrl) {
+  if (!book.epubFilename) {
     return (
          <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
             <BookOpen className="h-16 w-16 text-primary mb-4" />
             <h1 className="text-2xl font-bold text-primary mb-2">{book.title}</h1>
             <p className="text-muted-foreground mb-6">Este libro no está disponible en formato EPUB para el lector integrado.</p>
-             {book.pdfUrl && (
-                <a href={book.pdfUrl} target="_blank" rel="noopener noreferrer">
+             {book.pdfFilename && (
+                <a href={`/pdfs/${book.pdfFilename}`} target="_blank" rel="noopener noreferrer">
                     <Button>
                         <FileText className="mr-2 h-4 w-4" />
                         Abrir PDF

@@ -3,6 +3,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -31,8 +32,8 @@ export interface DigitalBook {
   author: string;
   description?: string;
   coverImageUrl: string;
-  epubUrl?: string;
-  pdfUrl?: string;
+  epubFilename?: string;
+  pdfFilename?: string;
   createdAt: any;
   format?: 'EPUB' | 'PDF' | 'EPUB & PDF';
   categories?: string[];

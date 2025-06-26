@@ -12,6 +12,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,14 +33,14 @@ const digitalBookFormSchema = z.object({
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubUrl: z.string().url("La URL del EPUB no es válida.").optional().or(z.literal('')),
-  pdfUrl: z.string().url("La URL del PDF no es válida.").optional().or(z.literal('')),
+  epubFilename: z.string().optional(),
+  pdfFilename: z.string().optional(),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-}).refine(data => data.epubUrl || data.pdfUrl, {
-  message: "Debes proporcionar al menos una URL (EPUB o PDF).",
-  path: ["epubUrl"], // Show the error under one of the fields
+}).refine(data => data.epubFilename || data.pdfFilename, {
+  message: "Debes proporcionar al menos un nombre de archivo (EPUB o PDF).",
+  path: ["epubFilename"], // Show the error under one of the fields
 });
 
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
@@ -56,8 +57,8 @@ export default function NewDigitalBookPage() {
       author: "",
       description: "",
       coverImageUrl: "",
-      epubUrl: "",
-      pdfUrl: "",
+      epubFilename: "",
+      pdfFilename: "",
       categories: [],
       tags: [],
     },
@@ -168,8 +169,26 @@ export default function NewDigitalBookPage() {
 
               <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               
-              <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="pdfUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo PDF (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.pdf" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
+                  <FormItem>
+                      <FormLabel>Nombre del Archivo EPUB (Opcional)</FormLabel>
+                      <FormControl><Input placeholder="libro-ejemplo.epub" {...field} value={field.value || ''}/></FormControl>
+                      <FormDescription>
+                          Asegúrate de subir este archivo a la carpeta `public/epubs/` de tu proyecto.
+                      </FormDescription>
+                      <FormMessage />
+                  </FormItem>
+              )} />
+              <FormField control={form.control} name="pdfFilename" render={({ field }) => ( 
+                  <FormItem>
+                      <FormLabel>Nombre del Archivo PDF (Opcional)</FormLabel>
+                      <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} value={field.value || ''}/></FormControl>
+                      <FormDescription>
+                          Considera crear una carpeta `public/pdfs/` y subir el archivo allí.
+                      </FormDescription>
+                      <FormMessage />
+                  </FormItem>
+              )} />
               
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
