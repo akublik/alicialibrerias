@@ -8,6 +8,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit } from "lucide-react";
 import {
   DropdownMenu,
@@ -105,6 +106,8 @@ export default function ManageDigitalLibraryPage() {
                     <TableHead className="hidden w-[100px] sm:table-cell">Portada</TableHead>
                     <TableHead>Título</TableHead>
                     <TableHead>Autor</TableHead>
+                    <TableHead>Formato</TableHead>
+                    <TableHead>Categorías</TableHead>
                     <TableHead><span className="sr-only">Acciones</span></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -122,6 +125,12 @@ export default function ManageDigitalLibraryPage() {
                       </TableCell>
                       <TableCell className="font-medium">{book.title}</TableCell>
                       <TableCell>{book.author}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{book.format || 'N/A'}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate" title={book.categories?.join(', ')}>
+                        {book.categories?.join(', ') || 'N/A'}
+                      </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -147,7 +156,7 @@ export default function ManageDigitalLibraryPage() {
                     </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                         No hay libros en la biblioteca digital.
                       </TableCell>
                     </TableRow>

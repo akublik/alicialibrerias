@@ -2,6 +2,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -33,6 +34,9 @@ export interface DigitalBook {
   epubUrl?: string;
   pdfUrl?: string;
   createdAt: any;
+  format?: 'EPUB' | 'PDF' | 'EPUB & PDF';
+  categories?: string[];
+  tags?: string[];
 }
 
 export interface Library {

@@ -23,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { bookCategories, bookTags } from "@/lib/options";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -31,6 +34,9 @@ const digitalBookFormSchema = z.object({
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
   epubUrl: z.string().url("La URL del EPUB no es válida.").optional().or(z.literal('')),
   pdfUrl: z.string().url("La URL del PDF no es válida.").optional().or(z.literal('')),
+  format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
+  categories: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
 }).refine(data => data.epubUrl || data.pdfUrl, {
   message: "Debes proporcionar al menos una URL (EPUB o PDF).",
   path: ["epubUrl"], // Show the error under one of the fields
@@ -52,6 +58,8 @@ export default function NewDigitalBookPage() {
       coverImageUrl: "",
       epubUrl: "",
       pdfUrl: "",
+      categories: [],
+      tags: [],
     },
   });
 
@@ -97,7 +105,67 @@ export default function NewDigitalBookPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="El Aleph" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input placeholder="Jorge Luis Borges" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField
+                control={form.control}
+                name="format"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Formato</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona un formato" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="EPUB">EPUB</SelectItem>
+                        <SelectItem value="PDF">PDF</SelectItem>
+                        <SelectItem value="EPUB & PDF">EPUB & PDF</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+              
+              <FormField
+                control={form.control}
+                name="categories"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categorías</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        placeholder="Selecciona categorías..."
+                        options={bookCategories}
+                        value={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Etiquetas</FormLabel>
+                    <FormControl>
+                      <MultiSelect
+                        placeholder="Selecciona etiquetas..."
+                        options={bookTags}
+                        value={field.value || []}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               
               <FormField control={form.control} name="epubUrl" render={({ field }) => ( <FormItem><FormLabel>URL del Archivo EPUB (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/libro.epub" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
