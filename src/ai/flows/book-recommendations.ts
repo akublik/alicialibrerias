@@ -52,7 +52,7 @@ const PromptInputSchema = BookRecommendationsInputSchema.extend({
 
 const prompt = ai.definePrompt({
   name: 'bookRecommendationsPrompt',
-  model: 'gemini-1.5-flash',
+  model: 'google/gemini-1.5-flash',
   input: {schema: PromptInputSchema},
   output: {schema: BookRecommendationsOutputSchema},
   prompt: `Eres un bibliotecario de clase mundial y experto en recomendaciones de libros.
