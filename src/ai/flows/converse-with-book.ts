@@ -58,6 +58,11 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Error object:", JSON.stringify(error, null, 2));
         console.error("----------------------------------------------");
         
+        // Let the specific API key error message pass through
+        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
+            return error.message;
+        }
+        
         if (error.message && (error.message.includes('503') || error.message.includes('overloaded'))) {
              return "Lo siento, mis circuitos están un poco sobrecargados en este momento. Por favor, inténtalo de nuevo en unos segundos.";
         }
