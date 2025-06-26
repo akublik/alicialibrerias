@@ -130,16 +130,14 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    // Map frontend roles to Genkit roles ('assistant' -> 'model')
-    // Added a filter to ensure no undefined or malformed messages cause a crash.
-    const genkitHistory = history
-      .filter(msg => msg && typeof msg === 'object' && 'content' in msg)
-      .map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
-        content: [{ text: msg.content }]
-    }));
-
+    let genkitHistory;
     try {
+        // Map frontend roles to Genkit roles ('assistant' -> 'model')
+        genkitHistory = history.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
+            content: [{ text: msg.content }]
+        }));
+
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
             tools: [findBooksInCatalog, findLibrariesByCity],
@@ -169,7 +167,8 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         console.error("----------- DETAILED AI SHOPPING ASSISTANT ERROR -----------");
         console.error("Flow: askShoppingAssistant");
         console.error("Timestamp:", new Date().toISOString());
-        console.error("History:", JSON.stringify(history, null, 2));
+        console.error("History from client:", JSON.stringify(history, null, 2));
+        console.error("Processed history for Genkit:", JSON.stringify(genkitHistory, null, 2));
         console.error("Error Name:", error.name);
         console.error("Error Message:", error.message);
         console.error("Error object:", JSON.stringify(error, null, 2));
