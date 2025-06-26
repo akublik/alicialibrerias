@@ -1,3 +1,4 @@
+
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -152,47 +153,44 @@ export default function ReaderPage() {
     
     setIsRendering(true);
     
-    import('epubjs').then(({ default: ePub }) => {
+    import('epubjs').then(async ({ default: ePub }) => {
         if (!isMounted || !viewerRef.current) return;
         
         const bookPath = `/epubs/${book.epubFilename}`;
-        const bookInstance = ePub(bookPath);
-        bookInstanceRef.current = bookInstance;
-
-        const rendition = bookInstance.renderTo(viewerRef.current, {
-          width: "100%",
-          height: "100%",
-          flow: "paginated",
-          spread: "auto",
-        });
-        renditionRef.current = rendition;
         
-        rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
-        rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
-        rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
-        
-        rendition.themes.select(theme);
-        rendition.themes.fontSize(`${fontSize}%`);
-        
-        rendition.display().then(() => {
-            if (isMounted) setIsRendering(false);
-        }).catch((err: Error) => {
-             if (isMounted) {
-                console.error("Error displaying rendition:", err);
-                const bookPath = `/epubs/${book.epubFilename}`;
-                if (err.message.includes("Not Found (404)")) {
-                    setError(`Error 404: No se pudo encontrar el libro en la ruta: ${bookPath}. Por favor, verifica lo siguiente:\n1. Que el nombre del archivo ("${book.epubFilename}") sea exacto (mayúsculas y minúsculas).\n2. Que el archivo esté subido en la carpeta /public/epubs/.`);
-                } else {
-                    setError(`Hubo un problema al mostrar el libro. Error: ${err.message}. Asegúrate de que el archivo "${book.epubFilename}" exista y sea un EPUB válido.`);
+        try {
+            const response = await fetch(bookPath);
+            if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error(`Error 404: No se pudo encontrar el libro en la ruta: ${bookPath}. Por favor, verifica que el nombre del archivo ("${book.epubFilename}") sea exacto (mayúsculas/minúsculas) y que esté en la carpeta /public/epubs/.`);
                 }
-                setIsRendering(false);
+                throw new Error(`Error al buscar el archivo del libro. Estado: ${response.status}`);
             }
-        });
-        
-        bookInstance.ready.then(() => {
-          return bookInstance.locations.generate(1650);
-        }).then(locations => {
-            if (isMounted) {
+            const bookDataBuffer = await response.arrayBuffer();
+            
+            const bookInstance = ePub(bookDataBuffer);
+            bookInstanceRef.current = bookInstance;
+
+            const rendition = bookInstance.renderTo(viewerRef.current, {
+              width: "100%",
+              height: "100%",
+              flow: "paginated",
+              spread: "auto",
+            });
+            renditionRef.current = rendition;
+            
+            rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
+            rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
+            rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
+            
+            rendition.themes.select(theme);
+            rendition.themes.fontSize(`${fontSize}%`);
+
+            await rendition.display();
+            if (isMounted) setIsRendering(false);
+
+            const locations = await bookInstance.locations.generate(1650);
+             if (isMounted) {
                 setTotalPages(locations.length);
                 const currentLocation = renditionRef.current?.currentLocation();
                 if (currentLocation && currentLocation.start && bookInstanceRef.current?.locations) {
@@ -200,17 +198,21 @@ export default function ReaderPage() {
                     setLocation(page || 0);
                 }
             }
-        }).catch(err => {
-            console.warn("Could not generate book locations, page numbers will be unavailable.", err);
-        });
+            
+            rendition.on('relocated', (locationData: any) => {
+                if (isMounted && bookInstanceRef.current?.locations?.length > 0) {
+                    const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
+                    setLocation(page || 0);
+                }
+            });
 
-        rendition.on('relocated', (locationData: any) => {
-            if (isMounted && bookInstanceRef.current?.locations?.length > 0) {
-                const page = bookInstanceRef.current.locations.locationFromCfi(locationData.start.cfi);
-                setLocation(page || 0);
+        } catch (err: any) {
+             if (isMounted) {
+                console.error("Error displaying rendition:", err);
+                setError(`Hubo un problema al mostrar el libro. Error: ${err.message}. Asegúrate de que el archivo "${book.epubFilename}" exista y sea un EPUB válido.`);
+                setIsRendering(false);
             }
-        });
-
+        }
     }).catch(err => {
         console.error("Failed to load epubjs module", err);
         if(isMounted) {
@@ -561,3 +563,4 @@ export default function ReaderPage() {
     </div>
   );
 }
+
