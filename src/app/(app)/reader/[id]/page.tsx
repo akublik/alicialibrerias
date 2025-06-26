@@ -179,7 +179,12 @@ export default function ReaderPage() {
         }).catch((err: Error) => {
              if (isMounted) {
                 console.error("Error displaying rendition:", err);
-                setError(`Hubo un problema al mostrar el libro. Asegúrate de que el archivo "${book.epubFilename}" exista en la carpeta /public/epubs/.`);
+                const bookPath = `/epubs/${book.epubFilename}`;
+                if (err.message.includes("Not Found (404)")) {
+                    setError(`Error 404: No se pudo encontrar el libro en la ruta: ${bookPath}. Por favor, verifica lo siguiente:\n1. Que el nombre del archivo ("${book.epubFilename}") sea exacto (mayúsculas y minúsculas).\n2. Que el archivo esté subido en la carpeta /public/epubs/.`);
+                } else {
+                    setError(`Hubo un problema al mostrar el libro. Error: ${err.message}. Asegúrate de que el archivo "${book.epubFilename}" exista y sea un EPUB válido.`);
+                }
                 setIsRendering(false);
             }
         });
@@ -298,7 +303,7 @@ export default function ReaderPage() {
       <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
         <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
         <h1 className="text-2xl font-bold text-destructive mb-2">Ocurrió un error</h1>
-        <p className="text-muted-foreground max-w-lg">{error}</p>
+        <p className="text-muted-foreground max-w-lg whitespace-pre-wrap">{error}</p>
         <Link href="/my-library" className="mt-6">
           <Button>Volver a la Biblioteca</Button>
         </Link>
