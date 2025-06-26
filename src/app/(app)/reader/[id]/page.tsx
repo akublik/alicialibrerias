@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, List, X, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ReactReader, type IReactReaderStyle } from "react-reader";
+import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 
 export default function ReaderPage() {
@@ -67,53 +67,6 @@ export default function ReaderPage() {
       renditionRef.current.next();
     }
   };
-
-  const readerStyles: IReactReaderStyle = {
-    readerArea: {
-      backgroundColor: '#F5F5DC', // beige background
-      position: 'relative',
-      height: '100%',
-      width: '100%'
-    },
-    titleArea: {
-      color: '#4B2A1A', // dark brown text
-      textAlign: 'center',
-      padding: '1rem',
-      fontSize: '1.25rem'
-    },
-    tocArea: {
-        background: '#FFFFFF',
-        color: '#000000',
-    },
-    tocButton: {
-        background: '#D2691E', // primary color
-        color: 'white',
-        border: 'none',
-        borderRadius: '2px',
-        padding: '10px 20px',
-        cursor: 'pointer'
-    },
-    arrow: {
-        color: '#8B4513' // accent color
-    },
-    // Adding other potentially required fields with default-like values
-    container: {
-      overflow: "hidden",
-      height: "100%",
-    },
-    tocContainer: {
-      padding: '1rem'
-    },
-    tocEntry: {
-      color: '#000000'
-    },
-    loadingView: {
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-    },
-  };
   
   if (isLoading) {
     return (
@@ -155,7 +108,24 @@ export default function ReaderPage() {
         </Button>
       </header>
       
-      <div className="relative flex-grow h-full w-full">
+      <div className="relative flex-grow">
+        <div className="h-full w-full">
+            <ReactReader
+                url={`/epubs/${book.epubFilename}`}
+                location={location}
+                locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+                getRendition={(rendition) => {
+                  renditionRef.current = rendition;
+                }}
+                showToc={showToc}
+                loadingView={
+                    <div className="flex justify-center items-center h-full">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    </div>
+                }
+            />
+        </div>
+
          <Button
             variant="ghost"
             onClick={handlePrevPage}
@@ -164,21 +134,6 @@ export default function ReaderPage() {
           >
             <ArrowLeft className="h-12 w-12" />
           </Button>
-        <ReactReader
-            url={`/epubs/${book.epubFilename}`}
-            location={location}
-            locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-            getRendition={(rendition) => {
-              renditionRef.current = rendition;
-            }}
-            showToc={showToc}
-            readerStyles={readerStyles}
-            loadingView={
-                <div className="flex justify-center items-center h-full">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                </div>
-            }
-        />
         <Button
           variant="ghost"
           onClick={handleNextPage}
