@@ -1,24 +1,26 @@
-import type { Metadata } from 'next';
+"use client";
+
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { CartProvider } from "@/context/CartContext";
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { ShoppingAssistantTrigger } from '@/components/ShoppingAssistantTrigger';
-
-export const metadata: Metadata = {
-  title: 'Alicia Libros - Tu marketplace de librerías independientes',
-  description: 'Descubre libros únicos y apoya a librerías independientes en Ecuador y Latinoamérica.',
-};
+import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isReaderPage = pathname.startsWith('/reader/');
+
   return (
     <html lang="es">
       <head>
+        <title>Alicia Libros - Tu marketplace de librerías independientes</title>
+        <meta name="description" content="Descubre libros únicos y apoya a librerías independientes en Ecuador y Latinoamérica." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Belleza&display=swap" rel="stylesheet" />
@@ -26,13 +28,17 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <CartProvider>
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-          </div>
+          {isReaderPage ? (
+            <>{children}</> // Render only the page content for the reader
+          ) : (
+            <div className="flex min-h-screen flex-col">
+              <Navbar />
+              <main className="flex-grow">{children}</main>
+              <Footer />
+            </div>
+          )}
           <Toaster />
-          <ShoppingAssistantTrigger />
+          {!isReaderPage && <ShoppingAssistantTrigger />}
         </CartProvider>
       </body>
     </html>
