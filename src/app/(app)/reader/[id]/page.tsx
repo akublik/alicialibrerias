@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, List, X, Home } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, ArrowRight, X, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
@@ -15,6 +15,10 @@ import type { Rendition } from 'epubjs';
 const readerStyles = {
   // Hide the default arrows provided by the library, we use custom ones.
   arrow: {
+    display: 'none'
+  },
+  // Hide the default toc button provided by the library
+  tocButton: {
     display: 'none'
   }
 };
@@ -114,8 +118,14 @@ export default function ReaderPage() {
             <p className="text-sm text-muted-foreground truncate">por {book.author}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowToc(!showToc)}>
-          {showToc ? <X className="h-5 w-5 mr-2" /> : <List className="h-5 w-5 mr-2" />}
-          <span>Índice</span>
+          {showToc ? (
+            <>
+              <X className="h-5 w-5 mr-2" />
+              <span>Cerrar</span>
+            </>
+          ) : (
+            <span>Índice</span>
+          )}
         </Button>
       </header>
       
