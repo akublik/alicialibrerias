@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ReactReader } from "react-reader";
+import { ReactReader, IReactReaderStyle } from "react-reader";
 import type { Rendition } from 'epubjs';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -74,11 +74,12 @@ export default function ReaderPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
 
   // Reader state
-  const [rendition, setRendition] = useState<Rendition | null>(null);
+  const renditionRef = useRef<Rendition | null>(null);
+  const [location, setLocation] = useState<string | number>(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
   const [theme, setTheme] = useState<'light' | 'dark' | 'sepia'>('light');
   const [fontSize, setFontSize] = useState(100); // as a percentage
-  const [location, setLocation] = useState<string | number>(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   // Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -131,22 +132,19 @@ export default function ReaderPage() {
   }, [bookId]);
   
   useEffect(() => {
-    if (rendition) {
-      rendition.themes.fontSize(`${fontSize}%`);
+    if (renditionRef.current) {
+      renditionRef.current.themes.fontSize(`${fontSize}%`);
     }
-  }, [fontSize, rendition]);
+  }, [fontSize]);
 
   useEffect(() => {
-    if (rendition) {
-        rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': '#fafafa' } });
-        rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': '#212121' } });
-        rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': '#f4f0e8' } });
-        rendition.themes.select(theme);
+    if (renditionRef.current) {
+        renditionRef.current.themes.select(theme);
     }
-  }, [theme, rendition]);
+  }, [theme]);
   
-  const goNext = () => rendition?.next();
-  const goPrev = () => rendition?.prev();
+  const goNext = () => renditionRef.current?.next();
+  const goPrev = () => renditionRef.current?.prev();
   
   const changeFontSize = (newSize: number) => {
     const clampedSize = Math.max(80, Math.min(200, newSize)); // Clamp between 80% and 200%
@@ -234,6 +232,22 @@ export default function ReaderPage() {
     )
   }
 
+  const readerStyles: IReactReaderStyle = {
+    readerArea: {
+      position: 'relative',
+      height: '100%',
+      backgroundColor: theme === 'dark' ? '#212121' : (theme === 'sepia' ? '#f4f0e8' : '#fafafa'),
+    },
+    // Ensure the view has transparent background so readerArea color shows
+    view: {
+        background: 'transparent'
+    },
+    arrow: {
+        color: theme === 'dark' ? 'white' : 'black'
+    }
+  };
+
+
   const hasInfoToDisplay = book.description || book.format || book.categories?.length || book.tags?.length || reviews.length > 0;
 
   return (
@@ -296,39 +310,35 @@ export default function ReaderPage() {
          </div>
       </header>
 
-      <main className="flex-grow relative h-full">
-         <div className="h-full">
+      <main className="flex-grow relative" style={{ height: 'calc(100vh - 104px)'}}>
            <ReactReader
               url={`/epubs/${book.epubFilename}`}
               location={location}
-              locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-              getRendition={(_rendition) => {
-                setRendition(_rendition);
-                _rendition.hooks.content.register((contents: any) => {
-                    setTotalPages(contents.book.locations.length());
-                });
-              }}
-              readerStyles={{
-                reader: {
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    right: 0,
-                    height: 'auto',
-                    width: 'auto',
-                },
-                view: {
-                    background: 'transparent'
+              locationChanged={(epubcfi: string) => {
+                setLocation(epubcfi);
+                if (renditionRef.current) {
+                  const page = renditionRef.current.locations.locationFromCfi(epubcfi);
+                  setCurrentPage(page);
                 }
               }}
+              getRendition={(_rendition) => {
+                renditionRef.current = _rendition;
+                _rendition.themes.register('light', { body: { 'color': '#212121', 'background-color': 'transparent' } });
+                _rendition.themes.register('dark', { body: { 'color': '#fafafa', 'background-color': 'transparent' } });
+                _rendition.themes.register('sepia', { body: { 'color': '#5b4636', 'background-color': 'transparent' } });
+                _rendition.themes.select(theme);
+                _rendition.themes.fontSize(`${fontSize}%`);
+                _rendition.book.ready.then(() => {
+                    setTotalPages(_rendition.book.locations.length());
+                });
+              }}
+              readerStyles={readerStyles}
               loadingView={
-                <div className="absolute inset-0 flex justify-center items-center">
+                <div className="flex justify-center items-center h-full">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
                 </div>
               }
             />
-         </div>
       </main>
 
        <footer className={cn(
@@ -341,7 +351,7 @@ export default function ReaderPage() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="text-sm text-muted-foreground tabular-nums">
-                Página {typeof location === 'string' ? '-' : location} de {totalPages || '-'}
+                Página {currentPage} de {totalPages || '-'}
             </div>
             <Button variant="ghost" onClick={goNext} aria-label="Página siguiente">
               <ArrowRight className="h-5 w-5" />
