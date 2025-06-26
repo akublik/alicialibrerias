@@ -2,7 +2,7 @@
 "use client";
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
@@ -12,9 +12,8 @@ import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 
 // Custom styles to override the default reader styles.
-// This is necessary because the library's default styles object is no longer exported directly.
 const readerStyles = {
-  // Hide the default arrows provided by the library
+  // Hide the default arrows provided by the library, we use custom ones.
   arrow: {
     display: 'none'
   }
@@ -31,9 +30,9 @@ export default function ReaderPage() {
   const [location, setLocation] = useState<string | number>(0);
   const [showToc, setShowToc] = useState(false);
   
-  // Use a ref to hold the rendition object. This is the correct way to
-  // store a handle to an imperative API without causing re-renders.
-  const renditionRef = useRef<Rendition | null>(null);
+  // Use state to hold the rendition object, forcing re-render when it's ready.
+  // This is safer for ensuring controls are linked to a ready rendition.
+  const [rendition, setRendition] = useState<Rendition | null>(null);
 
   useEffect(() => {
     if (!bookId || !db) {
@@ -68,14 +67,14 @@ export default function ReaderPage() {
   }, [bookId]);
   
   const handlePrevPage = () => {
-    if (renditionRef.current) {
-      renditionRef.current.prev();
+    if (rendition) {
+      rendition.prev();
     }
   };
 
   const handleNextPage = () => {
-    if (renditionRef.current) {
-      renditionRef.current.next();
+    if (rendition) {
+      rendition.next();
     }
   };
   
@@ -105,7 +104,7 @@ export default function ReaderPage() {
   return (
     <div className="h-screen flex flex-col font-body antialiased bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between p-2 bg-card border-b z-30 shrink-0">
+      <header className="flex items-center justify-between p-2 bg-card border-b shrink-0 z-20">
         <Button variant="ghost" size="sm" onClick={() => router.push('/my-library')} title="Volver a la biblioteca">
            <Home className="h-5 w-5 mr-2" />
            <span className="hidden sm:inline">Mi Biblioteca</span>
@@ -122,37 +121,37 @@ export default function ReaderPage() {
       
       {/* Main Reader Area */}
       <main className="flex-1 relative">
-        {/* Reader Component */}
-        <div className="absolute top-0 left-0 right-0 bottom-0 h-full w-full">
+        {/* Reader Component Container */}
+        <div className="absolute top-0 left-0 right-0 bottom-0 h-full w-full z-10">
             <ReactReader
                 url={`/epubs/${book.epubFilename}`}
                 location={location}
                 locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-                getRendition={(rendition) => {
-                  renditionRef.current = rendition
-                }}
+                getRendition={setRendition}
                 showToc={showToc}
                 loadingView={
                     <div className="flex justify-center items-center h-full">
                         <Loader2 className="h-10 w-10 animate-spin text-primary" />
                     </div>
                 }
-                // Use the 'styles' prop to override default library styles
                 styles={readerStyles}
             />
         </div>
         
-        {/* Custom Navigation Overlays */}
-        <div 
-          className="absolute left-0 top-0 h-full w-1/4 z-20 cursor-pointer group"
-          onClick={handlePrevPage}
-          aria-label="Página anterior"
-        >
-          <div className="flex items-center justify-start h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <ArrowLeft className="h-16 w-16 text-primary" />
+        {/* Custom Navigation Overlays. They have a higher z-index to be on top of the reader. */}
+        {/* Left overlay is hidden when TOC is visible to prevent interaction conflicts */}
+        {!showToc && (
+          <div 
+            className="absolute left-0 top-0 h-full w-1/4 z-20 cursor-pointer group"
+            onClick={handlePrevPage}
+            aria-label="Página anterior"
+          >
+            <div className="flex items-center justify-start h-full w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <ArrowLeft className="h-16 w-16 text-primary" />
+            </div>
           </div>
-        </div>
-         <div 
+        )}
+        <div 
           className="absolute right-0 top-0 h-full w-1/4 z-20 cursor-pointer group"
           onClick={handleNextPage}
           aria-label="Página siguiente"
