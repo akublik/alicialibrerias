@@ -8,7 +8,7 @@ const apiKey = process.env.GOOGLE_API_KEY;
 if (apiKey) {
   // Initialize Genkit with the Google AI plugin.
   ai = genkit({
-    plugins: [googleAI()],
+    plugins: [googleAI({ apiKey })],
   });
 } else {
   console.warn(`
