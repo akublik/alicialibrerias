@@ -115,7 +115,7 @@ export default function ReaderPage() {
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowToc(!showToc)}>
           {showToc ? <X className="h-5 w-5 mr-2" /> : <List className="h-5 w-5 mr-2" />}
-          <span className="hidden sm:inline">Índice</span>
+          <span>Índice</span>
         </Button>
       </header>
       
