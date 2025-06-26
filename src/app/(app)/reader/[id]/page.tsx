@@ -54,13 +54,12 @@ export default function ReaderPage() {
   }, [bookId]);
 
   useEffect(() => {
-    // This effect runs after the component mounts and finds the reader's internal elements.
-    const observer = new MutationObserver((mutations, obs) => {
+    const observer = new MutationObserver((mutations) => {
       if (readerContainerRef.current) {
-        // Find the library's default TOC button
         const tocButton = readerContainerRef.current.querySelector('button[aria-label="Table of Contents"]');
-        if (tocButton) {
-          // Found the button, now modify it as requested by the user.
+        
+        // Check if the button exists and hasn't been modified yet
+        if (tocButton && tocButton.innerHTML !== 'ÍNDICE') {
           tocButton.innerHTML = 'ÍNDICE';
           tocButton.setAttribute('style', `
             font-family: 'Belleza', sans-serif;
@@ -73,17 +72,14 @@ export default function ReaderPage() {
             cursor: pointer;
             z-index: 2;
           `);
-          
-          // The user also requested to remove the default navigation arrows.
-          const prevArrow = readerContainerRef.current.querySelector('#prev');
-          if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
-
-          const nextArrow = readerContainerRef.current.querySelector('#next');
-          if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
-          
-          obs.disconnect(); // We're done, stop observing.
-          return;
         }
+        
+        // Hide default arrows
+        const prevArrow = readerContainerRef.current.querySelector('#prev');
+        if (prevArrow) (prevArrow as HTMLElement).style.display = 'none';
+
+        const nextArrow = readerContainerRef.current.querySelector('#next');
+        if (nextArrow) (nextArrow as HTMLElement).style.display = 'none';
       }
     });
 
@@ -94,8 +90,9 @@ export default function ReaderPage() {
       });
     }
 
+    // Disconnect the observer when the component unmounts
     return () => observer.disconnect();
-  }, [isLoading]); // Rerun when book is loaded to ensure reader is in DOM
+  }, [isLoading]); // Re-run if loading state changes, to catch the initial render
 
   if (isLoading) {
     return (
@@ -121,15 +118,12 @@ export default function ReaderPage() {
   if (!book) return null;
 
   return (
-    // The reader needs a container with a defined height.
     <div className="h-screen w-screen" ref={readerContainerRef}>
       <ReactReader
         key={book.id}
         url={`/epubs/${book.epubFilename}`}
         location={location}
         locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-        // By not providing custom headers/arrows, we let the library use its defaults,
-        // which we then modify with the useEffect hook above.
         loadingView={
           <div className="flex justify-center items-center h-full">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
