@@ -20,19 +20,27 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     try {
         const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
         
-        // Ensure history is a clean array of valid messages, starting with a user message.
-        const cleanedHistory = (Array.isArray(history) ? history : []).filter(
-            (msg) => msg && typeof msg === 'object' && msg.role && typeof msg.content === 'string'
-        );
-        const startIndex = cleanedHistory.findIndex(msg => msg.role === 'user');
-        const validHistory = startIndex === -1 ? [] : cleanedHistory.slice(startIndex);
+        const validHistory: any[] = [];
+        if (Array.isArray(history)) {
+            // Find the index of the first user message, as Genkit history must start with 'user'.
+            const firstUserIndex = history.findIndex(msg => msg && msg.role === 'user');
 
-        // Map frontend roles to Genkit roles ('assistant' -> 'model')
-        genkitHistory = validHistory.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model' as 'user' | 'model',
-            content: [{ text: msg.content }]
-        }));
-        
+            if (firstUserIndex !== -1) {
+                // Iterate from the first user message onwards.
+                for (let i = firstUserIndex; i < history.length; i++) {
+                    const msg = history[i];
+                    // Double-check for validity before pushing.
+                    if (msg && typeof msg.role === 'string' && typeof msg.content === 'string') {
+                        validHistory.push({
+                            role: msg.role === 'user' ? ('user' as const) : ('model' as const),
+                            content: [{ text: msg.content }],
+                        });
+                    }
+                }
+            }
+        }
+        genkitHistory = validHistory;
+
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
             system: systemPrompt,
