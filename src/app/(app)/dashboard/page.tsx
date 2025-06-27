@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import type { Book, Library, User, Order, BookRequest } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -32,6 +32,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { getBookRecommendations, type BookRecommendationsOutput } from '@/ai/flows/book-recommendations';
 import { Separator } from '@/components/ui/separator';
+import { useWishlist } from '@/context/WishlistContext';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
@@ -84,6 +85,8 @@ export default function DashboardPage() {
   const [favoriteLibraries, setFavoriteLibraries] = useState<Library[]>([]);
   const [isLoadingFavorites, setIsLoadingFavorites] = useState(true);
 
+  const { wishlistItems, isLoading: isWishlistLoading } = useWishlist();
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
   });
@@ -102,6 +105,12 @@ export default function DashboardPage() {
       router.push("/");
     }
   };
+
+  const wishlistedBooks = useMemo(() => {
+    if (isWishlistLoading || !wishlistItems.length || !allBooks.length) return [];
+    const wishlistBookIds = new Set(wishlistItems.map(item => item.bookId));
+    return allBooks.filter(book => wishlistBookIds.has(book.id));
+  }, [wishlistItems, allBooks, isWishlistLoading]);
 
   // Effect to load user data from localStorage and then listen for real-time updates
   useEffect(() => {
@@ -534,12 +543,15 @@ export default function DashboardPage() {
         {/* Tabs Section */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="purchases" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-6 bg-muted/50 p-1 h-auto">
+            <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50 p-1 h-auto">
               <TabsTrigger value="purchases" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
                 <ShoppingBag className="mr-2 h-5 w-5" /> Mis Compras
               </TabsTrigger>
               <TabsTrigger value="favorites" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
                 <Heart className="mr-2 h-5 w-5" /> Librerías Favoritas
+              </TabsTrigger>
+              <TabsTrigger value="wishlist" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
+                <Bookmark className="mr-2 h-5 w-5" /> Lista de Deseos
               </TabsTrigger>
               <TabsTrigger value="ai-recommendations" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
                 <Sparkles className="mr-2 h-5 w-5" /> Recomendaciones IA
@@ -603,6 +615,28 @@ export default function DashboardPage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="wishlist">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="font-headline text-xl">Mi Lista de Deseos</CardTitle>
+                        <CardDescription>Libros que has guardado para después.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isWishlistLoading ? (
+                            <div className="flex justify-center items-center py-8">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                        ) : wishlistedBooks.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {wishlistedBooks.map(book => <BookCard key={book.id} book={book} />)}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground text-center py-4">Tu lista de deseos está vacía. Busca libros y guárdalos para más tarde.</p>
+                        )}
+                    </CardContent>
+                </Card>
             </TabsContent>
 
             <TabsContent value="ai-recommendations">

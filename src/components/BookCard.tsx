@@ -4,10 +4,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, Star, Eye, Heart, Store } from 'lucide-react';
+import { ShoppingCart, Star, Eye, Bookmark, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCart } from '@/context/CartContext'; // Added useCart
-import { useToast } from "@/hooks/use-toast";
+import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 
 interface BookCardProps {
   book: Book;
@@ -16,9 +16,8 @@ interface BookCardProps {
 
 export function BookCard({ book, size = 'normal' }: BookCardProps) {
   const { addToCart } = useCart();
-  const { toast } = useToast();
-  const imageWidth = size === 'small' ? 140 : 200;
-  const imageHeight = size === 'small' ? 210 : 300;
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const isWished = isInWishlist(book.id);
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -26,13 +25,10 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
     addToCart(book);
   };
   
-  const handleFavorite = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleWishlist = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    toast({
-        title: "Función Próximamente",
-        description: "Pronto podrás guardar tus libros favoritos.",
-    });
+    toggleWishlist(book.id);
   }
 
   return (
@@ -117,8 +113,8 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
             <ShoppingCart className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
             {size !== 'small' && "Añadir"}
           </Button>
-          <Button variant="ghost" size={size === 'small' ? 'icon' : 'sm'} aria-label="Marcar como favorito" onClick={handleFavorite}>
-            <Heart className={cn("h-4 w-4")} />
+          <Button variant="ghost" size={size === 'small' ? 'icon' : 'sm'} aria-label="Guardar en lista de deseos" onClick={handleToggleWishlist}>
+            <Bookmark className={cn("h-4 w-4", isWished && "fill-primary text-primary")} />
           </Button>
         </div>
       </CardFooter>

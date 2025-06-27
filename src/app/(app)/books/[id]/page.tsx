@@ -9,17 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send, Bookmark } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, limit, query, where, addDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 const StarRating = ({ rating, interactive = false, setRating }: { rating: number, interactive?: boolean, setRating?: (r:number) => void }) => {
   return (
@@ -43,6 +45,7 @@ export default function BookDetailsPage() {
   const bookId = params.id as string;
   const { addToCart } = useCart();
   const { toast } = useToast();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   
   const [book, setBook] = useState<Book | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -55,6 +58,8 @@ export default function BookDetailsPage() {
   const [newReviewText, setNewReviewText] = useState("");
   const [newReviewRating, setNewReviewRating] = useState(0);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  
+  const isWished = useMemo(() => book && isInWishlist(book.id), [book, isInWishlist]);
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
@@ -267,6 +272,10 @@ export default function BookDetailsPage() {
           <div className="flex flex-col sm:flex-row gap-4 items-start">
             <Button size="lg" className="w-full sm:w-auto font-body text-base shadow-md hover:shadow-lg transition-shadow" onClick={handleAddToCart}>
                 <ShoppingCart className="mr-2 h-5 w-5" /> Agregar al Carrito
+            </Button>
+             <Button size="lg" variant="outline" className="w-full sm:w-auto font-body text-base shadow-md hover:shadow-lg transition-shadow" onClick={() => book && toggleWishlist(book.id)}>
+                <Bookmark className={cn("mr-2 h-5 w-5", isWished && "fill-primary text-primary")} />
+                {isWished ? 'En mi lista' : 'Guardar para después'}
             </Button>
             
             <div className="space-y-2">

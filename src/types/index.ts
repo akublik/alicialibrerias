@@ -4,6 +4,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -142,6 +143,13 @@ export interface UserFavorite {
   id?: string; // Firestore doc ID
   userId: string;
   libraryId: string;
+  createdAt: any; // Firestore Timestamp
+}
+
+export interface UserWishlistItem {
+  id: string; // Firestore doc ID
+  userId: string;
+  bookId: string;
   createdAt: any; // Firestore Timestamp
 }
 
