@@ -130,35 +130,29 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    const genkitHistory = [];
-    let foundFirstUserMessage = false;
-
-    if (Array.isArray(history)) {
-        for (const message of history) {
-            // Validate each message thoroughly before processing
-            if (message && typeof message.role === 'string' && typeof message.content === 'string') {
-                if (message.role === 'user') {
-                    foundFirstUserMessage = true;
-                }
-                
-                // Only add messages after the first user message has been found
-                if (foundFirstUserMessage) {
-                     genkitHistory.push({
-                        role: message.role === 'user' ? 'user' : 'model',
-                        content: [{ text: message.content }],
-                    });
-                }
-            } else {
-                 // Log any invalid message structure to the server console for debugging
-                 console.warn("askShoppingAssistant ignored an invalid message in history:", message);
-            }
-        }
-    }
-
-    // If no user message was ever found, we can't proceed.
-    if (!foundFirstUserMessage) {
+    // 1. Sanitize the history array completely.
+    // This creates a new array containing only valid messages.
+    const validHistory: ChatMessage[] = (history || []).filter(
+        (message): message is ChatMessage =>
+            message && typeof message.role === 'string' && typeof message.content === 'string'
+    );
+    
+    // 2. Find the first user message index. If not found, we can't proceed.
+    const firstUserMessageIndex = validHistory.findIndex(m => m.role === 'user');
+    if (firstUserMessageIndex === -1) {
         return "Por favor, hazme una pregunta para empezar.";
     }
+
+    // 3. Take only the relevant part of the history (from the first user message onwards).
+    const relevantHistory = validHistory.slice(firstUserMessageIndex);
+
+    // 4. Convert to the format Genkit expects.
+    // This map operates on a guaranteed-clean array, so no checks are needed inside.
+    const genkitHistory = relevantHistory.map(message => ({
+        role: message.role === 'user' ? 'user' : 'model',
+        content: [{ text: message.content }], // This is now safe
+    }));
+
 
     const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
@@ -183,6 +177,7 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         return text;
     }
 
+    // This handles the case where a tool is called and no text is returned.
     console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
-    return "Alicia está pensando... parece que ha encontrado algo interesante pero no sabe cómo expresarlo. Intenta preguntarle de otra manera o revisa si tu consulta fue muy específica.";
+    return "Alicia está buscando la información que pediste. Pregúntame si encontró algo.";
 }

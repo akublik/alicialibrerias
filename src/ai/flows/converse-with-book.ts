@@ -18,35 +18,27 @@ export type ChatMessage = {
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
     
-    const genkitHistory = [];
-    let foundFirstUserMessage = false;
-
-    if (Array.isArray(history)) {
-        for (const message of history) {
-            // Validate each message thoroughly before processing
-            if (message && typeof message.role === 'string' && typeof message.content === 'string') {
-                if (message.role === 'user') {
-                    foundFirstUserMessage = true;
-                }
-                
-                // Only add messages after the first user message has been found
-                if (foundFirstUserMessage) {
-                     genkitHistory.push({
-                        role: message.role === 'user' ? 'user' : 'model',
-                        content: [{ text: message.content }],
-                    });
-                }
-            } else {
-                 // Log any invalid message structure to the server console for debugging
-                 console.warn("converseWithBook ignored an invalid message in history:", message);
-            }
-        }
-    }
-
-    // If no user message was ever found, we can't proceed.
-    if (!foundFirstUserMessage) {
+    // 1. Sanitize the history array completely.
+    const validHistory: ChatMessage[] = (history || []).filter(
+        (message): message is ChatMessage =>
+            message && typeof message.role === 'string' && typeof message.content === 'string'
+    );
+    
+    // 2. Find the first user message index. If not found, we can't proceed.
+    const firstUserMessageIndex = validHistory.findIndex(m => m.role === 'user');
+    if (firstUserMessageIndex === -1) {
         return "Por favor, hazme una pregunta para empezar.";
     }
+
+    // 3. Take only the relevant part of the history (from the first user message onwards).
+    const relevantHistory = validHistory.slice(firstUserMessageIndex);
+
+    // 4. Convert to the format Genkit expects.
+    const genkitHistory = relevantHistory.map(message => ({
+        role: message.role === 'user' ? 'user' : 'model',
+        content: [{ text: message.content }], // This is now safe
+    }));
+
 
     const response = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
