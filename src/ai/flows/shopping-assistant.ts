@@ -130,22 +130,22 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    // Filter out any invalid or empty messages from history
-    const validHistory = history.filter(m => m && m.role && m.content);
-
-    // Find the first user message, as the history must start with a user message.
+    // 1. Filter out any invalid messages completely.
+    const validHistory = history.filter(m => m && m.role && typeof m.content === 'string');
+    
+    // 2. Find the index of the first user message. Genkit history must start with a user message.
     const firstUserIndex = validHistory.findIndex(m => m.role === 'user');
 
-    // If no user message is found, do not proceed.
+    // If no user message is found, we can't proceed.
     if (firstUserIndex === -1) {
-          return "Por favor, hazme una pregunta para empezar.";
+        return "Por favor, hazme una pregunta para empezar.";
     }
 
-    // Slice the history from the first user message.
-    const cleanHistory = validHistory.slice(firstUserIndex);
+    // 3. Slice the history to start from the first user message.
+    const finalHistory = validHistory.slice(firstUserIndex);
     
-    // Convert to the format Genkit expects.
-    const genkitHistory = cleanHistory.map((msg) => ({
+    // 4. Convert to the format Genkit expects.
+    const genkitHistory = finalHistory.map((msg) => ({
         role: msg.role === 'user' ? 'user' : 'model',
         content: [{ text: msg.content }],
     }));
