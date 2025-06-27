@@ -130,66 +130,49 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    try {
-        // Find the first user message, as the history must start with a user message.
-        const firstUserIndex = history.findIndex(m => m && m.role === 'user');
-        
-        // If no user message is found, do not proceed.
-        if (firstUserIndex === -1) {
-             return "Por favor, hazme una pregunta para empezar.";
-        }
+    // Filter out any invalid or empty messages from history
+    const validHistory = history.filter(m => m && m.role && m.content);
 
-        // Slice the history from the first user message and filter out any invalid messages.
-        const validHistory = history
-            .slice(firstUserIndex)
-            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+    // Find the first user message, as the history must start with a user message.
+    const firstUserIndex = validHistory.findIndex(m => m.role === 'user');
 
-        // Convert to the format Genkit expects.
-        const genkitHistory = validHistory.map((msg) => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            content: [{ text: msg.content }],
-        }));
-        
-        const response = await ai.generate({
-            model: 'googleai/gemini-1.5-flash',
-            tools: [findBooksInCatalog, findLibrariesByCity],
-            history: genkitHistory,
-            system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
-            - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
-            - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
-            - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
-            - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
-            - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
-            - Si una herramienta no devuelve resultados, informa amablemente al usuario.
-            - Sé concisa, conversacional y responde siempre en español.
-            - No inventes información que no puedas obtener con tus herramientas.
-            - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
-        });
-        
-        const text = response.text;
-        
-        // IMPORTANT: Always return a string to prevent breaking the chat history.
-        if (text) {
-            return text;
-        }
-
-        console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
-        return "Alicia está pensando... parece que ha encontrado algo interesante pero no sabe cómo expresarlo. Intenta preguntarle de otra manera o revisa si tu consulta fue muy específica.";
-
-    } catch (error: any) {
-        console.error("----------- DETAILED AI SHOPPING ASSISTANT ERROR -----------");
-        console.error("Flow: askShoppingAssistant");
-        console.error("Timestamp:", new Date().toISOString());
-        console.error("History from client:", JSON.stringify(history, null, 2));
-        console.error("Error Name:", error.name);
-        console.error("Error Message:", error.message);
-        console.error("Error object:", JSON.stringify(error, null, 2));
-        console.error("----------------------------------------------------------");
-        
-        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
-            return error.message;
-        }
-
-        return `Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos. Mensaje: ${error.message}`;
+    // If no user message is found, do not proceed.
+    if (firstUserIndex === -1) {
+          return "Por favor, hazme una pregunta para empezar.";
     }
+
+    // Slice the history from the first user message.
+    const cleanHistory = validHistory.slice(firstUserIndex);
+    
+    // Convert to the format Genkit expects.
+    const genkitHistory = cleanHistory.map((msg) => ({
+        role: msg.role === 'user' ? 'user' : 'model',
+        content: [{ text: msg.content }],
+    }));
+    
+    const response = await ai.generate({
+        model: 'googleai/gemini-1.5-flash',
+        tools: [findBooksInCatalog, findLibrariesByCity],
+        history: genkitHistory,
+        system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
+        - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
+        - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
+        - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
+        - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
+        - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
+        - Si una herramienta no devuelve resultados, informa amablemente al usuario.
+        - Sé concisa, conversacional y responde siempre en español.
+        - No inventes información que no puedas obtener con tus herramientas.
+        - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
+    });
+    
+    const text = response.text;
+    
+    // IMPORTANT: Always return a string to prevent breaking the chat history.
+    if (text) {
+        return text;
+    }
+
+    console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
+    return "Alicia está pensando... parece que ha encontrado algo interesante pero no sabe cómo expresarlo. Intenta preguntarle de otra manera o revisa si tu consulta fue muy específica.";
 }
