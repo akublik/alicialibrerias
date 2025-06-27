@@ -130,33 +130,26 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    const genkitHistory = [];
-    let userMessageFound = false;
-
-    if (Array.isArray(history)) {
-        for (const message of history) {
-            if (message?.role === 'user') {
-                userMessageFound = true;
-            }
-            if (!userMessageFound) {
-                continue;
-            }
-            if (message && typeof message.role === 'string' && typeof message.content === 'string') {
-                genkitHistory.push({
-                    role: message.role === 'user' ? 'user' : 'model',
-                    content: [{ text: message.content }],
-                });
-            } else {
-                console.warn("Skipping invalid message in shopping assistant history:", message);
-            }
-        }
-    }
-
-    if (!userMessageFound) {
-        return "Por favor, hazme una pregunta para empezar.";
-    }
-
     try {
+        // Find the first user message, as the history must start with a user message.
+        const firstUserIndex = history.findIndex(m => m && m.role === 'user');
+        
+        // If no user message is found, do not proceed.
+        if (firstUserIndex === -1) {
+             return "Por favor, hazme una pregunta para empezar.";
+        }
+
+        // Slice the history from the first user message and filter out any invalid messages.
+        const validHistory = history
+            .slice(firstUserIndex)
+            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+
+        // Convert to the format Genkit expects.
+        const genkitHistory = validHistory.map((msg) => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            content: [{ text: msg.content }],
+        }));
+        
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
             tools: [findBooksInCatalog, findLibrariesByCity],
@@ -175,16 +168,28 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         
         const text = response.text;
         
+        // IMPORTANT: Always return a string to prevent breaking the chat history.
         if (text) {
             return text;
         }
 
         console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
-        return "Alicia está buscando la información que pediste. Pregúntame si encontró algo.";
+        return "Alicia está pensando... parece que ha encontrado algo interesante pero no sabe cómo expresarlo. Intenta preguntarle de otra manera o revisa si tu consulta fue muy específica.";
 
-    } catch (e) {
-        console.error("Error in askShoppingAssistant during AI generation:", e);
-        console.error("History that caused the error:", JSON.stringify(genkitHistory, null, 2));
-        return "Lo siento, tuve un problema interno al procesar tu solicitud. Revisa la consola del servidor para detalles.";
+    } catch (error: any) {
+        console.error("----------- DETAILED AI SHOPPING ASSISTANT ERROR -----------");
+        console.error("Flow: askShoppingAssistant");
+        console.error("Timestamp:", new Date().toISOString());
+        console.error("History from client:", JSON.stringify(history, null, 2));
+        console.error("Error Name:", error.name);
+        console.error("Error Message:", error.message);
+        console.error("Error object:", JSON.stringify(error, null, 2));
+        console.error("----------------------------------------------------------");
+        
+        if (error.message && error.message.includes('GOOGLE_API_KEY')) {
+            return error.message;
+        }
+
+        return `Lo siento, tuve un problema interno al procesar tu solicitud. Revisa la consola del servidor para detalles. Mensaje: ${error.message}`;
     }
 }
