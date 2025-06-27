@@ -18,41 +18,53 @@ export type ChatMessage = {
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
     
-    // 1. Sanitize the history array completely.
-    const validHistory: ChatMessage[] = (history || []).filter(
-        (message): message is ChatMessage =>
-            message && typeof message.role === 'string' && typeof message.content === 'string'
-    );
-    
-    // 2. Find the first user message index. If not found, we can't proceed.
-    const firstUserMessageIndex = validHistory.findIndex(m => m.role === 'user');
-    if (firstUserMessageIndex === -1) {
+    const genkitHistory = [];
+    let userMessageFound = false;
+
+    if (Array.isArray(history)) {
+        for (const message of history) {
+            if (message?.role === 'user') {
+                userMessageFound = true;
+            }
+
+            if (!userMessageFound) {
+                continue;
+            }
+
+            if (message && typeof message.role === 'string' && typeof message.content === 'string') {
+                genkitHistory.push({
+                    role: message.role === 'user' ? 'user' : 'model',
+                    content: [{ text: message.content }],
+                });
+            } else {
+                console.warn("Skipping invalid message in converse-with-book history:", message);
+            }
+        }
+    }
+
+    if (!userMessageFound) {
         return "Por favor, hazme una pregunta para empezar.";
     }
 
-    // 3. Take only the relevant part of the history (from the first user message onwards).
-    const relevantHistory = validHistory.slice(firstUserMessageIndex);
+    try {
+        const response = await ai.generate({
+            model: 'googleai/gemini-1.5-flash',
+            system: systemPrompt,
+            history: genkitHistory,
+        });
 
-    // 4. Convert to the format Genkit expects.
-    const genkitHistory = relevantHistory.map(message => ({
-        role: message.role === 'user' ? 'user' : 'model',
-        content: [{ text: message.content }], // This is now safe
-    }));
+        const text = response.text;
 
+        if (text) {
+          return text;
+        }
 
-    const response = await ai.generate({
-        model: 'googleai/gemini-1.5-flash',
-        system: systemPrompt,
-        history: genkitHistory,
-    });
-
-    const text = response.text;
-
-    // IMPORTANT: Always return a string to prevent breaking the chat history.
-    if (text) {
-      return text;
+        console.warn("Converse with book response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
+        return "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
+        
+    } catch (e: any) {
+        console.error("Error in converseWithBook during AI generation:", e);
+        console.error("History that caused the error:", JSON.stringify(genkitHistory, null, 2));
+        return "Lo siento, tuve un problema interno al procesar tu solicitud. Revisa la consola del servidor para detalles.";
     }
-
-    console.warn("Converse with book response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
-    return "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
 }

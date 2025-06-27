@@ -130,54 +130,61 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    // 1. Sanitize the history array completely.
-    // This creates a new array containing only valid messages.
-    const validHistory: ChatMessage[] = (history || []).filter(
-        (message): message is ChatMessage =>
-            message && typeof message.role === 'string' && typeof message.content === 'string'
-    );
-    
-    // 2. Find the first user message index. If not found, we can't proceed.
-    const firstUserMessageIndex = validHistory.findIndex(m => m.role === 'user');
-    if (firstUserMessageIndex === -1) {
+    const genkitHistory = [];
+    let userMessageFound = false;
+
+    if (Array.isArray(history)) {
+        for (const message of history) {
+            if (message?.role === 'user') {
+                userMessageFound = true;
+            }
+            if (!userMessageFound) {
+                continue;
+            }
+            if (message && typeof message.role === 'string' && typeof message.content === 'string') {
+                genkitHistory.push({
+                    role: message.role === 'user' ? 'user' : 'model',
+                    content: [{ text: message.content }],
+                });
+            } else {
+                console.warn("Skipping invalid message in shopping assistant history:", message);
+            }
+        }
+    }
+
+    if (!userMessageFound) {
         return "Por favor, hazme una pregunta para empezar.";
     }
 
-    // 3. Take only the relevant part of the history (from the first user message onwards).
-    const relevantHistory = validHistory.slice(firstUserMessageIndex);
+    try {
+        const response = await ai.generate({
+            model: 'googleai/gemini-1.5-flash',
+            tools: [findBooksInCatalog, findLibrariesByCity],
+            history: genkitHistory,
+            system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
+            - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
+            - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
+            - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
+            - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
+            - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
+            - Si una herramienta no devuelve resultados, informa amablemente al usuario.
+            - Sé concisa, conversacional y responde siempre en español.
+            - No inventes información que no puedas obtener con tus herramientas.
+            - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
+        });
+        
+        const text = response.text;
+        
+        if (text) {
+            return text;
+        }
 
-    // 4. Convert to the format Genkit expects.
-    // This map operates on a guaranteed-clean array, so no checks are needed inside.
-    const genkitHistory = relevantHistory.map(message => ({
-        role: message.role === 'user' ? 'user' : 'model',
-        content: [{ text: message.content }], // This is now safe
-    }));
+        console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
+        return "Alicia está buscando la información que pediste. Pregúntame si encontró algo.";
 
-
-    const response = await ai.generate({
-        model: 'googleai/gemini-1.5-flash',
-        tools: [findBooksInCatalog, findLibrariesByCity],
-        history: genkitHistory,
-        system: `Eres Alicia, una asistente de compras amigable y experta para la tienda de libros 'Alicia Libros'.
-        - Tu objetivo es ayudar a los usuarios a encontrar libros y librerías.
-        - Si el usuario pregunta por librerías en una ciudad, utiliza la herramienta 'findLibrariesByCity'.
-        - Si el usuario pregunta por libros (por título, autor, género, etc.), utiliza la herramienta 'findBooksInCatalog'.
-        - Si encuentras librerías, preséntalas en una lista clara con su nombre y dirección.
-        - Si encuentras libros, preséntalos en un formato de lista claro, incluyendo título, autor, precio y de qué librería es.
-        - Si una herramienta no devuelve resultados, informa amablemente al usuario.
-        - Sé concisa, conversacional y responde siempre en español.
-        - No inventes información que no puedas obtener con tus herramientas.
-        - Usa el historial de la conversación para entender el contexto. Si un usuario dice "y en quito?" después de preguntar por librerías, asume que también está preguntando por librerías en Quito.`,
-    });
-    
-    const text = response.text;
-    
-    // IMPORTANT: Always return a string to prevent breaking the chat history.
-    if (text) {
-        return text;
+    } catch (e) {
+        console.error("Error in askShoppingAssistant during AI generation:", e);
+        console.error("History that caused the error:", JSON.stringify(genkitHistory, null, 2));
+        return "Lo siento, tuve un problema interno al procesar tu solicitud. Revisa la consola del servidor para detalles.";
     }
-
-    // This handles the case where a tool is called and no text is returned.
-    console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
-    return "Alicia está buscando la información que pediste. Pregúntame si encontró algo.";
 }
