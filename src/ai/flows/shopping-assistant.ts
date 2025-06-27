@@ -132,34 +132,26 @@ export type ChatMessage = {
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
     let genkitHistory: any[] = [];
     try {
-        // --- START OF ROBUST HISTORY PROCESSING ---
-        const processedHistory: any[] = [];
-        if (Array.isArray(history)) {
-            // Find the index of the first user message. Genkit requires history to start with a 'user' role.
-            let firstUserIndex = -1;
-            for (let i = 0; i < history.length; i++) {
-                if (history[i] && history[i].role === 'user') {
-                    firstUserIndex = i;
-                    break;
-                }
-            }
+        // Step 1: Filter out any invalid or empty messages to prevent errors.
+        const validHistory = history.filter(
+            (msg) => msg && typeof msg.role === 'string' && typeof msg.content === 'string'
+        );
 
-            if (firstUserIndex !== -1) {
-                // Iterate from the first user message onwards.
-                for (let i = firstUserIndex; i < history.length; i++) {
-                    const msg = history[i];
-                    // Explicitly check if the message and its properties are valid before pushing.
-                    if (msg && typeof msg.role === 'string' && typeof msg.content === 'string') {
-                        processedHistory.push({
-                            role: msg.role === 'user' ? 'user' : 'model',
-                            content: [{ text: msg.content }],
-                        });
-                    }
-                }
-            }
+        // Step 2: Find the index of the first message from the 'user'.
+        // Genkit requires the conversation history to start with a user message.
+        const firstUserIndex = validHistory.findIndex((msg) => msg.role === 'user');
+
+        // Step 3: If no user message is found, there's nothing to process.
+        if (firstUserIndex === -1) {
+            genkitHistory = [];
+        } else {
+            // Step 4: Create the final history for Genkit, starting from the first user message.
+            // Map 'assistant' role to 'model' as required by Genkit.
+            genkitHistory = validHistory.slice(firstUserIndex).map((msg) => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                content: [{ text: msg.content }],
+            }));
         }
-        genkitHistory = processedHistory;
-        // --- END OF ROBUST HISTORY PROCESSING ---
         
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
