@@ -16,28 +16,27 @@ export type ChatMessage = {
 };
 
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
-    console.log("converseWithBook received raw history:", JSON.stringify(history, null, 2));
-    
-    let genkitHistory: any[] = [];
     try {
         const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
         
-        const validHistory = history.filter(
-            (msg) => msg && typeof msg.role === 'string' && typeof msg.content === 'string'
-        );
+        // Find the first user message, as the history must start with a user message.
+        const firstUserIndex = history.findIndex(m => m && m.role === 'user');
 
-        const firstUserIndex = validHistory.findIndex((msg) => msg.role === 'user');
-
+        // If no user message is found, do not proceed.
         if (firstUserIndex === -1) {
-            genkitHistory = [];
-        } else {
-            const historyToProcess = validHistory.slice(firstUserIndex);
-            console.log("converseWithBook will process this history slice:", JSON.stringify(historyToProcess, null, 2));
-            genkitHistory = historyToProcess.map((msg) => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                content: [{ text: msg.content }],
-            }));
+             return "Por favor, hazme una pregunta para empezar.";
         }
+        
+        // Slice the history from the first user message and filter out any invalid messages.
+        const validHistory = history
+            .slice(firstUserIndex)
+            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+
+        // Convert to the format Genkit expects.
+        const genkitHistory = validHistory.map((msg) => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            content: [{ text: msg.content }],
+        }));
 
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
@@ -47,12 +46,13 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
 
         const text = response.text;
 
+        // IMPORTANT: Always return a string to prevent breaking the chat history.
         if (text) {
           return text;
         }
 
-        console.warn("Assistant response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
-        return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
+        console.warn("Converse with book response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
+        return "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
 
     } catch (error: any) {
         console.error("----------- DETAILED AI CHAT ERROR -----------");
@@ -60,7 +60,6 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Timestamp:", new Date().toISOString());
         console.error("Input bookTitle:", bookTitle);
         console.error("Original history from client:", JSON.stringify(history, null, 2));
-        console.error("Processed history for Genkit:", JSON.stringify(genkitHistory, null, 2));
         console.error("Error Name:", error.name);
         console.error("Error Message:", error.message);
         console.error("Error object:", JSON.stringify(error, null, 2));

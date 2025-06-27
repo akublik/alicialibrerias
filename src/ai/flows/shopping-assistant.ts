@@ -130,26 +130,25 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
-    console.log("askShoppingAssistant received raw history:", JSON.stringify(history, null, 2));
-
-    let genkitHistory: any[] = [];
     try {
-        const validHistory = history.filter(
-            (msg) => msg && typeof msg.role === 'string' && typeof msg.content === 'string'
-        );
-
-        const firstUserIndex = validHistory.findIndex((msg) => msg.role === 'user');
-
+        // Find the first user message, as the history must start with a user message.
+        const firstUserIndex = history.findIndex(m => m && m.role === 'user');
+        
+        // If no user message is found, do not proceed.
         if (firstUserIndex === -1) {
-            genkitHistory = [];
-        } else {
-            const historyToProcess = validHistory.slice(firstUserIndex);
-            console.log("askShoppingAssistant will process this history slice:", JSON.stringify(historyToProcess, null, 2));
-            genkitHistory = historyToProcess.map((msg) => ({
-                role: msg.role === 'user' ? 'user' : 'model',
-                content: [{ text: msg.content }],
-            }));
+             return "Por favor, hazme una pregunta para empezar.";
         }
+
+        // Slice the history from the first user message and filter out any invalid messages.
+        const validHistory = history
+            .slice(firstUserIndex)
+            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+
+        // Convert to the format Genkit expects.
+        const genkitHistory = validHistory.map((msg) => ({
+            role: msg.role === 'user' ? 'user' : 'model',
+            content: [{ text: msg.content }],
+        }));
         
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
@@ -169,19 +168,19 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         
         const text = response.text;
         
+        // IMPORTANT: Always return a string to prevent breaking the chat history.
         if (text) {
             return text;
         }
-        
-        console.warn("Assistant response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
-        return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
+
+        console.warn("Shopping assistant response did not contain text. This can happen when a tool is called. Full response:", JSON.stringify(response, null, 2));
+        return "Alicia está pensando... parece que ha encontrado algo interesante pero no sabe cómo expresarlo. Intenta preguntarle de otra manera o revisa si tu consulta fue muy específica.";
 
     } catch (error: any) {
         console.error("----------- DETAILED AI SHOPPING ASSISTANT ERROR -----------");
         console.error("Flow: askShoppingAssistant");
         console.error("Timestamp:", new Date().toISOString());
         console.error("History from client:", JSON.stringify(history, null, 2));
-        console.error("Processed history for Genkit:", JSON.stringify(genkitHistory, null, 2));
         console.error("Error Name:", error.name);
         console.error("Error Message:", error.message);
         console.error("Error object:", JSON.stringify(error, null, 2));
