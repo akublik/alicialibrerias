@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview AI agent that converses as "AlicIA" about a book.
@@ -34,7 +33,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         }));
         
         const response = await ai.generate({
-            model: 'googleai/gemini-1.5-flash',
+            model: 'googleai/gemini-2.5-flash-preview',
             system: systemPrompt,
             history: genkitHistory,
         });
