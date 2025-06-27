@@ -31,7 +31,7 @@ export async function generateSocialPost(input: GenerateSocialPostInput): Promis
 
 const prompt = ai.definePrompt({
   name: 'generateSocialPostPrompt',
-  model: 'googleai/gemini-2.5-flash-preview',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: GenerateSocialPostInputSchema},
   output: {schema: GenerateSocialPostOutputSchema},
   prompt: `Eres un experto en marketing digital y redes sociales para librerías. Tu tarea es crear una publicación atractiva en español para anunciar un libro.
