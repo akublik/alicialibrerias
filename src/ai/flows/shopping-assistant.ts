@@ -132,26 +132,24 @@ export type ChatMessage = {
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
     let genkitHistory;
     try {
-        const validHistory: any[] = [];
-        if (Array.isArray(history)) {
-            // Find the index of the first user message, as Genkit history must start with 'user'.
-            const firstUserIndex = history.findIndex(msg => msg && msg.role === 'user');
+        // --- START OF NEW ROBUST HISTORY PROCESSING ---
+        // 1. Sanitize the entire history array first to remove any invalid entries.
+        const sanitizedHistory = Array.isArray(history) 
+            ? history.filter(msg => msg && typeof msg.role === 'string' && typeof msg.content === 'string') 
+            : [];
 
-            if (firstUserIndex !== -1) {
-                // Iterate from the first user message onwards.
-                for (let i = firstUserIndex; i < history.length; i++) {
-                    const msg = history[i];
-                    // Double-check for validity before pushing.
-                    if (msg && typeof msg.role === 'string' && typeof msg.content === 'string') {
-                        validHistory.push({
-                            role: msg.role === 'user' ? ('user' as const) : ('model' as const),
-                            content: [{ text: msg.content }],
-                        });
-                    }
-                }
-            }
-        }
-        genkitHistory = validHistory;
+        // 2. Find the first user message in the sanitized history. Genkit requires history to start with a 'user' role.
+        const firstUserIndex = sanitizedHistory.findIndex(msg => msg.role === 'user');
+
+        // 3. Slice the array from the first user message onwards. If no user message, history is empty.
+        const historyToSend = firstUserIndex !== -1 ? sanitizedHistory.slice(firstUserIndex) : [];
+        
+        // 4. Map the valid, sliced history to the format Genkit expects.
+        genkitHistory = historyToSend.map(msg => ({
+            role: msg.role === 'user' ? ('user' as const) : ('model' as const),
+            content: [{ text: msg.content }],
+        }));
+        // --- END OF NEW ROBUST HISTORY PROCESSING ---
         
         const response = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
