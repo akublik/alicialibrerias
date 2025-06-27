@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A shopping assistant AI agent that can query the book catalog and library directory.
@@ -77,6 +76,7 @@ const findBooksInCatalog = ai.defineTool(
     return books;
   }
 );
+
 
 
 // Tool 2: Find Libraries
@@ -190,6 +190,6 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
             return error.message;
         }
 
-        return `Lo siento, tuve un problema interno al procesar tu solicitud. Revisa la consola del servidor para detalles. Mensaje: ${error.message}`;
+        return `Lo siento, he encontrado un error y no puedo procesar tu solicitud ahora mismo. Revisa la consola del servidor para ver los detalles técnicos. Mensaje: ${error.message}`;
     }
 }
