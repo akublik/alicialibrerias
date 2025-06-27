@@ -20,21 +20,15 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     try {
         const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
         
-        // Step 1: Filter out any invalid or empty messages to prevent errors.
         const validHistory = history.filter(
             (msg) => msg && typeof msg.role === 'string' && typeof msg.content === 'string'
         );
 
-        // Step 2: Find the index of the first message from the 'user'.
-        // Genkit requires the conversation history to start with a user message.
         const firstUserIndex = validHistory.findIndex((msg) => msg.role === 'user');
 
-        // Step 3: If no user message is found, there's nothing to process.
         if (firstUserIndex === -1) {
             genkitHistory = [];
         } else {
-            // Step 4: Create the final history for Genkit, starting from the first user message.
-            // Map 'assistant' role to 'model' as required by Genkit.
             genkitHistory = validHistory.slice(firstUserIndex).map((msg) => ({
                 role: msg.role === 'user' ? 'user' : 'model',
                 content: [{ text: msg.content }],
