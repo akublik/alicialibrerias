@@ -16,6 +16,8 @@ export type ChatMessage = {
 };
 
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
+    console.log("converseWithBook received raw history:", JSON.stringify(history, null, 2));
+    
     let genkitHistory: any[] = [];
     try {
         const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
@@ -29,7 +31,9 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         if (firstUserIndex === -1) {
             genkitHistory = [];
         } else {
-            genkitHistory = validHistory.slice(firstUserIndex).map((msg) => ({
+            const historyToProcess = validHistory.slice(firstUserIndex);
+            console.log("converseWithBook will process this history slice:", JSON.stringify(historyToProcess, null, 2));
+            genkitHistory = historyToProcess.map((msg) => ({
                 role: msg.role === 'user' ? 'user' : 'model',
                 content: [{ text: msg.content }],
             }));
@@ -47,7 +51,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
           return text;
         }
 
-        console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
+        console.warn("Assistant response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
         return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
 
     } catch (error: any) {

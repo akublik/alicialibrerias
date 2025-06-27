@@ -130,6 +130,8 @@ export type ChatMessage = {
 
 // Main Flow
 export async function askShoppingAssistant(history: ChatMessage[]): Promise<string> {
+    console.log("askShoppingAssistant received raw history:", JSON.stringify(history, null, 2));
+
     let genkitHistory: any[] = [];
     try {
         const validHistory = history.filter(
@@ -141,7 +143,9 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
         if (firstUserIndex === -1) {
             genkitHistory = [];
         } else {
-            genkitHistory = validHistory.slice(firstUserIndex).map((msg) => ({
+            const historyToProcess = validHistory.slice(firstUserIndex);
+            console.log("askShoppingAssistant will process this history slice:", JSON.stringify(historyToProcess, null, 2));
+            genkitHistory = historyToProcess.map((msg) => ({
                 role: msg.role === 'user' ? 'user' : 'model',
                 content: [{ text: msg.content }],
             }));
@@ -169,7 +173,7 @@ export async function askShoppingAssistant(history: ChatMessage[]): Promise<stri
             return text;
         }
         
-        console.warn("Assistant response was empty or did not contain text.", JSON.stringify(response, null, 2));
+        console.warn("Assistant response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
         return "La IA respondió, pero el contenido estaba vacío. Revisa la consola del servidor para ver la respuesta completa de la IA.";
 
     } catch (error: any) {
