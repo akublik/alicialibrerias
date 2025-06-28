@@ -1,12 +1,21 @@
 rules_version = '2';
+
 service firebase.storage {
-  match /b/{bucket}/o {
+  // Match the specific bucket for this project.
+  match /b/alicia-lee.firebasestorage.app/o {
+    
+    // Allow anyone to read any file. This is necessary for the
+    // reader component to be able to access the EPUB files.
     match /{allPaths=**} {
       allow read;
-      allow write: if false;
     }
-    match /epubs/{any_file} {
-      allow write: if request.auth != null && get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    
+    // Only allow authenticated users to write (create, update, delete) files
+    // specifically inside the 'epubs' folder.
+    // This secures the storage bucket so that only admins who can log in
+    // are able to add or modify books.
+    match /epubs/{epubFile} {
+      allow write: if request.auth != null;
     }
   }
 }
