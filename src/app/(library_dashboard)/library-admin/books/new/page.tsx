@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, BookPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -186,7 +186,7 @@ export default function NewBookPage() {
         if (!libraryDataString) throw new Error("No se pudo encontrar la información de la librería registrada.");
         const libraryData = JSON.parse(libraryDataString);
 
-        let finalImageUrl = '';
+        let finalImageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
         let finalDataAiHint = 'book cover';
 
         if (coverFile) {
