@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/digital-library/edit/[id]/page.tsx
 "use client";
 
@@ -36,7 +37,7 @@ const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
-  coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
+  coverImageUrl: z.string().url("La URL debe ser válida.").optional().or(z.literal('')),
   epubFileUrl: z.string().url("La URL del archivo EPUB es requerida.").optional().or(z.literal('')),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
