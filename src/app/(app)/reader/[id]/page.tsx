@@ -4,8 +4,9 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen } from 'lucide-react';
 import { ReactReader } from "react-reader";
@@ -23,6 +24,7 @@ export default function ReaderPage() {
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [epubUrl, setEpubUrl] = useState<string | null>(null);
   
   const [location, setLocation] = useState<string | number>(0);
   const renditionRef = useRef<Rendition | null>(null);
@@ -30,48 +32,61 @@ export default function ReaderPage() {
   const [isTocVisible, setIsTocVisible] = useState(false);
 
   useEffect(() => {
-    if (!bookId || !db) {
-      setIsLoading(false);
+    if (!bookId || !db || !storage) {
       setError("Error de configuración de la aplicación.");
+      setIsLoading(false);
       return;
     }
 
-    const fetchBook = async () => {
+    const fetchBookAndUrl = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const bookRef = doc(db, "digital_books", bookId);
         const docSnap = await getDoc(bookRef);
         if (docSnap.exists()) {
           const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+          setBook(bookData);
+          
           if (!bookData.epubFilename) {
-            setError("Este libro no tiene un archivo EPUB disponible para leer.");
-          } else {
-            setBook(bookData);
+            throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
           }
+
+          // Get download URL from Firebase Storage
+          const epubStorageRef = ref(storage, `epubs/${bookData.epubFilename}`);
+          const url = await getDownloadURL(epubStorageRef);
+          setEpubUrl(url);
+
         } else {
-          setError("Libro no encontrado en la biblioteca digital.");
+          throw new Error("Libro no encontrado en la biblioteca digital.");
         }
       } catch (e: any) {
-        setError(`Error al cargar el libro: ${e.message}`);
+        console.error("Error al cargar el libro:", e);
+        if (e.code === 'storage/object-not-found') {
+             setError(`El archivo EPUB (${e.config?.resource?.name}) no fue encontrado en el servidor. Contacta al administrador.`);
+        } else {
+            setError(`Error al cargar el libro: ${e.message}`);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchBook();
+    fetchBookAndUrl();
   }, [bookId]);
 
   const onTocLocationChanges = (href: string) => {
     if (renditionRef.current) {
         renditionRef.current.display(href);
-        setIsTocVisible(false); // Close ToC after selection
+        setIsTocVisible(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-muted">
+      <div className="flex flex-col justify-center items-center h-screen bg-muted">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Cargando libro...</p>
       </div>
     );
   }
@@ -113,7 +128,6 @@ export default function ReaderPage() {
         </header>
         
         <div className="flex-grow flex relative">
-            {/* Table of Contents Sidebar */}
             <aside className={cn(
                 "absolute sm:relative top-0 left-0 h-full bg-background z-20 transition-transform duration-300 ease-in-out w-72 border-r shadow-lg",
                 isTocVisible ? "translate-x-0" : "-translate-x-full"
@@ -140,35 +154,37 @@ export default function ReaderPage() {
                  </ScrollArea>
             </aside>
 
-            {/* Reader Area */}
             <div className="flex-grow h-full relative" id="reader-wrapper">
-                <ReactReader
-                    key={book.id}
-                    url={`/epubs/${book.epubFilename}`}
-                    location={location}
-                    locationChanged={(epubcfi: string) => setLocation(epubcfi)}
-                    getRendition={(rendition) => {
-                        renditionRef.current = rendition;
-                        rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
-                            setToc(bookToc);
-                        });
-                    }}
-                    loadingView={
-                        <div className="flex justify-center items-center h-full">
-                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                        </div>
-                    }
-                    // Hide default TOC button and arrows
-                    tocComponent={() => <div />}
-                    showToc={false}
-                />
+                {epubUrl ? (
+                    <ReactReader
+                        key={book.id}
+                        url={epubUrl}
+                        location={location}
+                        locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+                        getRendition={(rendition) => {
+                            renditionRef.current = rendition;
+                            rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
+                                setToc(bookToc);
+                            });
+                        }}
+                        loadingView={
+                            <div className="flex justify-center items-center h-full">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                            </div>
+                        }
+                        tocComponent={() => <div />}
+                        showToc={false}
+                    />
+                ) : (
+                   <div className="flex justify-center items-center h-full">
+                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                   </div>
+                )}
             </div>
         </div>
         
-        {/* Chat Trigger */}
         <ConverseWithBookTrigger bookTitle={book.title} />
 
-        {/* Navigation Arrows */}
         <div 
             className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
             onClick={() => renditionRef.current?.prev()}

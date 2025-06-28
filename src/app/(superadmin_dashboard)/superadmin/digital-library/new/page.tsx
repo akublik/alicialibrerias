@@ -22,8 +22,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
@@ -31,20 +32,18 @@ import ePub from "epubjs";
 import Image from "next/image";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubFilename: z.string().optional(),
+  epubFilename: z.string().min(1, "El nombre del archivo EPUB es requerido."),
   pdfFilename: z.string().optional(),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-}).refine(data => data.epubFilename || data.pdfFilename, {
-  message: "Debes proporcionar al menos un nombre de archivo (EPUB o PDF).",
-  path: ["epubFilename"],
 });
 
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
@@ -54,6 +53,8 @@ export default function NewDigitalBookPage() {
   const [isParsing, setIsParsing] = useState(false);
   const [formVisible, setFormVisible] = useState(false);
   const [parsedCoverUrl, setParsedCoverUrl] = useState<string | null>(null);
+  const [epubFile, setEpubFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -76,16 +77,15 @@ export default function NewDigitalBookPage() {
     if (!file) return;
 
     if (file.type !== "application/epub+zip") {
-        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
-        return;
+      toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+      return;
     }
 
     setIsParsing(true);
     setFormVisible(false);
     form.reset();
-    if (parsedCoverUrl) {
-      URL.revokeObjectURL(parsedCoverUrl);
-    }
+    setEpubFile(file);
+    if (parsedCoverUrl) URL.revokeObjectURL(parsedCoverUrl);
     setParsedCoverUrl(null);
 
     const reader = new FileReader();
@@ -95,55 +95,37 @@ export default function NewDigitalBookPage() {
             toast({ title: "Error de lectura", description: "No se pudo leer el archivo.", variant: "destructive" });
             return;
         }
-
         try {
             const book = ePub(e.target.result as ArrayBuffer);
             const metadata = await book.loaded.metadata;
-            
-            // 1. Robust cover extraction
             const coverUrl = await book.coverUrl();
             if (coverUrl) {
                 const response = await fetch(coverUrl);
                 const blob = await response.blob();
                 setParsedCoverUrl(URL.createObjectURL(blob));
             }
-
-            // 2. Robust author extraction function
             const getAuthor = (creator: any): string => {
                 if (!creator) return "";
                 if (typeof creator === 'string') return creator;
                 if (Array.isArray(creator) && creator.length > 0) {
                     const firstAuthor = creator[0];
                     if (typeof firstAuthor === 'string') return firstAuthor;
-                    if (typeof firstAuthor === 'object' && firstAuthor !== null && (firstAuthor['#text'] || firstAuthor.name)) {
-                        return firstAuthor['#text'] || firstAuthor.name;
-                    }
+                    if (typeof firstAuthor === 'object' && firstAuthor !== null && (firstAuthor['#text'] || firstAuthor.name)) return firstAuthor['#text'] || firstAuthor.name;
                 }
-                if (typeof creator === 'object' && creator !== null && (creator['#text'] || creator.name)) {
-                    return creator['#text'] || creator.name;
-                }
+                if (typeof creator === 'object' && creator !== null && (creator['#text'] || creator.name)) return creator['#text'] || creator.name;
                 return "";
             };
-            
-             // 3. Robust function for simple fields like title or description
             const getSimpleField = (field: any): string => {
                 if (!field) return "";
                 if (typeof field === 'string') return field;
-                if (typeof field === 'number') return String(field); // Handles numeric titles
-                if (typeof field === 'object' && field !== null && field['#text']) {
-                    return field['#text'];
-                }
+                if (typeof field === 'number') return String(field);
+                if (typeof field === 'object' && field !== null && field['#text']) return field['#text'];
                 return "";
             };
 
-            // 4. Set form values defensively
-            const title = getSimpleField(metadata.title) || "Título no encontrado";
-            const author = getAuthor(metadata.creator) || "Autor desconocido";
-            const description = getSimpleField(metadata.description) || "";
-            
-            form.setValue("title", title);
-            form.setValue("author", author);
-            form.setValue("description", description);
+            form.setValue("title", getSimpleField(metadata.title) || "Título no encontrado");
+            form.setValue("author", getAuthor(metadata.creator) || "Autor desconocido");
+            form.setValue("description", getSimpleField(metadata.description) || "");
             form.setValue("epubFilename", file.name);
             form.setValue("format", "EPUB");
 
@@ -159,26 +141,45 @@ export default function NewDigitalBookPage() {
     reader.readAsArrayBuffer(file);
   };
 
-
   async function onSubmit(values: DigitalBookFormValues) {
-    setIsSubmitting(true);
-    if (!db) {
-      toast({ title: "Error de base de datos", variant: "destructive" });
-      setIsSubmitting(false);
+    if (!epubFile || !storage || !db) {
+      toast({ title: "Error de configuración", description: "Falta el archivo o la conexión con la base de datos.", variant: "destructive" });
       return;
     }
-    try {
-      await addDoc(collection(db, "digital_books"), {
-        ...values,
-        createdAt: serverTimestamp(),
-      });
-      toast({ title: "Libro digital añadido", description: `"${values.title}" ahora está en la biblioteca.` });
-      router.push("/superadmin/digital-library");
-    } catch (error: any) {
-      toast({ title: "Error al añadir el libro", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
+    
+    setIsSubmitting(true);
+    setUploadProgress(0);
+
+    const storageRef = ref(storage, `epubs/${epubFile.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, epubFile);
+
+    uploadTask.on('state_changed', 
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      }, 
+      (error) => {
+        console.error("Error de subida:", error);
+        toast({ title: "Error al subir el archivo", description: error.message, variant: "destructive" });
+        setIsSubmitting(false);
+        setUploadProgress(0);
+      }, 
+      async () => {
+        try {
+          await addDoc(collection(db, "digital_books"), {
+            ...values,
+            createdAt: serverTimestamp(),
+          });
+          toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+          router.push("/superadmin/digital-library");
+        } catch (error: any) {
+          toast({ title: "Error al guardar en la base de datos", description: error.message, variant: "destructive" });
+        } finally {
+          setIsSubmitting(false);
+          setUploadProgress(0);
+        }
+      }
+    );
   }
 
   return (
@@ -195,7 +196,7 @@ export default function NewDigitalBookPage() {
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Asistente de Creación de Libros Digitales</CardTitle>
-          <CardDescription>Sube un archivo EPUB para rellenar automáticamente los detalles del libro. La subida del archivo al servidor en la carpeta `public/epubs` aún debe hacerse manualmente.</CardDescription>
+          <CardDescription>Sube un archivo EPUB para rellenar automáticamente los detalles del libro. La subida del archivo se hará al guardar.</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="p-6 border-2 border-dashed rounded-lg text-center">
@@ -209,7 +210,7 @@ export default function NewDigitalBookPage() {
                             {isParsing ? "Analizando..." : "Seleccionar Archivo (.epub)"}
                         </label>
                     </Button>
-                    <Input id="epub-upload" type="file" className="sr-only" accept=".epub,application/epub+zip" onChange={handleFileChange} disabled={isParsing} />
+                    <Input id="epub-upload" type="file" className="sr-only" accept=".epub,application/epub+zip" onChange={handleFileChange} disabled={isParsing || isSubmitting} />
                 </div>
             </div>
 
@@ -242,8 +243,8 @@ export default function NewDigitalBookPage() {
                     <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
                         <FormItem>
                             <FormLabel>Nombre Archivo EPUB</FormLabel>
-                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} value={field.value || ''}/></FormControl>
-                            <FormDescription>Asegúrate de que este archivo exista en `public/epubs/`.</FormDescription>
+                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} value={field.value || ''} readOnly /></FormControl>
+                            <FormDescription>Se subirá al guardar.</FormDescription>
                             <FormMessage />
                         </FormItem>
                     )} />
@@ -267,7 +268,7 @@ export default function NewDigitalBookPage() {
                       <FormItem>
                           <FormLabel>Nombre Archivo PDF (Opcional)</FormLabel>
                           <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} value={field.value || ''}/></FormControl>
-                          <FormDescription>Si aplica, asegúrate que exista en el servidor.</FormDescription>
+                          <FormDescription>Si aplica, también se subirá al guardar.</FormDescription>
                           <FormMessage />
                       </FormItem>
                   )} />
@@ -277,9 +278,16 @@ export default function NewDigitalBookPage() {
                     <FormField control={form.control} name="tags" render={({ field }) => ( <FormItem><FormLabel>Etiquetas</FormLabel><FormControl><MultiSelect placeholder="Selecciona etiquetas..." options={bookTags} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                   </div>
                   
-                  <Button type="submit" disabled={isSubmitting} className="w-full">
+                  {isSubmitting && (
+                    <div className="space-y-2">
+                        <Label>Subiendo archivo...</Label>
+                        <Progress value={uploadProgress} />
+                    </div>
+                  )}
+
+                  <Button type="submit" disabled={isSubmitting || isParsing} className="w-full">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                    Añadir a la Biblioteca
+                    {isSubmitting ? 'Guardando...' : 'Guardar y Subir Archivo'}
                   </Button>
                 </form>
               </Form>
