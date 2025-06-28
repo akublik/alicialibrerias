@@ -10,6 +10,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -251,4 +252,17 @@ export interface Story {
   imageUrl?: string;
   dataAiHint?: string;
   createdAt: any;
+}
+
+export interface RedemptionItem {
+  id: string;
+  name: string;
+  description: string;
+  pointsRequired: number;
+  imageUrl: string;
+  dataAiHint?: string;
+  type: 'Libro' | 'Gift Card' | 'Servicio' | 'Otro';
+  stock: number;
+  isActive: boolean;
+  createdAt: any; // Firestore Timestamp
 }
