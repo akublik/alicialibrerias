@@ -1,21 +1,21 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Permitir lectura pública de todos los archivos
+    // Allow public read access to all files
     match /{allPaths=**} {
       allow read;
     }
 
-    // Permitir escritura en 'epubs' y 'covers'
-    // Esta regla es abierta para la demostración. En producción, se debe restringir
-    // a usuarios autenticados con un rol específico.
-    match /epubs/{epubId} {
-      allow write: if true;
+    // Allow writes to the 'epubs' directory
+    match /epubs/{allPaths=**} {
+      allow write;
     }
 
-    match /covers/{coverId} {
-      allow write: if true;
+    // Allow writes to the 'covers' directory
+    match /covers/{allPaths=**} {
+      allow write;
     }
   }
 }
