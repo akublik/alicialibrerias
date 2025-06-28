@@ -5,11 +5,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, PlusCircle, FileUp, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -21,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Progress } from "@/components/ui/progress";
-import * as epubjs from "epubjs";
 import { Label } from "@/components/ui/label";
 
 const digitalBookFormSchema = z.object({
@@ -49,41 +48,16 @@ export default function NewDigitalBookPage() {
     },
   });
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.type !== 'application/epub+zip') {
-      toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
-      return;
-    }
-    
-    setEpubFile(file);
-
-    try {
-      const book = epubjs.default(file);
-      const metadata = await book.loaded.metadata;
-      
-      form.setValue("title", metadata.title || "Título no encontrado");
-      form.setValue("author", metadata.creator || "Autor desconocido");
-      form.setValue("description", metadata.description || "");
-
-      const coverBlobUrl = await book.coverUrl();
-      if (coverBlobUrl) {
-        toast({
-          title: "Portada Encontrada en el EPUB",
-          description: "La portada se ha detectado, pero debe ser subida a un servicio de imágenes y su URL pegada en el campo 'URL de la Portada' para poder guardarla.",
-          duration: 8000,
-        });
+    if (file) {
+      if (file.type !== 'application/epub+zip') {
+        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+        setEpubFile(null);
+        if (event.target) event.target.value = ""; // Reset file input
+        return;
       }
-      book.destroy(); // Clean up memory
-    } catch (error) {
-      console.error("Error al procesar el EPUB:", error);
-      toast({
-        title: "Error al leer el archivo",
-        description: "No se pudieron extraer los metadatos del archivo EPUB.",
-        variant: "destructive"
-      });
+      setEpubFile(file);
     }
   };
 
@@ -94,7 +68,7 @@ export default function NewDigitalBookPage() {
       return;
     }
     if (!db || !storage) {
-      toast({ title: "Error de configuración", variant: "destructive" });
+      toast({ title: "Error de configuración", description: "La conexión con Firebase (Firestore o Storage) no está disponible. Revisa las variables de entorno.", variant: "destructive", duration: 8000 });
       return;
     }
 
@@ -112,20 +86,31 @@ export default function NewDigitalBookPage() {
             setUploadProgress(progress);
           },
           (error) => {
-            console.error("Upload error:", error);
-            reject(error);
+            console.error("Firebase Storage Upload Error:", error.code, error.message);
+            // Translate common errors for the user
+            switch (error.code) {
+                case 'storage/unauthorized':
+                    reject(new Error("No tienes permiso para subir archivos. Revisa las reglas de seguridad de Firebase Storage."));
+                    break;
+                case 'storage/canceled':
+                    reject(new Error("La subida fue cancelada."));
+                    break;
+                default:
+                    reject(new Error("Ocurrió un error desconocido durante la subida."));
+            }
           },
           async () => {
             try {
               const url = await getDownloadURL(uploadTask.snapshot.ref);
               resolve(url);
-            } catch (error) {
-              reject(error);
+            } catch (getError) {
+              reject(getError);
             }
           }
         );
       });
 
+      // Once upload is complete, add the book to Firestore
       await addDoc(collection(db, "digital_books"), {
         ...values,
         epubFileUrl: downloadURL,
@@ -136,9 +121,15 @@ export default function NewDigitalBookPage() {
       router.push("/superadmin/digital-library");
 
     } catch (error: any) {
-      console.error("Error en onSubmit:", error);
-      toast({ title: "Error en la operación", description: error.message, variant: "destructive" });
+      console.error("Error en la operación de guardado:", error);
+      toast({
+        title: "Error en la operación",
+        description: error.message || "Un error inesperado ha ocurrido.",
+        variant: "destructive",
+        duration: 8000
+      });
     } finally {
+      // This block MUST run to prevent the button from getting stuck.
       setIsSubmitting(false);
       setUploadProgress(0);
     }
@@ -159,7 +150,7 @@ export default function NewDigitalBookPage() {
         <CardHeader>
           <CardTitle>Detalles del Libro</CardTitle>
           <CardDescription>
-            Selecciona un archivo `.epub` de tu computadora. El sistema intentará extraer los metadatos automáticamente.
+            Rellena la información del libro y sube el archivo EPUB.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,7 +158,7 @@ export default function NewDigitalBookPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                <div className="space-y-2">
                   <Label htmlFor="epub-file">Archivo EPUB</Label>
-                  <Input id="epub-file" type="file" accept=".epub" onChange={handleFileChange} disabled={isSubmitting} />
+                  <Input id="epub-file" type="file" accept=".epub" onChange={handleFileChange} disabled={isSubmitting} required />
                   {epubFile && <p className="text-sm text-muted-foreground">Archivo seleccionado: {epubFile.name}</p>}
                </div>
 
