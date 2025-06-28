@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, BookPlus, Sparkles } from "lucide-react";
+import { Loader2, ArrowLeft, BookPlus, Sparkles, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
 import { generateAutomaticTags } from '@/ai/flows/generate-automatic-tags';
+import { generateBookDescription } from '@/ai/flows/generate-book-description';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
@@ -55,6 +56,7 @@ type BookFormValues = z.infer<typeof bookFormSchema>;
 export default function NewBookPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -157,6 +159,25 @@ export default function NewBookPage() {
     } finally {
         setIsGeneratingTags(false);
     }
+  };
+
+  const handleGenerateDescription = async () => {
+      const title = form.getValues("title");
+      const authors = form.getValues("authors");
+      if (!title || !authors) {
+          toast({ title: "Faltan datos", description: "El título y el autor son necesarios para generar una descripción.", variant: "destructive" });
+          return;
+      }
+      setIsGeneratingDescription(true);
+      try {
+          const result = await generateBookDescription({ title, author: authors });
+          form.setValue("description", result.description);
+          toast({ title: "Descripción Generada", description: "La sinopsis ha sido creada por la IA." });
+      } catch (error: any) {
+          toast({ title: "Error de IA", description: "No se pudo generar la descripción.", variant: "destructive" });
+      } finally {
+          setIsGeneratingDescription(false);
+      }
   };
 
 
@@ -273,7 +294,19 @@ export default function NewBookPage() {
                   <FormField control={form.control} name="publisher" render={({ field }) => ( <FormItem><FormLabel>Editorial</FormLabel><FormControl><Input placeholder="Ej: Planeta" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
 
-              <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between mb-1">
+                    <FormLabel>Descripción</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDescription}>
+                      {isGeneratingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}
+                      Generar con IA
+                    </Button>
+                  </div>
+                  <FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               <div className="grid sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="categories" render={({ field }) => ( <FormItem> <FormLabel>Categorías</FormLabel> <FormControl><MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} /></FormControl> <FormMessage /></FormItem> )} />

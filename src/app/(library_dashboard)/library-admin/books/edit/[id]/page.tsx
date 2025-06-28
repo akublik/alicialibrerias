@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Sparkles, Share2, MessageSquarePlus, Star } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Sparkles, Share2, MessageSquarePlus, Star, Wand2 } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from "react";
@@ -30,6 +30,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
 import { generateAutomaticTags } from "@/ai/flows/generate-automatic-tags";
+import { generateBookDescription } from "@/ai/flows/generate-book-description";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { generateSocialPost } from "@/ai/flows/generate-social-post";
@@ -61,6 +62,7 @@ export default function EditBookPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [isGeneratingPost, setIsGeneratingPost] = useState(false);
   const [generatedPost, setGeneratedPost] = useState("");
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
@@ -165,6 +167,26 @@ export default function EditBookPage() {
         setIsGeneratingTags(false);
     }
   };
+
+  const handleGenerateDescription = async () => {
+      const title = form.getValues("title");
+      const authors = form.getValues("authors");
+      if (!title || !authors) {
+          toast({ title: "Faltan datos", description: "El título y el autor son necesarios para generar una descripción.", variant: "destructive" });
+          return;
+      }
+      setIsGeneratingDescription(true);
+      try {
+          const result = await generateBookDescription({ title, author: authors });
+          form.setValue("description", result.description);
+          toast({ title: "Descripción Generada", description: "La sinopsis ha sido creada por la IA." });
+      } catch (error: any) {
+          toast({ title: "Error de IA", description: "No se pudo generar la descripción.", variant: "destructive" });
+      } finally {
+          setIsGeneratingDescription(false);
+      }
+  };
+
 
   const handleGeneratePost = async () => {
     if (!book) return;
@@ -333,7 +355,19 @@ export default function EditBookPage() {
                   <FormField control={form.control} name="publisher" render={({ field }) => ( <FormItem><FormLabel>Editorial</FormLabel><FormControl><Input placeholder="Ej: Planeta" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
 
-              <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} rows={6} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between mb-1">
+                    <FormLabel>Descripción</FormLabel>
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDescription}>
+                      {isGeneratingDescription ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}
+                      Generar con IA
+                    </Button>
+                  </div>
+                  <FormControl><Textarea placeholder="Una breve sinopsis del libro..." {...field} rows={6} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
 
               <div className="grid sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="categories" render={({ field }) => ( <FormItem><FormLabel>Categorías</FormLabel><FormControl><MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
@@ -364,7 +398,7 @@ export default function EditBookPage() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                     <Button type="button" className="w-full" onClick={handleGeneratePost} disabled={isGeneratingPost}>
-                        {isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}
+                        {isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Share2 className="mr-2 h-4 w-4"/>}
                         Post para Redes Sociales
                     </Button>
                      <Button type="button" className="w-full" variant="outline" onClick={handleGenerateReview} disabled={isGeneratingReview}>
