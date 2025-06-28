@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart, PenSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
@@ -47,6 +47,7 @@ export function Navbar() {
   const navItems = [
     { href: "/", label: "Inicio", icon: Home, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/libraries", label: "Librerías", icon: Library, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/authors", label: "Autores", icon: PenSquare, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/my-library", label: "Biblioteca", icon: BookHeart, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/about", label: "Nosotros", icon: Info, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles, roles: ['reader', 'library', 'superadmin', null] },
