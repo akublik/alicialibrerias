@@ -23,7 +23,6 @@ export default function ReaderPage() {
   const [book, setBook] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [epubUrl, setEpubUrl] = useState<string | null>(null);
   
   const [location, setLocation] = useState<string | number>(0);
   const renditionRef = useRef<Rendition | null>(null);
@@ -37,7 +36,7 @@ export default function ReaderPage() {
       return;
     }
 
-    const fetchBookAndUrl = async () => {
+    const fetchBook = async () => {
       setIsLoading(true);
       setError(null);
       try {
@@ -47,13 +46,9 @@ export default function ReaderPage() {
           const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
           setBook(bookData);
           
-          if (!bookData.epubFilename) {
+          if (!bookData.epubFileUrl) {
             throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
           }
-
-          // Construct local URL from the public folder
-          const url = `/epubs/${bookData.epubFilename}`;
-          setEpubUrl(url);
 
         } else {
           throw new Error("Libro no encontrado en la biblioteca digital.");
@@ -66,7 +61,7 @@ export default function ReaderPage() {
       }
     };
 
-    fetchBookAndUrl();
+    fetchBook();
   }, [bookId]);
 
   const onTocLocationChanges = (href: string) => {
@@ -149,10 +144,10 @@ export default function ReaderPage() {
             </aside>
 
             <div className="flex-grow h-full relative" id="reader-wrapper">
-                {epubUrl ? (
+                {book.epubFileUrl ? (
                     <ReactReader
                         key={book.id}
-                        url={epubUrl}
+                        url={book.epubFileUrl}
                         location={location}
                         locationChanged={(epubcfi: string) => setLocation(epubcfi)}
                         getRendition={(rendition) => {

@@ -17,25 +17,27 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save } from "lucide-react";
+import { Loader2, ArrowLeft, Save, FileUp } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { DigitalBook } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubFilename: z.string().min(5, "El nombre del archivo EPUB es requerido.").endsWith('.epub', "El archivo debe ser .epub"),
-  pdfFilename: z.string().optional(),
+  epubFileUrl: z.string().url("La URL del archivo EPUB es requerida.").optional(),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
@@ -46,6 +48,9 @@ type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
 export default function EditDigitalBookPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [newEpubFile, setNewEpubFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -58,8 +63,7 @@ export default function EditDigitalBookPage() {
       author: "",
       description: "",
       coverImageUrl: "",
-      epubFilename: "",
-      pdfFilename: "",
+      epubFileUrl: "",
       categories: [],
       tags: [],
     },
@@ -81,8 +85,7 @@ export default function EditDigitalBookPage() {
                       author: bookData.author,
                       description: bookData.description || "",
                       coverImageUrl: bookData.coverImageUrl,
-                      epubFilename: bookData.epubFilename || "",
-                      pdfFilename: bookData.pdfFilename || "",
+                      epubFileUrl: bookData.epubFileUrl || "",
                       format: bookData.format,
                       categories: bookData.categories || [],
                       tags: bookData.tags || [],
@@ -101,6 +104,15 @@ export default function EditDigitalBookPage() {
       fetchBook();
   }, [bookId, form, router, toast]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/epub+zip') {
+      setNewEpubFile(file);
+    } else {
+      toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+    }
+  };
+
   async function onSubmit(values: DigitalBookFormValues) {
     setIsSubmitting(true);
     if (!db || !bookId) {
@@ -108,9 +120,39 @@ export default function EditDigitalBookPage() {
       setIsSubmitting(false);
       return;
     }
+
     try {
+        let finalEpubUrl = values.epubFileUrl;
+
+        // If a new file was selected, upload it first
+        if (newEpubFile) {
+            setUploadProgress(0);
+            const storageRef = ref(storage, `epubs/${Date.now()}-${newEpubFile.name}`);
+            const uploadTask = uploadBytesResumable(storageRef, newEpubFile);
+            
+            // This is a promise that we can await
+            finalEpubUrl = await new Promise((resolve, reject) => {
+                uploadTask.on('state_changed',
+                    (snapshot) => {
+                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        setUploadProgress(progress);
+                    },
+                    (error) => {
+                        console.error("Upload error:", error);
+                        reject(error);
+                    },
+                    async () => {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(downloadURL);
+                    }
+                );
+            });
+        }
+      
       const bookRef = doc(db, "digital_books", bookId);
-      await updateDoc(bookRef, values);
+      const dataToUpdate = { ...values, epubFileUrl: finalEpubUrl };
+
+      await updateDoc(bookRef, dataToUpdate);
       toast({ title: "Libro digital actualizado", description: `"${values.title}" se ha guardado.` });
       router.push("/superadmin/digital-library");
     } catch (error: any) {
@@ -209,29 +251,21 @@ export default function EditDigitalBookPage() {
                   </FormItem>
                 )}
               />
-
-              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
               
-              <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
-                  <FormItem>
-                      <FormLabel>Nombre del Archivo EPUB</FormLabel>
-                      <FormControl><Input placeholder="libro-ejemplo.epub" {...field} /></FormControl>
-                      <FormDescription>
-                          Asegúrate de que este archivo exista en la carpeta `public/epubs/`.
-                      </FormDescription>
-                      <FormMessage />
-                  </FormItem>
-              )} />
-              <FormField control={form.control} name="pdfFilename" render={({ field }) => ( 
-                  <FormItem>
-                      <FormLabel>Nombre del Archivo PDF (Opcional)</FormLabel>
-                      <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} /></FormControl>
-                      <FormDescription>
-                          Si aplica, el nombre del archivo en la carpeta `public/pdfs`.
-                      </FormDescription>
-                      <FormMessage />
-                  </FormItem>
-              )} />
+              <div className="space-y-2">
+                  <Label htmlFor="epub-file">Reemplazar Archivo EPUB (Opcional)</Label>
+                  <Input id="epub-file" type="file" accept=".epub" onChange={handleFileChange} disabled={isSubmitting} />
+                  {newEpubFile && <p className="text-sm text-muted-foreground">Nuevo archivo a subir: {newEpubFile.name}</p>}
+                  {form.getValues('epubFileUrl') && !newEpubFile && <p className="text-sm text-muted-foreground">Hay un archivo EPUB asociado a este libro.</p>}
+              </div>
+
+               {isSubmitting && newEpubFile && (
+                <div className="space-y-2">
+                  <Label>Subiendo nuevo archivo... {Math.round(uploadProgress)}%</Label>
+                  <Progress value={uploadProgress} />
+                </div>
+              )}
               
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
