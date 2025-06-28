@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/digital-library/edit/[id]/page.tsx
 "use client";
 
@@ -12,12 +13,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, FileUp } from "lucide-react";
+import { Loader2, ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +37,7 @@ const digitalBookFormSchema = z.object({
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubFileUrl: z.string().url("La URL del archivo EPUB es requerida.").optional(),
+  epubFileUrl: z.string().url("La URL del archivo EPUB es requerida.").optional().or(z.literal('')),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
@@ -108,7 +108,7 @@ export default function EditDigitalBookPage() {
     const file = event.target.files?.[0];
     if (file && file.type === 'application/epub+zip') {
       setNewEpubFile(file);
-    } else {
+    } else if (file) {
       toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
     }
   };
@@ -122,44 +122,48 @@ export default function EditDigitalBookPage() {
     }
 
     try {
-        let finalEpubUrl = values.epubFileUrl;
+        let finalEpubUrl = form.getValues('epubFileUrl');
 
-        // If a new file was selected, upload it first
-        if (newEpubFile) {
+        if (newEpubFile && storage) {
             setUploadProgress(0);
             const storageRef = ref(storage, `epubs/${Date.now()}-${newEpubFile.name}`);
             const uploadTask = uploadBytesResumable(storageRef, newEpubFile);
             
-            finalEpubUrl = await new Promise<string>((resolve, reject) => {
-                uploadTask.on('state_changed',
-                    (snapshot) => {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                        setUploadProgress(progress);
-                    },
-                    (error) => {
-                        console.error("Upload error:", error);
-                        reject(error);
-                    },
-                    async () => {
-                        try {
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            resolve(downloadURL);
-                        } catch (error) {
-                            reject(error);
-                        }
-                    }
-                );
-            });
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(progress);
+                }
+            );
+
+            await uploadTask;
+            finalEpubUrl = await getDownloadURL(uploadTask.snapshot.ref);
         }
       
       const bookRef = doc(db, "digital_books", bookId);
-      const dataToUpdate = { ...values, epubFileUrl: finalEpubUrl };
+      const dataToUpdate = { ...values, epubFileUrl: finalEpubUrl || "" };
 
       await updateDoc(bookRef, dataToUpdate);
       toast({ title: "Libro digital actualizado", description: `"${values.title}" se ha guardado.` });
       router.push("/superadmin/digital-library");
     } catch (error: any) {
-      toast({ title: "Error al actualizar el libro", description: error.message, variant: "destructive" });
+        let errorMessage = "Ocurrió un error inesperado al actualizar.";
+        if (error.code) {
+            switch (error.code) {
+                case 'storage/unauthorized':
+                    errorMessage = "Permiso denegado. Revisa tus reglas de seguridad de Firebase Storage.";
+                    break;
+                case 'storage/canceled':
+                    errorMessage = "La subida del archivo fue cancelada.";
+                    break;
+                default:
+                    errorMessage = `Error de Storage: ${error.message}`;
+                    break;
+            }
+        } else {
+             errorMessage = `Error: ${error.message}`;
+        }
+      toast({ title: "Error al actualizar el libro", description: errorMessage, variant: "destructive", duration: 9000 });
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);

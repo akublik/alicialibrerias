@@ -1,5 +1,6 @@
 
 // src/app/(superadmin_dashboard)/superadmin/digital-library/new/page.tsx
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -80,27 +81,16 @@ export default function NewDigitalBookPage() {
         const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
         const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
-        const downloadURL = await new Promise<string>((resolve, reject) => {
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    setUploadProgress(progress);
-                },
-                (error) => {
-                    console.error("Firebase Storage Error:", error);
-                    reject(error);
-                },
-                async () => {
-                    try {
-                        const url = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve(url);
-                    } catch (error) {
-                        console.error("Error getting download URL:", error);
-                        reject(error);
-                    }
-                }
-            );
-        });
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            }
+        );
+        
+        await uploadTask;
+        
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
 
         await addDoc(collection(db, "digital_books"), {
             ...values,
@@ -112,17 +102,17 @@ export default function NewDigitalBookPage() {
         router.push("/superadmin/digital-library");
 
     } catch (error: any) {
-        let errorMessage = "Ocurrió un error inesperado.";
+        let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
         if (error.code) {
             switch (error.code) {
                 case 'storage/unauthorized':
-                    errorMessage = "No tienes permiso para subir archivos. Revisa las reglas de seguridad de Firebase Storage.";
+                    errorMessage = "Permiso denegado. Revisa las reglas de seguridad de Firebase Storage.";
                     break;
                 case 'storage/canceled':
                     errorMessage = "La subida del archivo fue cancelada.";
                     break;
                 default:
-                    errorMessage = `Error: ${error.message}`;
+                    errorMessage = `Error de Storage: ${error.message}`;
                     break;
             }
         } else {
