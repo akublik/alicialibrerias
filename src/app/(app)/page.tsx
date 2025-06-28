@@ -277,7 +277,7 @@ export default function HomePage() {
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
           ) : featuredBooks.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6">
               {featuredBooks.map((book) => (
                 <BookCard key={book.id} book={book} size="small" />
               ))}
@@ -304,7 +304,7 @@ export default function HomePage() {
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
           ) : nationalBooks.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-6">
               {nationalBooks.map((book) => (
                 <BookCard key={book.id} book={book} size="small" />
               ))}
