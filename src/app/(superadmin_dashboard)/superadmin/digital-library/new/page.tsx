@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/digital-library/new/page.tsx
 "use client";
 
@@ -113,18 +114,18 @@ export default function NewDigitalBookPage() {
                     if (typeof firstAuthor === 'object' && firstAuthor !== null && (firstAuthor['#text'] || firstAuthor.name)) return firstAuthor['#text'] || firstAuthor.name;
                 }
                 if (typeof creator === 'object' && creator !== null && (creator['#text'] || creator.name)) return creator['#text'] || creator.name;
-                return "";
+                return "Autor desconocido";
             };
             const getSimpleField = (field: any): string => {
                 if (!field) return "";
-                if (typeof field === 'string') return field;
+                if (typeof field === 'string' && isNaN(Number(field))) return field;
                 if (typeof field === 'number') return String(field);
                 if (typeof field === 'object' && field !== null && field['#text']) return field['#text'];
-                return "";
+                return "Título no encontrado";
             };
 
-            form.setValue("title", getSimpleField(metadata.title) || "Título no encontrado");
-            form.setValue("author", getAuthor(metadata.creator) || "Autor desconocido");
+            form.setValue("title", getSimpleField(metadata.title));
+            form.setValue("author", getAuthor(metadata.creator));
             form.setValue("description", getSimpleField(metadata.description) || "");
             form.setValue("epubFilename", file.name);
             form.setValue("format", "EPUB");
@@ -164,15 +165,20 @@ export default function NewDigitalBookPage() {
                     console.error("Upload error:", error);
                     reject(error);
                 },
-                () => {
-                    resolve();
+                async () => {
+                    try {
+                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                        await addDoc(collection(db, "digital_books"), {
+                            ...values,
+                            epubDownloadUrl: downloadURL, // Save the download URL
+                            createdAt: serverTimestamp(),
+                        });
+                        resolve();
+                    } catch (dbError) {
+                        reject(dbError);
+                    }
                 }
             );
-        });
-
-        await addDoc(collection(db, "digital_books"), {
-            ...values,
-            createdAt: serverTimestamp(),
         });
 
         toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
@@ -235,20 +241,20 @@ export default function NewDigitalBookPage() {
                       </div>
                   )}
 
-                  <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} value={field.value || ''} rows={5} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Breve sinopsis del libro..." {...field} rows={5} /></FormControl><FormMessage /></FormItem> )} />
                   
                   <Separator />
                   <h3 className="font-headline text-lg">Completa la Información Requerida</h3>
 
-                  <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada (Permanente)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value || ''} /></FormControl><FormDescription>Pega aquí la URL de la imagen de portada que has subido a tu hosting o a un servicio de imágenes.</FormDescription><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada (Permanente)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} /></FormControl><FormDescription>Pega aquí la URL de la imagen de portada que has subido a tu hosting o a un servicio de imágenes.</FormDescription><FormMessage /></FormItem> )} />
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
                         <FormItem>
                             <FormLabel>Nombre Archivo EPUB</FormLabel>
-                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} value={field.value || ''} readOnly /></FormControl>
+                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} readOnly /></FormControl>
                             <FormDescription>Se subirá al guardar.</FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -272,7 +278,7 @@ export default function NewDigitalBookPage() {
                   <FormField control={form.control} name="pdfFilename" render={({ field }) => ( 
                       <FormItem>
                           <FormLabel>Nombre Archivo PDF (Opcional)</FormLabel>
-                          <FormControl><Input placeholder="libro-ejemplo.pdf" value={field.value || ''}/></FormControl>
+                          <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} /></FormControl>
                           <FormDescription>Si aplica, también se subirá al guardar.</FormDescription>
                           <FormMessage />
                       </FormItem>
