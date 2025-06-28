@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/v0/b/alicia-lee.firebasestorage.app/o/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'ejemplo.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
