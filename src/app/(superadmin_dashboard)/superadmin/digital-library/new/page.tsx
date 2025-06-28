@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/digital-library/new/page.tsx
 
 "use client";
@@ -63,7 +62,6 @@ export default function NewDigitalBookPage() {
     }
   };
 
-
   async function onSubmit(values: DigitalBookFormValues) {
     if (!epubFile) {
       toast({ title: "Falta el archivo", description: "Por favor, selecciona un archivo EPUB para subir.", variant: "destructive" });
@@ -78,57 +76,65 @@ export default function NewDigitalBookPage() {
     setUploadProgress(0);
 
     try {
+      const uploadPromise = new Promise<string>((resolve, reject) => {
         const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
         const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
         uploadTask.on('state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress(progress);
-            }
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Upload failed:", error);
+            reject(error);
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              resolve(downloadURL);
+            }).catch(reject);
+          }
         );
-        
-        await uploadTask;
-        
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+      });
 
-        await addDoc(collection(db, "digital_books"), {
-            ...values,
-            epubFileUrl: downloadURL,
-            createdAt: serverTimestamp(),
-        });
-        
-        toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-        router.push("/superadmin/digital-library");
+      const downloadURL = await uploadPromise;
+
+      await addDoc(collection(db, "digital_books"), {
+        ...values,
+        epubFileUrl: downloadURL,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+      router.push("/superadmin/digital-library");
 
     } catch (error: any) {
-        let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
-        if (error.code) {
-            switch (error.code) {
-                case 'storage/unauthorized':
-                    errorMessage = "Permiso denegado. Revisa las reglas de seguridad de Firebase Storage.";
-                    break;
-                case 'storage/canceled':
-                    errorMessage = "La subida del archivo fue cancelada.";
-                    break;
-                default:
-                    errorMessage = `Error de Storage: ${error.message}`;
-                    break;
-            }
-        } else {
-             errorMessage = `Error: ${error.message}`;
+      let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
+      if (error.code) {
+        switch (error.code) {
+          case 'storage/unauthorized':
+            errorMessage = "Permiso denegado. Revisa las reglas de seguridad de Firebase Storage.";
+            break;
+          case 'storage/canceled':
+            errorMessage = "La subida del archivo fue cancelada.";
+            break;
+          default:
+            errorMessage = `Error de Storage: ${error.message}`;
+            break;
         }
-        
-        toast({
-            title: "Error al Guardar",
-            description: errorMessage,
-            variant: "destructive",
-            duration: 9000
-        });
-
+      } else {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
+      toast({
+        title: "Error al Guardar",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 9000
+      });
     } finally {
-        setIsSubmitting(false);
-        setUploadProgress(0);
+      setIsSubmitting(false);
+      setUploadProgress(0);
     }
   }
 

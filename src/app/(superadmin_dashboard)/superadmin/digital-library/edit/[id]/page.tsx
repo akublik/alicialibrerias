@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/digital-library/edit/[id]/page.tsx
 "use client";
 
@@ -125,7 +124,7 @@ export default function EditDigitalBookPage() {
         let finalEpubUrl = form.getValues('epubFileUrl');
 
         if (newEpubFile && storage) {
-            setUploadProgress(0);
+          const uploadPromise = new Promise<string>((resolve, reject) => {
             const storageRef = ref(storage, `epubs/${Date.now()}-${newEpubFile.name}`);
             const uploadTask = uploadBytesResumable(storageRef, newEpubFile);
             
@@ -133,11 +132,19 @@ export default function EditDigitalBookPage() {
                 (snapshot) => {
                     const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
                     setUploadProgress(progress);
+                },
+                (error) => {
+                  console.error("Upload failed:", error);
+                  reject(error);
+                },
+                () => {
+                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                        resolve(downloadURL);
+                    }).catch(reject);
                 }
             );
-
-            await uploadTask;
-            finalEpubUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          });
+          finalEpubUrl = await uploadPromise;
         }
       
       const bookRef = doc(db, "digital_books", bookId);
