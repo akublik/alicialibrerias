@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -16,8 +17,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, BookPlus, ImagePlus, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ArrowLeft, BookPlus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -191,8 +192,6 @@ export default function NewBookPage() {
         if (coverFile) {
             setUploadStep("Subiendo portada...");
             finalImageUrl = await uploadFile(coverFile, 'covers');
-        } else {
-             finalImageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
         }
         
         setUploadStep("Guardando información...");
@@ -286,7 +285,7 @@ export default function NewBookPage() {
           <div className="space-y-6">
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ImagePlus/>Imagen de Portada</CardTitle>
+                    <CardTitle className="flex items-center gap-2">Imagen de Portada</CardTitle>
                     <CardDescription>Sube un archivo de imagen para la portada del libro.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">

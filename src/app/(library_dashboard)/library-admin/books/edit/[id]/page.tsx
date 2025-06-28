@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -15,9 +16,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, ImagePlus, Sparkles, Share2 } from "lucide-react";
-import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, ArrowLeft, Save, Sparkles, Share2 } from "lucide-react";
+import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -321,7 +322,7 @@ export default function EditBookPage() {
 
           <div className="space-y-6">
             <Card className="shadow-lg">
-                <CardHeader><CardTitle className="flex items-center gap-2"><ImagePlus/>Imagen de Portada</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2">Imagen de Portada</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                     <div className="relative w-full aspect-[2/3] rounded-md overflow-hidden border bg-muted">
                         <Image src={coverPreview || currentCoverUrl || 'https://placehold.co/300x450.png'} alt="Vista previa de portada" layout="fill" objectFit="cover" key={coverPreview || currentCoverUrl} />
@@ -334,7 +335,7 @@ export default function EditBookPage() {
             </Card>
 
             <Card className="shadow-lg">
-                <CardHeader><CardTitle className="flex items-center gap-2"><Share2/>Herramientas de Marketing</CardTitle><CardDescription>Genera contenido para promocionar este libro.</CardDescription></CardHeader>
+                <CardHeader><CardTitle className="flex items-center gap-2">Herramientas de Marketing</CardTitle><CardDescription>Genera contenido para promocionar este libro.</CardDescription></CardHeader>
                 <CardContent><Button type="button" className="w-full" onClick={handleGeneratePost} disabled={isGeneratingPost}>{isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}Generar Post para Redes Sociales</Button></CardContent>
             </Card>
 
