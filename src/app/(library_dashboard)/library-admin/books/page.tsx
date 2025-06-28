@@ -10,12 +10,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star, ShoppingCart } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star, ShoppingCart, Upload, Download, FileText } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Book } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import Papa from 'papaparse';
 
 export default function LibraryBooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -24,6 +27,11 @@ export default function LibraryBooksPage() {
   const [bookToAction, setBookToAction] = useState<Book | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
 
   useEffect(() => {
     if (!db) {
@@ -93,7 +101,6 @@ export default function LibraryBooksPage() {
     if (!bookToAction || !db) return;
     setIsActionLoading(true);
     const bookRef = doc(db, "books", bookToAction.id);
-    // Note: Deleting the cover image from storage is not implemented here.
     try {
       await deleteDoc(bookRef);
       toast({
@@ -113,6 +120,171 @@ export default function LibraryBooksPage() {
       setBookToAction(null);
     }
   };
+  
+  const handleExportCSV = () => {
+    if (books.length === 0) {
+      toast({ title: "No hay libros para exportar", variant: "destructive" });
+      return;
+    }
+    const csvData = Papa.unparse(books.map(book => ({
+      title: book.title,
+      authors: book.authors.join(', '),
+      isbn: book.isbn,
+      price: book.price,
+      stock: book.stock,
+      description: book.description,
+      categories: book.categories?.join(', '),
+      tags: book.tags?.join(', '),
+      imageUrl: book.imageUrl,
+      isFeatured: book.isFeatured ? "TRUE" : "FALSE",
+      pageCount: book.pageCount,
+      coverType: book.coverType,
+      publisher: book.publisher,
+    })));
+
+    const blob = new Blob([`\uFEFF${csvData}`], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `inventario-alicia-libros-${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadTemplate = () => {
+      const header = "title,authors,isbn,price,stock,description,categories,tags,imageUrl,isFeatured,pageCount,coverType,publisher";
+      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia","https://ejemplo.com/portada.jpg",TRUE,417,"Tapa Blanda",Sudamericana`;
+      const csvContent = `${header}\n${example}`;
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "plantilla_importacion_libros.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
+
+  const handleImportCSV = async () => {
+    if (!csvFile) {
+      toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
+      return;
+    }
+    if (!db) {
+      toast({ title: "Error de conexión", variant: "destructive" });
+      return;
+    }
+
+    const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (!libraryDataString) {
+      toast({ title: "Error de librería", description: "No se pudo encontrar la información de la librería registrada.", variant: "destructive" });
+      return;
+    }
+    const libraryData = JSON.parse(libraryDataString);
+    const { id: libraryId, name: libraryName, location: libraryLocation } = libraryData;
+
+    setIsImporting(true);
+
+    Papa.parse<Record<string, string>>(csvFile, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        if (results.errors.length > 0) {
+           toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
+           setIsImporting(false);
+           return;
+        }
+
+        const batch = writeBatch(db);
+        const booksCollection = collection(db, "books");
+        let booksAdded = 0;
+        const validationErrors: string[] = [];
+
+        results.data.forEach((row, index) => {
+          if (!row.title || !row.authors || !row.price || !row.stock) {
+            validationErrors.push(`Fila ${index + 2}: Faltan columnas requeridas (title, authors, price, stock).`);
+            return;
+          }
+
+          const price = parseFloat(row.price);
+          const stock = parseInt(row.stock, 10);
+          const pageCount = row.pageCount ? parseInt(row.pageCount, 10) : null;
+          
+          if (isNaN(price) || isNaN(stock) || (row.pageCount && isNaN(pageCount!))) {
+             validationErrors.push(`Fila ${index + 2}: 'price', 'stock', y 'pageCount' deben ser números válidos.`);
+             return;
+          }
+
+          const newBookData = {
+              title: row.title,
+              authors: (row.authors || "").split(',').map((a: string) => a.trim()),
+              price,
+              stock,
+              isbn: row.isbn || '',
+              description: row.description || '',
+              categories: (row.categories || "").split(',').map((c: string) => c.trim()).filter(Boolean),
+              tags: (row.tags || "").split(',').map((t: string) => t.trim()).filter(Boolean),
+              imageUrl: row.imageUrl || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.title)}`,
+              dataAiHint: 'book cover',
+              isFeatured: (row.isFeatured || 'false').toUpperCase() === 'TRUE',
+              pageCount,
+              coverType: row.coverType || null,
+              publisher: row.publisher || null,
+              libraryId,
+              libraryName,
+              libraryLocation,
+              status: 'published' as const,
+          };
+
+          const newBookRef = doc(booksCollection);
+          batch.set(newBookRef, newBookData);
+          booksAdded++;
+        });
+
+        if (validationErrors.length > 0) {
+          toast({
+            title: `Errores en el archivo CSV (${validationErrors.length})`,
+            description: (
+              <ScrollArea className="h-40">
+                <ul className="list-disc list-inside">
+                  {validationErrors.map((e, i) => <li key={i}>{e}</li>)}
+                </ul>
+              </ScrollArea>
+            ),
+            variant: "destructive",
+            duration: 10000,
+          });
+          setIsImporting(false);
+          return;
+        }
+        
+        if (booksAdded > 0) {
+          try {
+            await batch.commit();
+            toast({
+              title: "¡Importación Exitosa!",
+              description: `Se han añadido ${booksAdded} libros a tu inventario.`,
+            });
+            setIsImportDialogOpen(false);
+            setCsvFile(null);
+          } catch (e: any) {
+            toast({ title: "Error al guardar en la base de datos", description: e.message, variant: "destructive" });
+          }
+        } else {
+           toast({ title: "Nada que importar", description: "El archivo CSV estaba vacío o no contenía datos válidos." });
+        }
+        setIsImporting(false);
+      },
+      error: (error: any) => {
+          toast({ title: "Error al leer el archivo CSV", description: error.message, variant: "destructive" });
+          setIsImporting(false);
+      }
+    });
+  };
 
   return (
     <>
@@ -128,11 +300,49 @@ export default function LibraryBooksPage() {
             </p>
           </div>
           <div className="flex gap-2">
+              <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline">
+                        <Upload className="mr-2 h-4 w-4" /> Importar CSV
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Importar Libros desde CSV</DialogTitle>
+                        <DialogDescription>Sube un archivo CSV para añadir libros a tu inventario de forma masiva.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <Card>
+                            <CardHeader className="p-4"><CardTitle className="text-base">Instrucciones</CardTitle></CardHeader>
+                            <CardContent className="p-4 pt-0 text-sm space-y-2">
+                                <p>1. Descarga la plantilla para asegurarte de que el formato es correcto.</p>
+                                <p>2. Las columnas <strong>title, authors, price, y stock</strong> son obligatorias.</p>
+                                <p>3. Para múltiples autores, categorías o etiquetas, sepáralos por comas.</p>
+                                <Button variant="link" className="p-0 h-auto" onClick={handleDownloadTemplate}>
+                                    <FileText className="mr-2 h-4 w-4"/> Descargar plantilla CSV
+                                </Button>
+                            </CardContent>
+                        </Card>
+                        <div>
+                            <Input
+                                id="csv-file" type="file" accept=".csv"
+                                onChange={(e) => setCsvFile(e.target.files?.[0] || null)}
+                                disabled={isImporting}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
+                        <Button onClick={handleImportCSV} disabled={!csvFile || isImporting}>
+                            {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                            Importar Libros
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={handleExportCSV}><Download className="mr-2 h-4 w-4" /> Exportar a CSV</Button>
               <Link href="/library-admin/books/new">
-                  <Button>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Añadir Libro
-                  </Button>
+                  <Button><PlusCircle className="mr-2 h-4 w-4" /> Añadir Libro</Button>
               </Link>
           </div>
         </div>
