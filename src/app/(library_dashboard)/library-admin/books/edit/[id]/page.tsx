@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Sparkles, Share2 } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Sparkles, Share2, MessageSquarePlus, Star } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from "react";
@@ -33,6 +33,7 @@ import { generateAutomaticTags } from "@/ai/flows/generate-automatic-tags";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { generateSocialPost } from "@/ai/flows/generate-social-post";
+import { generateBookReview, type GenerateBookReviewOutput } from "@/ai/flows/generate-book-review";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
@@ -63,6 +64,10 @@ export default function EditBookPage() {
   const [isGeneratingPost, setIsGeneratingPost] = useState(false);
   const [generatedPost, setGeneratedPost] = useState("");
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  
+  const [isGeneratingReview, setIsGeneratingReview] = useState(false);
+  const [generatedReview, setGeneratedReview] = useState<GenerateBookReviewOutput | null>(null);
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -178,6 +183,24 @@ export default function EditBookPage() {
         toast({ title: "Error de IA", description: "No se pudo generar la publicación.", variant: "destructive" });
     } finally {
         setIsGeneratingPost(false);
+    }
+  };
+
+  const handleGenerateReview = async () => {
+    if (!book) return;
+    setIsGeneratingReview(true);
+    try {
+        const result = await generateBookReview({
+            title: book.title,
+            author: book.authors.join(', '),
+            description: book.description,
+        });
+        setGeneratedReview(result);
+        setIsReviewDialogOpen(true);
+    } catch (error: any) {
+        toast({ title: "Error de IA", description: "No se pudo generar la reseña.", variant: "destructive" });
+    } finally {
+        setIsGeneratingReview(false);
     }
   };
   
@@ -335,8 +358,20 @@ export default function EditBookPage() {
             </Card>
 
             <Card className="shadow-lg">
-                <CardHeader><CardTitle className="flex items-center gap-2">Herramientas de Marketing</CardTitle><CardDescription>Genera contenido para promocionar este libro.</CardDescription></CardHeader>
-                <CardContent><Button type="button" className="w-full" onClick={handleGeneratePost} disabled={isGeneratingPost}>{isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}Generar Post para Redes Sociales</Button></CardContent>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">Herramientas de Marketing</CardTitle>
+                    <CardDescription>Usa la IA para generar contenido y promocionar este libro.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-3">
+                    <Button type="button" className="w-full" onClick={handleGeneratePost} disabled={isGeneratingPost}>
+                        {isGeneratingPost ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Sparkles className="mr-2 h-4 w-4"/>}
+                        Post para Redes Sociales
+                    </Button>
+                     <Button type="button" className="w-full" variant="outline" onClick={handleGenerateReview} disabled={isGeneratingReview}>
+                        {isGeneratingReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MessageSquarePlus className="mr-2 h-4 w-4"/>}
+                        Reseña de Ejemplo
+                    </Button>
+                </CardContent>
             </Card>
 
             {isSubmitting && (
@@ -361,6 +396,37 @@ export default function EditBookPage() {
             <DialogFooter>
                 <Button onClick={() => { navigator.clipboard.writeText(generatedPost); toast({ title: "¡Copiado!", description: "El texto se ha copiado a tu portapapeles." }); }}>Copiar Texto</Button>
                 <Button variant="secondary" onClick={() => setIsPostDialogOpen(false)}>Cerrar</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+       <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Reseña Generada por IA</DialogTitle>
+              <DialogDescription>
+                Copia esta reseña para usarla en tu material de marketing o como ejemplo en la página del libro.
+              </DialogDescription>
+            </DialogHeader>
+            {generatedReview && (
+                <div className="my-4 space-y-4">
+                    <div className="flex items-center gap-4 rounded-lg border bg-muted p-4">
+                        <div className="text-2xl font-bold">{generatedReview.rating}</div>
+                        <div className="flex items-center">
+                          {[...Array(5)].map((_, i) => (
+                             <Star key={i} className={`h-6 w-6 ${i < generatedReview.rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'}`}/>
+                          ))}
+                        </div>
+                        <div className="ml-auto text-sm text-muted-foreground">
+                          por <strong>{generatedReview.userName}</strong>
+                        </div>
+                    </div>
+                    <Textarea readOnly value={generatedReview.reviewText} rows={6}/>
+                </div>
+            )}
+            <DialogFooter>
+                <Button onClick={() => { if (generatedReview) { navigator.clipboard.writeText(generatedReview.reviewText); toast({ title: "¡Copiado!", description: "La reseña se ha copiado a tu portapapeles." }); } }}>Copiar Reseña</Button>
+                <Button variant="secondary" onClick={() => setIsReviewDialogOpen(false)}>Cerrar</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
