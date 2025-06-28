@@ -156,8 +156,8 @@ export default function LibraryBooksPage() {
   };
 
   const handleDownloadTemplate = () => {
-      const header = "title,authors,isbn,price,stock,description,categories,tags,imageUrl,isFeatured,pageCount,coverType,publisher";
-      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia","https://placehold.co/300x450.png",TRUE,417,"Tapa Blanda",Sudamericana`;
+      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher";
+      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana`;
       const csvContent = `${header}\n${example}`;
       const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -229,7 +229,7 @@ export default function LibraryBooksPage() {
               description: row.description || '',
               categories: (row.categories || "").split(',').map((c: string) => c.trim()).filter(Boolean),
               tags: (row.tags || "").split(',').map((t: string) => t.trim()).filter(Boolean),
-              imageUrl: row.imageUrl || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.title)}`,
+              imageUrl: `https://placehold.co/300x450.png?text=${encodeURIComponent(row.title)}`,
               dataAiHint: 'book cover',
               isFeatured: (row.isFeatured || 'false').toUpperCase() === 'TRUE',
               pageCount,
