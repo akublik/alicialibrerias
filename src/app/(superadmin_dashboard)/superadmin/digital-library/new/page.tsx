@@ -69,67 +69,77 @@ export default function NewDigitalBookPage() {
       return;
     }
     if (!db || !storage) {
-      toast({ title: "Error de configuración", description: "La conexión con Firebase (Firestore o Storage) no está disponible.", variant: "destructive", duration: 8000 });
+      toast({ title: "Error de configuración", description: "La conexión con Firebase no está disponible.", variant: "destructive", duration: 8000 });
       return;
     }
 
     setIsSubmitting(true);
     setUploadProgress(0);
 
-    const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, epubFile);
+    try {
+        const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
-    // Listen for state changes, errors, and completion of the upload.
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        // Get task progress, including the number of bytes uploaded and the total number of bytes to be uploaded
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      }, 
-      (error) => {
-        // A full list of error codes is available at
-        // https://firebase.google.com/docs/storage/web/handle-errors
-         switch (error.code) {
-          case 'storage/unauthorized':
-            toast({ title: "Error de Permisos", description: "No tienes permiso para subir archivos. Revisa las reglas de seguridad de Firebase Storage.", variant: "destructive", duration: 8000 });
-            break;
-          case 'storage/canceled':
-            toast({ title: "Subida Cancelada", description: "La subida del archivo fue cancelada.", variant: "destructive" });
-            break;
-          default:
-            toast({ title: "Error de Subida", description: "Ocurrió un error al subir el archivo.", variant: "destructive" });
-            break;
-        }
-        setIsSubmitting(false);
-        setUploadProgress(0);
-      }, 
-      async () => {
-        // Upload completed successfully, now we can get the download URL
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        const downloadURL = await new Promise<string>((resolve, reject) => {
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(progress);
+                },
+                (error) => {
+                    console.error("Firebase Storage Error:", error);
+                    reject(error);
+                },
+                async () => {
+                    try {
+                        const url = await getDownloadURL(uploadTask.snapshot.ref);
+                        resolve(url);
+                    } catch (error) {
+                        console.error("Error getting download URL:", error);
+                        reject(error);
+                    }
+                }
+            );
+        });
 
-          // Once upload is complete, add the book to Firestore
-          await addDoc(collection(db, "digital_books"), {
+        await addDoc(collection(db, "digital_books"), {
             ...values,
             epubFileUrl: downloadURL,
             createdAt: serverTimestamp(),
-          });
+        });
+        
+        toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+        router.push("/superadmin/digital-library");
 
-          toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-          router.push("/superadmin/digital-library");
-
-        } catch (dbError: any) {
-           toast({
-            title: "Error al guardar en base de datos",
-            description: dbError.message,
-            variant: "destructive",
-          });
-          // Ensure button is re-enabled if DB save fails
-          setIsSubmitting(false);
-          setUploadProgress(0);
+    } catch (error: any) {
+        let errorMessage = "Ocurrió un error inesperado.";
+        if (error.code) {
+            switch (error.code) {
+                case 'storage/unauthorized':
+                    errorMessage = "No tienes permiso para subir archivos. Revisa las reglas de seguridad de Firebase Storage.";
+                    break;
+                case 'storage/canceled':
+                    errorMessage = "La subida del archivo fue cancelada.";
+                    break;
+                default:
+                    errorMessage = `Error: ${error.message}`;
+                    break;
+            }
+        } else {
+             errorMessage = `Error: ${error.message}`;
         }
-      }
-    );
+        
+        toast({
+            title: "Error al Guardar",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 9000
+        });
+
+    } finally {
+        setIsSubmitting(false);
+        setUploadProgress(0);
+    }
   }
 
   return (
