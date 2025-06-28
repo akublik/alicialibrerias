@@ -1,21 +1,19 @@
 rules_version = '2';
 
 service firebase.storage {
-  // Match the specific bucket for this project.
-  match /b/alicia-lee.firebasestorage.app/o {
-    
-    // Allow anyone to read any file. This is necessary for the
-    // reader component to be able to access the EPUB files.
+  match /b/{bucket}/o {
+    // WARNING: The following rule is for development purposes and is insecure for production.
+    // It allows any user (even unauthenticated ones) to upload files to the 'epubs' folder.
+    // For a production environment, you should implement Firebase Authentication and change this rule to:
+    // allow write: if request.auth != null;
+    match /epubs/{epubId} {
+      allow write;
+    }
+
+    // This rule allows anyone to read files from your bucket.
+    // This is necessary for the EPUB reader to access the book files.
     match /{allPaths=**} {
       allow read;
-    }
-    
-    // Only allow authenticated users to write (create, update, delete) files
-    // specifically inside the 'epubs' folder.
-    // This secures the storage bucket so that only admins who can log in
-    // are able to add or modify books.
-    match /epubs/{epubFile} {
-      allow write: if request.auth != null;
     }
   }
 }
