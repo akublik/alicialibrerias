@@ -147,7 +147,7 @@ export default function ReaderPage() {
                 {book.epubFileUrl ? (
                     <ReactReader
                         key={book.id}
-                        url={book.epubFileUrl}
+                        url={`/api/proxy-epub?url=${encodeURIComponent(book.epubFileUrl)}`}
                         location={location}
                         locationChanged={(epubcfi: string) => setLocation(epubcfi)}
                         getRendition={(rendition) => {
