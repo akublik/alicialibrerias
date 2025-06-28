@@ -9,6 +9,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -242,8 +243,11 @@ export interface Story {
   id: string;
   title: string;
   author: string;
+  country: string;
+  years: string;
+  category: string;
+  content: string;
   excerpt?: string;
-  content: string; // The full story content, maybe markdown
   imageUrl?: string;
   dataAiHint?: string;
   createdAt: any;
