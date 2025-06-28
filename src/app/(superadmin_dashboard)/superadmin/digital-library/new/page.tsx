@@ -74,67 +74,74 @@ export default function NewDigitalBookPage() {
 
     setIsSubmitting(true);
     setUploadProgress(0);
-
+    
+    let downloadURL: string | null = null;
+    
+    // --- Step 1: Upload file to Storage ---
     try {
-      const uploadPromise = new Promise<string>((resolve, reject) => {
-        const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, epubFile);
+      console.log("Iniciando subida de archivo a Firebase Storage...");
+      const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
+      downloadURL = await new Promise<string>((resolve, reject) => {
         uploadTask.on('state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             setUploadProgress(progress);
           },
           (error) => {
-            console.error("Upload failed:", error);
-            reject(error);
+            console.error("Firebase Storage Upload Error:", error.code, error.message);
+            reject(error); // This is crucial
           },
-          () => {
-            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-              resolve(downloadURL);
-            }).catch(reject);
+          async () => {
+            try {
+                const url = await getDownloadURL(uploadTask.snapshot.ref);
+                console.log("Archivo subido. URL:", url);
+                resolve(url);
+            } catch(error) {
+                console.error("Error al obtener URL de descarga:", error);
+                reject(error);
+            }
           }
         );
       });
-
-      const downloadURL = await uploadPromise;
-
-      await addDoc(collection(db, "digital_books"), {
-        ...values,
-        epubFileUrl: downloadURL,
-        createdAt: serverTimestamp(),
-      });
-
-      toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-      router.push("/superadmin/digital-library");
-
     } catch (error: any) {
-      let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
-      if (error.code) {
-        switch (error.code) {
-          case 'storage/unauthorized':
-            errorMessage = "Permiso denegado. Revisa las reglas de seguridad de Firebase Storage.";
-            break;
-          case 'storage/canceled':
-            errorMessage = "La subida del archivo fue cancelada.";
-            break;
-          default:
+        let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
+        if (error.code === 'storage/unauthorized') {
+            errorMessage = "Error de Permisos en Firebase Storage. Asegúrate de que tus reglas de seguridad permiten escrituras públicas o autenticadas. Regla sugerida para empezar: `allow read, write: if true;` (no segura para producción).";
+        } else {
             errorMessage = `Error de Storage: ${error.message}`;
-            break;
         }
-      } else {
-        errorMessage = `Error: ${error.message}`;
-      }
-      
-      toast({
-        title: "Error al Guardar",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 9000
-      });
+        toast({ title: "Error de Subida de Archivo", description: errorMessage, variant: "destructive", duration: 15000 });
+        setIsSubmitting(false); // Reset state on failure
+        setUploadProgress(0);
+        return; // Stop execution
+    }
+
+    // --- Step 2: Save metadata to Firestore ---
+    if (!downloadURL) {
+        toast({ title: "Error Crítico", description: "La subida pareció funcionar, pero no se obtuvo una URL de descarga.", variant: "destructive"});
+        setIsSubmitting(false);
+        setUploadProgress(0);
+        return;
+    }
+
+    try {
+        console.log("Guardando metadatos en Firestore...");
+        await addDoc(collection(db, "digital_books"), {
+            ...values,
+            epubFileUrl: downloadURL,
+            createdAt: serverTimestamp(),
+        });
+
+        toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+        router.push("/superadmin/digital-library");
+    } catch (error: any) {
+        console.error("Firestore Error:", error);
+        toast({ title: "Error al Guardar en Base de Datos", description: `El archivo se subió, pero no se pudo guardar la información. Error: ${error.message}`, variant: "destructive", duration: 10000 });
     } finally {
-      setIsSubmitting(false);
-      setUploadProgress(0);
+        setIsSubmitting(false);
+        setUploadProgress(0);
     }
   }
 
