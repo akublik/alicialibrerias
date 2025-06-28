@@ -77,7 +77,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
       // Remove from wishlist
       try {
         await deleteDoc(doc(db, "wishlist", existingItem.id));
-        toast({ title: "Eliminado de tu lista" });
+        toast({ title: "Eliminado de tu lista", description: "El libro se ha quitado de tu lista de deseos." });
       } catch (error) {
         toast({ title: "Error", description: "No se pudo eliminar de la lista.", variant: "destructive" });
       }
@@ -89,7 +89,7 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
           bookId,
           createdAt: serverTimestamp(),
         });
-        toast({ title: "¡Guardado en tu lista!" });
+        toast({ title: "¡Guardado en tu lista!", description: "Puedes ver todos tus libros guardados en tu panel." });
       } catch (error) {
         toast({ title: "Error", description: "No se pudo añadir a la lista.", variant: "destructive" });
       }
