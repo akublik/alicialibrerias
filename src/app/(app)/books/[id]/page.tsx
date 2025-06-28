@@ -1,4 +1,3 @@
-
 // src/app/(app)/books/[id]/page.tsx
 "use client"; 
 
@@ -236,14 +235,14 @@ export default function BookDetailsPage() {
         <ArrowLeft className="mr-2 h-4 w-4" /> Volver al catálogo
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 mb-12">
         <div className="md:col-span-1">
           <Card className="overflow-hidden shadow-xl">
             <Image
               src={book.imageUrl}
               alt={`Portada de ${book.title}`}
-              width={600}
-              height={900}
+              width={400}
+              height={600}
               className="w-full h-auto object-cover"
               priority
               data-ai-hint={book.dataAiHint || 'book detail'}
@@ -251,7 +250,7 @@ export default function BookDetailsPage() {
           </Card>
         </div>
 
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary mb-2">{book.title}</h1>
           <p className="text-lg text-foreground/80 mb-2">por <span className="font-semibold">{book.authors.join(', ')}</span></p>
 
