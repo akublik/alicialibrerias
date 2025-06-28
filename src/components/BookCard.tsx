@@ -109,11 +109,10 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
           ${book.price.toFixed(2)}
         </p>
         <div className="flex items-center space-x-1">
-          <Button size={size === 'small' ? 'icon' : 'sm'} className="font-body" aria-label="Añadir al carrito" onClick={handleAddToCart}>
-            <ShoppingCart className={cn("h-4 w-4", size !== 'small' && "mr-1")} />
-            {size !== 'small' && "Añadir"}
+          <Button size="icon" className={cn("font-body", size !== 'small' && "h-9 w-9")} aria-label="Añadir al carrito" onClick={handleAddToCart}>
+            <ShoppingCart className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size={size === 'small' ? 'icon' : 'sm'} aria-label="Guardar en lista de deseos" onClick={handleToggleWishlist}>
+          <Button variant="ghost" size="icon" className={cn(size !== 'small' && "h-9 w-9")} aria-label="Guardar en lista de deseos" onClick={handleToggleWishlist}>
             <Bookmark className={cn("h-4 w-4", isWished && "fill-primary text-primary")} />
           </Button>
         </div>
