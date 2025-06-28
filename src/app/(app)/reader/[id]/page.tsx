@@ -21,6 +21,7 @@ export default function ReaderPage() {
   const bookId = params.id as string;
   
   const [book, setBook] = useState<DigitalBook | null>(null);
+  const [epubData, setEpubData] = useState<ArrayBuffer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -36,23 +37,37 @@ export default function ReaderPage() {
       return;
     }
 
-    const fetchBook = async () => {
+    const fetchBookAndData = async () => {
       setIsLoading(true);
       setError(null);
+      setEpubData(null);
+      
       try {
+        // Step 1: Fetch book metadata from Firestore
         const bookRef = doc(db, "digital_books", bookId);
         const docSnap = await getDoc(bookRef);
-        if (docSnap.exists()) {
-          const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
-          setBook(bookData);
-          
-          if (!bookData.epubFileUrl) {
-            throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
-          }
-
-        } else {
-          throw new Error("Libro no encontrado en la biblioteca digital.");
+        if (!docSnap.exists()) {
+           throw new Error("Libro no encontrado en la biblioteca digital.");
         }
+        
+        const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+        setBook(bookData);
+        
+        if (!bookData.epubFileUrl) {
+          throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
+        }
+
+        // Step 2: Fetch the actual EPUB file via the proxy
+        const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
+        const response = await fetch(proxyUrl);
+        
+        if (!response.ok) {
+            throw new Error(`No se pudo cargar el archivo del libro (estado: ${response.status}). Inténtalo de nuevo.`);
+        }
+        
+        const data = await response.arrayBuffer();
+        setEpubData(data);
+
       } catch (e: any) {
         console.error("Error al cargar el libro:", e);
         setError(`Error al cargar el libro: ${e.message}`);
@@ -61,7 +76,7 @@ export default function ReaderPage() {
       }
     };
 
-    fetchBook();
+    fetchBookAndData();
   }, [bookId]);
 
   const onTocLocationChanges = (href: string) => {
@@ -71,11 +86,13 @@ export default function ReaderPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || !book || !epubData) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-muted">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        <p className="mt-4 text-muted-foreground">Cargando libro...</p>
+        <p className="mt-4 text-muted-foreground">
+          {isLoading ? "Cargando información..." : "Cargando libro..."}
+        </p>
       </div>
     );
   }
@@ -92,8 +109,6 @@ export default function ReaderPage() {
       </div>
     );
   }
-
-  if (!book) return null;
 
   return (
     <div className="flex flex-col h-screen w-screen bg-muted overflow-hidden">
@@ -144,10 +159,10 @@ export default function ReaderPage() {
             </aside>
 
             <div className="flex-grow h-full relative" id="reader-wrapper">
-                {book.epubFileUrl ? (
+                {epubData && (
                     <ReactReader
                         key={book.id}
-                        url={`/api/proxy-epub?url=${encodeURIComponent(book.epubFileUrl)}`}
+                        url={epubData}
                         location={location}
                         locationChanged={(epubcfi: string) => setLocation(epubcfi)}
                         getRendition={(rendition) => {
@@ -156,18 +171,7 @@ export default function ReaderPage() {
                                 setToc(bookToc);
                             });
                         }}
-                        loadingView={
-                            <div className="flex justify-center items-center h-full">
-                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                            </div>
-                        }
-                        tocComponent={() => <div />}
-                        showToc={false}
                     />
-                ) : (
-                   <div className="flex justify-center items-center h-full">
-                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                   </div>
                 )}
             </div>
         </div>
