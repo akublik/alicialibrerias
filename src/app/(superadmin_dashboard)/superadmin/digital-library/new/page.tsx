@@ -104,7 +104,7 @@ export default function NewDigitalBookPage() {
                 const blob = await response.blob();
                 setParsedCoverUrl(URL.createObjectURL(blob));
             }
-            const getAuthor = (creator: any): string => {
+             const getAuthor = (creator: any): string => {
                 if (!creator) return "";
                 if (typeof creator === 'string') return creator;
                 if (Array.isArray(creator) && creator.length > 0) {
@@ -150,36 +150,41 @@ export default function NewDigitalBookPage() {
     setIsSubmitting(true);
     setUploadProgress(0);
 
-    const storageRef = ref(storage, `epubs/${epubFile.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, epubFile);
+    try {
+        const storageRef = ref(storage, `epubs/${epubFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
-    uploadTask.on('state_changed', 
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      }, 
-      (error) => {
-        console.error("Error de subida:", error);
-        toast({ title: "Error al subir el archivo", description: error.message, variant: "destructive" });
-        setIsSubmitting(false);
-        setUploadProgress(0);
-      }, 
-      async () => {
-        try {
-          await addDoc(collection(db, "digital_books"), {
+        await new Promise<void>((resolve, reject) => {
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    setUploadProgress(progress);
+                },
+                (error) => {
+                    console.error("Upload error:", error);
+                    reject(error);
+                },
+                () => {
+                    resolve();
+                }
+            );
+        });
+
+        await addDoc(collection(db, "digital_books"), {
             ...values,
             createdAt: serverTimestamp(),
-          });
-          toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-          router.push("/superadmin/digital-library");
-        } catch (error: any) {
-          toast({ title: "Error al guardar en la base de datos", description: error.message, variant: "destructive" });
-        } finally {
-          setIsSubmitting(false);
-          setUploadProgress(0);
-        }
-      }
-    );
+        });
+
+        toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+        router.push("/superadmin/digital-library");
+
+    } catch (error: any) {
+        console.error("Error en el proceso de subida:", error);
+        toast({ title: "Error en el proceso de subida", description: error.message, variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+        setUploadProgress(0);
+    }
   }
 
   return (
@@ -267,7 +272,7 @@ export default function NewDigitalBookPage() {
                   <FormField control={form.control} name="pdfFilename" render={({ field }) => ( 
                       <FormItem>
                           <FormLabel>Nombre Archivo PDF (Opcional)</FormLabel>
-                          <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} value={field.value || ''}/></FormControl>
+                          <FormControl><Input placeholder="libro-ejemplo.pdf" value={field.value || ''}/></FormControl>
                           <FormDescription>Si aplica, también se subirá al guardar.</FormDescription>
                           <FormMessage />
                       </FormItem>
