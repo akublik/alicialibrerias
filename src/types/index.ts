@@ -8,6 +8,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -235,4 +236,15 @@ export interface SearchLog {
   resultsCount: number;
   timestamp: any; // Firestore Timestamp
   userId?: string;
+}
+
+export interface Story {
+  id: string;
+  title: string;
+  author: string;
+  excerpt?: string;
+  content: string; // The full story content, maybe markdown
+  imageUrl?: string;
+  dataAiHint?: string;
+  createdAt: any;
 }
