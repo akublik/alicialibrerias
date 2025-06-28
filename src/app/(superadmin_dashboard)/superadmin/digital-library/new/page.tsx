@@ -154,31 +154,26 @@ export default function NewDigitalBookPage() {
     try {
         const storageRef = ref(storage, `epubs/${epubFile.name}`);
         const uploadTask = uploadBytesResumable(storageRef, epubFile);
+        
+        // Monitor progress with the event listener
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(progress);
+            }
+        );
 
-        await new Promise<void>((resolve, reject) => {
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    setUploadProgress(progress);
-                },
-                (error) => {
-                    console.error("Upload error:", error);
-                    reject(error);
-                },
-                async () => {
-                    try {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        await addDoc(collection(db, "digital_books"), {
-                            ...values,
-                            epubDownloadUrl: downloadURL, // Save the download URL
-                            createdAt: serverTimestamp(),
-                        });
-                        resolve();
-                    } catch (dbError) {
-                        reject(dbError);
-                    }
-                }
-            );
+        // Await the completion of the upload
+        await uploadTask;
+
+        // Once upload is complete, get the URL
+        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+        // Now save the data to Firestore
+        await addDoc(collection(db, "digital_books"), {
+            ...values,
+            epubDownloadUrl: downloadURL,
+            createdAt: serverTimestamp(),
         });
 
         toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
@@ -248,13 +243,13 @@ export default function NewDigitalBookPage() {
                   <Separator />
                   <h3 className="font-headline text-lg">Completa la Información Requerida</h3>
 
-                  <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada (Permanente)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} /></FormControl><FormDescription>Pega aquí la URL de la imagen de portada que has subido a tu hosting o a un servicio de imágenes.</FormDescription><FormMessage /></FormItem> )} />
+                  <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada (Permanente)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value || ''}/></FormControl><FormDescription>Pega aquí la URL de la imagen de portada que has subido a tu hosting o a un servicio de imágenes.</FormDescription><FormMessage /></FormItem> )} />
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
                         <FormItem>
                             <FormLabel>Nombre Archivo EPUB</FormLabel>
-                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} readOnly /></FormControl>
+                            <FormControl><Input placeholder="libro-ejemplo.epub" {...field} value={field.value || ''} readOnly /></FormControl>
                             <FormDescription>Se subirá al guardar.</FormDescription>
                             <FormMessage />
                         </FormItem>
@@ -278,7 +273,7 @@ export default function NewDigitalBookPage() {
                   <FormField control={form.control} name="pdfFilename" render={({ field }) => ( 
                       <FormItem>
                           <FormLabel>Nombre Archivo PDF (Opcional)</FormLabel>
-                          <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} /></FormControl>
+                          <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} value={field.value || ''} /></FormControl>
                           <FormDescription>Si aplica, también se subirá al guardar.</FormDescription>
                           <FormMessage />
                       </FormItem>
