@@ -100,6 +100,7 @@ export default function NewDigitalBookPage() {
             const book = ePub(e.target.result as ArrayBuffer);
             const metadata = await book.loaded.metadata;
             
+            // 1. Robust cover extraction
             const coverUrl = await book.coverUrl();
             if (coverUrl) {
                 const response = await fetch(coverUrl);
@@ -107,9 +108,42 @@ export default function NewDigitalBookPage() {
                 setParsedCoverUrl(URL.createObjectURL(blob));
             }
 
-            form.setValue("title", metadata.title || "");
-            form.setValue("author", metadata.creator || "");
-            form.setValue("description", metadata.description || "");
+            // 2. Robust author extraction function
+            const getAuthor = (creator: any): string => {
+                if (!creator) return "";
+                if (typeof creator === 'string') return creator;
+                if (Array.isArray(creator) && creator.length > 0) {
+                    const firstAuthor = creator[0];
+                    if (typeof firstAuthor === 'string') return firstAuthor;
+                    if (typeof firstAuthor === 'object' && firstAuthor !== null && (firstAuthor['#text'] || firstAuthor.name)) {
+                        return firstAuthor['#text'] || firstAuthor.name;
+                    }
+                }
+                if (typeof creator === 'object' && creator !== null && (creator['#text'] || creator.name)) {
+                    return creator['#text'] || creator.name;
+                }
+                return "";
+            };
+            
+             // 3. Robust function for simple fields like title or description
+            const getSimpleField = (field: any): string => {
+                if (!field) return "";
+                if (typeof field === 'string') return field;
+                if (typeof field === 'number') return String(field); // Handles numeric titles
+                if (typeof field === 'object' && field !== null && field['#text']) {
+                    return field['#text'];
+                }
+                return "";
+            };
+
+            // 4. Set form values defensively
+            const title = getSimpleField(metadata.title) || "Título no encontrado";
+            const author = getAuthor(metadata.creator) || "Autor desconocido";
+            const description = getSimpleField(metadata.description) || "";
+            
+            form.setValue("title", title);
+            form.setValue("author", author);
+            form.setValue("description", description);
             form.setValue("epubFilename", file.name);
             form.setValue("format", "EPUB");
 
