@@ -6,7 +6,6 @@ import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import { ShoppingAssistantTrigger } from '@/components/ShoppingAssistantTrigger';
 import { usePathname } from 'next/navigation';
 
 export default function RootLayout({
@@ -40,7 +39,6 @@ export default function RootLayout({
               </div>
             )}
             <Toaster />
-            {!isReaderPage && <ShoppingAssistantTrigger />}
           </CartProvider>
         </WishlistProvider>
       </body>
