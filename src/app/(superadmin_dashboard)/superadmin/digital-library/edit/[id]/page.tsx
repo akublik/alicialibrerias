@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/digital-library/edit/[id]/page.tsx
 "use client";
 
@@ -37,7 +36,6 @@ const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
-  coverImageUrl: z.string().url("La URL debe ser válida.").optional().or(z.literal('')),
   epubFileUrl: z.string().url("La URL del archivo EPUB es requerida.").optional().or(z.literal('')),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
@@ -46,6 +44,7 @@ const digitalBookFormSchema = z.object({
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
 
 export default function EditDigitalBookPage() {
+  const [bookData, setBookData] = useState<DigitalBook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEpubFile, setNewEpubFile] = useState<File | null>(null);
@@ -61,10 +60,10 @@ export default function EditDigitalBookPage() {
 
   const form = useForm<DigitalBookFormValues>({
     resolver: zodResolver(digitalBookFormSchema),
-    defaultValues: { title: "", author: "", description: "", coverImageUrl: "", epubFileUrl: "", categories: [], tags: [] },
+    defaultValues: { title: "", author: "", description: "", epubFileUrl: "", categories: [], tags: [] },
   });
   
-  const currentCoverUrl = form.watch("coverImageUrl");
+  const currentCoverUrl = bookData?.coverImageUrl;
 
   useEffect(() => {
       if (!bookId || !db) return;
@@ -76,16 +75,16 @@ export default function EditDigitalBookPage() {
               const docSnap = await getDoc(bookRef);
 
               if (docSnap.exists()) {
-                  const bookData = docSnap.data() as DigitalBook;
+                  const book = docSnap.data() as DigitalBook;
+                  setBookData(book);
                   form.reset({
-                      title: bookData.title,
-                      author: bookData.author,
-                      description: bookData.description || "",
-                      coverImageUrl: bookData.coverImageUrl,
-                      epubFileUrl: bookData.epubFileUrl || "",
-                      format: bookData.format,
-                      categories: bookData.categories || [],
-                      tags: bookData.tags || [],
+                      title: book.title,
+                      author: book.author,
+                      description: book.description || "",
+                      epubFileUrl: book.epubFileUrl || "",
+                      format: book.format,
+                      categories: book.categories || [],
+                      tags: book.tags || [],
                   });
               } else {
                   toast({ title: "Error", description: "Libro digital no encontrado.", variant: "destructive" });
@@ -149,13 +148,13 @@ export default function EditDigitalBookPage() {
   };
 
   async function onSubmit(values: DigitalBookFormValues) {
-    if (!db || !bookId) return;
+    if (!db || !bookId || !bookData) return;
     
     setIsSubmitting(true);
     setUploadProgress(0);
 
     try {
-      let finalCoverUrl = values.coverImageUrl;
+      let finalCoverUrl = bookData.coverImageUrl;
       if (newCoverFile) {
         setUploadStep("Subiendo nueva portada...");
         finalCoverUrl = await uploadFile(newCoverFile, 'covers');
@@ -236,9 +235,8 @@ export default function EditDigitalBookPage() {
                         <Image src={coverPreview || currentCoverUrl} alt="Vista previa de la portada" width={100} height={150} className="rounded-md border object-cover aspect-[2/3] bg-muted" />
                     )}
                     <div className="flex-grow space-y-4">
-                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
                         <div className="space-y-2">
-                            <Label htmlFor="cover-file">Opción 2: Reemplazar Portada</Label>
+                            <Label htmlFor="cover-file">Reemplazar Portada</Label>
                             <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
                         </div>
                     </div>

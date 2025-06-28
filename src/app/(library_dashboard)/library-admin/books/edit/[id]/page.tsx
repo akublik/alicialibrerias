@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -47,7 +46,6 @@ const bookFormSchema = z.object({
   description: z.string().optional(),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   isFeatured: z.boolean().default(false),
   pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
   coverType: z.string().optional(),
@@ -86,7 +84,6 @@ export default function EditBookPage() {
       description: "",
       categories: [],
       tags: [],
-      imageUrl: "",
       isFeatured: false,
       pageCount: '',
       coverType: '',
@@ -94,7 +91,7 @@ export default function EditBookPage() {
     },
   });
 
-  const currentCoverUrl = form.watch("imageUrl");
+  const currentCoverUrl = book?.imageUrl;
 
   useEffect(() => {
     if (!bookId || !db) return;
@@ -118,7 +115,6 @@ export default function EditBookPage() {
             description: bookData.description || '',
             categories: bookData.categories || [],
             tags: bookData.tags || [],
-            imageUrl: bookData.imageUrl || '',
             isFeatured: bookData.isFeatured || false,
             pageCount: bookData.pageCount || '',
             coverType: bookData.coverType || '',
@@ -224,7 +220,7 @@ export default function EditBookPage() {
     setUploadProgress(0);
     
     try {
-      let finalImageUrl = values.imageUrl || book.imageUrl;
+      let finalImageUrl = book.imageUrl;
       if (newCoverFile) {
         setUploadStep("Subiendo nueva portada...");
         finalImageUrl = await uploadFile(newCoverFile, 'covers');
@@ -330,9 +326,8 @@ export default function EditBookPage() {
                     <div className="relative w-full aspect-[2/3] rounded-md overflow-hidden border bg-muted">
                         <Image src={coverPreview || currentCoverUrl || 'https://placehold.co/300x450.png'} alt="Vista previa de portada" layout="fill" objectFit="cover" key={coverPreview || currentCoverUrl} />
                     </div>
-                    <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de la Imagen</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )}/>
                     <div className="space-y-2">
-                        <Label htmlFor="cover-file">Opción 2: Reemplazar Portada</Label>
+                        <Label htmlFor="cover-file">Reemplazar Portada</Label>
                         <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
                     </div>
                 </CardContent>

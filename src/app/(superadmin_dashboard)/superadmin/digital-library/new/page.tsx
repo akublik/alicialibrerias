@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/digital-library/new/page.tsx
 "use client";
 
@@ -29,7 +28,6 @@ const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
-  coverImageUrl: z.string().url("La URL debe ser válida.").optional().or(z.literal('')),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
@@ -49,7 +47,7 @@ export default function NewDigitalBookPage() {
   const form = useForm<DigitalBookFormValues>({
     resolver: zodResolver(digitalBookFormSchema),
     defaultValues: {
-      title: "", author: "", description: "", coverImageUrl: "", categories: [], tags: [],
+      title: "", author: "", description: "", categories: [], tags: [],
     },
   });
 
@@ -115,8 +113,8 @@ export default function NewDigitalBookPage() {
   };
 
   async function onSubmit(values: DigitalBookFormValues) {
-    if ((!values.coverImageUrl && !coverFile) || !epubFile) {
-      toast({ title: "Faltan archivos", description: "Debes proporcionar una portada (URL o archivo) y un archivo EPUB.", variant: "destructive" });
+    if (!coverFile || !epubFile) {
+      toast({ title: "Faltan archivos", description: "Debes subir un archivo de portada y un archivo EPUB.", variant: "destructive" });
       return;
     }
     if (!db) {
@@ -128,7 +126,7 @@ export default function NewDigitalBookPage() {
     setUploadProgress(0);
 
     try {
-      let coverUploadUrl = values.coverImageUrl || "";
+      let coverUploadUrl = "";
       // 1. Upload Cover Image if a file is provided
       if (coverFile) {
         setUploadStep("Subiendo portada...");
@@ -208,21 +206,14 @@ export default function NewDigitalBookPage() {
               />
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
               
-               <div className="space-y-4 rounded-lg border p-4">
-                 <h4 className="text-sm font-medium leading-none">Portada del Libro</h4>
-                 <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de la Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
-                 <div className="relative flex items-center justify-center">
-                    <div className="flex-grow border-t"></div><span className="flex-shrink mx-4 text-xs text-muted-foreground">O</span><div className="flex-grow border-t"></div>
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="cover-file">Opción 2: Subir Archivo de Portada</Label>
-                   <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
-                   {coverPreview && <Image src={coverPreview} alt="Vista previa de la portada" width={100} height={150} className="mt-2 rounded-md border object-cover aspect-[2/3]" />}
-                 </div>
+               <div className="space-y-2">
+                 <Label htmlFor="cover-file">Archivo de Portada (Requerido)</Label>
+                 <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} required />
+                 {coverPreview && <Image src={coverPreview} alt="Vista previa de la portada" width={100} height={150} className="mt-2 rounded-md border object-cover aspect-[2/3]" />}
                </div>
                
                <div className="space-y-2">
-                  <Label htmlFor="epub-file">Archivo EPUB</Label>
+                  <Label htmlFor="epub-file">Archivo EPUB (Requerido)</Label>
                   <Input id="epub-file" type="file" accept=".epub,application/epub+zip" onChange={handleEpubFileChange} disabled={isSubmitting} required />
                   {epubFile && <p className="text-sm text-muted-foreground">Archivo seleccionado: {epubFile.name}</p>}
                </div>

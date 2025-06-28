@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -44,7 +43,6 @@ const bookFormSchema = z.object({
   description: z.string().optional(),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   isFeatured: z.boolean().default(false),
   pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
   coverType: z.string().optional(),
@@ -74,7 +72,6 @@ export default function NewBookPage() {
       description: "",
       categories: [],
       tags: [],
-      imageUrl: "",
       isFeatured: false,
       pageCount: '',
       coverType: '',
@@ -163,8 +160,8 @@ export default function NewBookPage() {
 
 
   async function onSubmit(values: BookFormValues) {
-    if (!coverFile && !values.imageUrl) {
-        toast({ title: "Falta la portada", description: "Debes proporcionar una URL o subir un archivo para la portada.", variant: "destructive" });
+    if (!coverFile) {
+        toast({ title: "Falta la portada", description: "Debes subir un archivo para la portada del libro.", variant: "destructive" });
         return;
     }
 
@@ -188,13 +185,13 @@ export default function NewBookPage() {
         if (!libraryDataString) throw new Error("No se pudo encontrar la información de la librería registrada.");
         const libraryData = JSON.parse(libraryDataString);
 
-        let finalImageUrl = values.imageUrl || '';
+        let finalImageUrl = '';
         let finalDataAiHint = 'book cover';
 
         if (coverFile) {
             setUploadStep("Subiendo portada...");
             finalImageUrl = await uploadFile(coverFile, 'covers');
-        } else if (!finalImageUrl) {
+        } else {
              finalImageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
         }
         
@@ -290,21 +287,17 @@ export default function NewBookPage() {
             <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><ImagePlus/>Imagen de Portada</CardTitle>
-                    <CardDescription>Añade la portada subiendo un archivo o pegando una URL.</CardDescription>
+                    <CardDescription>Sube un archivo de imagen para la portada del libro.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {(coverPreview || form.watch('imageUrl')) && (
+                    {coverPreview && (
                         <div className="relative w-full max-w-xs aspect-[2/3] rounded-md overflow-hidden border mx-auto bg-muted">
-                            <Image src={coverPreview || form.watch('imageUrl')!} alt="Vista previa de portada" layout="fill" objectFit="cover" />
+                            <Image src={coverPreview} alt="Vista previa de portada" layout="fill" objectFit="cover" />
                         </div>
                     )}
-                    <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de Portada</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/portada.jpg" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                     <div className="relative flex items-center justify-center">
-                        <div className="flex-grow border-t"></div><span className="flex-shrink mx-4 text-xs text-muted-foreground">O</span><div className="flex-grow border-t"></div>
-                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="cover-file">Opción 2: Subir Archivo de Portada</Label>
-                      <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
+                      <Label htmlFor="cover-file">Archivo de Portada (Requerido)</Label>
+                      <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} required />
                     </div>
                 </CardContent>
             </Card>
