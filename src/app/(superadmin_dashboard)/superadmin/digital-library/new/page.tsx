@@ -1,5 +1,4 @@
 // src/app/(superadmin_dashboard)/superadmin/digital-library/new/page.tsx
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, PlusCircle } from "lucide-react";
+import { Loader2, ArrowLeft, PlusCircle, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -23,12 +22,13 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
-  coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
+  coverImageUrl: z.string().url("La URL debe ser válida.").optional().or(z.literal('')),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
@@ -38,7 +38,10 @@ type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
 export default function NewDigitalBookPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [epubFile, setEpubFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState("");
   const { toast } = useToast();
   const router = useRouter();
 
@@ -49,7 +52,7 @@ export default function NewDigitalBookPage() {
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEpubFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.type !== 'application/epub+zip') {
@@ -62,86 +65,102 @@ export default function NewDigitalBookPage() {
     }
   };
 
+  const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        setCoverFile(file);
+        // Create a preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setCoverPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    } else if (file) {
+        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
+        setCoverFile(null);
+        setCoverPreview(null);
+        if (event.target) event.target.value = "";
+    }
+  };
+
+  const uploadFile = (file: File, path: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!storage) {
+        reject(new Error("Firebase Storage no está configurado."));
+        return;
+      }
+      const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed',
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        },
+        (error) => {
+          console.error(`Error de subida en ${path}:`, error);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+    });
+  };
+
   async function onSubmit(values: DigitalBookFormValues) {
-    if (!epubFile) {
-      toast({ title: "Falta el archivo", description: "Por favor, selecciona un archivo EPUB para subir.", variant: "destructive" });
+    if ((!values.coverImageUrl && !coverFile) || !epubFile) {
+      toast({ title: "Faltan archivos", description: "Debes proporcionar una portada (URL o archivo) y un archivo EPUB.", variant: "destructive" });
       return;
     }
-    if (!db || !storage) {
-      toast({ title: "Error de configuración", description: "La conexión con Firebase no está disponible.", variant: "destructive", duration: 8000 });
+    if (!db) {
+      toast({ title: "Error de configuración", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     setUploadProgress(0);
-    
-    let downloadURL: string | null = null;
-    
-    // --- Step 1: Upload file to Storage ---
-    try {
-      console.log("Iniciando subida de archivo a Firebase Storage...");
-      const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
-      downloadURL = await new Promise<string>((resolve, reject) => {
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error("Firebase Storage Upload Error:", error.code, error.message);
-            reject(error); // This is crucial
-          },
-          async () => {
-            try {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                console.log("Archivo subido. URL:", url);
-                resolve(url);
-            } catch(error) {
-                console.error("Error al obtener URL de descarga:", error);
-                reject(error);
-            }
-          }
-        );
+    try {
+      let coverUploadUrl = values.coverImageUrl || "";
+      // 1. Upload Cover Image if a file is provided
+      if (coverFile) {
+        setUploadStep("Subiendo portada...");
+        coverUploadUrl = await uploadFile(coverFile, 'covers');
+      }
+
+      // 2. Upload EPUB file
+      setUploadStep("Subiendo EPUB...");
+      const epubUploadUrl = await uploadFile(epubFile!, 'epubs');
+
+      // 3. Save metadata to Firestore
+      setUploadStep("Guardando información...");
+      await addDoc(collection(db, "digital_books"), {
+        ...values,
+        coverImageUrl: coverUploadUrl,
+        epubFileUrl: epubUploadUrl,
+        createdAt: serverTimestamp(),
       });
+
+      toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+      router.push("/superadmin/digital-library");
+
     } catch (error: any) {
-        let errorMessage = "Ocurrió un error inesperado al subir el archivo.";
-        if (error.code === 'storage/unauthorized') {
-            errorMessage = "Error de Permisos en Firebase Storage. Asegúrate de que tus reglas de seguridad permiten escrituras públicas o autenticadas. Regla sugerida para empezar: `allow read, write: if true;` (no segura para producción).";
-        } else {
-            errorMessage = `Error de Storage: ${error.message}`;
-        }
-        toast({ title: "Error de Subida de Archivo", description: errorMessage, variant: "destructive", duration: 15000 });
-        setIsSubmitting(false); // Reset state on failure
-        setUploadProgress(0);
-        return; // Stop execution
-    }
-
-    // --- Step 2: Save metadata to Firestore ---
-    if (!downloadURL) {
-        toast({ title: "Error Crítico", description: "La subida pareció funcionar, pero no se obtuvo una URL de descarga.", variant: "destructive"});
-        setIsSubmitting(false);
-        setUploadProgress(0);
-        return;
-    }
-
-    try {
-        console.log("Guardando metadatos en Firestore...");
-        await addDoc(collection(db, "digital_books"), {
-            ...values,
-            epubFileUrl: downloadURL,
-            createdAt: serverTimestamp(),
-        });
-
-        toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-        router.push("/superadmin/digital-library");
-    } catch (error: any) {
-        console.error("Firestore Error:", error);
-        toast({ title: "Error al Guardar en Base de Datos", description: `El archivo se subió, pero no se pudo guardar la información. Error: ${error.message}`, variant: "destructive", duration: 10000 });
+      let errorMessage = "Ocurrió un error inesperado.";
+      if (error.code === 'storage/unauthorized') {
+          errorMessage = "Error de Permisos en Firebase Storage. Revisa las reglas de seguridad.";
+      } else {
+          errorMessage = `Error: ${error.message}`;
+      }
+      toast({ title: "Error en el Proceso", description: errorMessage, variant: "destructive", duration: 10000 });
     } finally {
-        setIsSubmitting(false);
-        setUploadProgress(0);
+      setIsSubmitting(false);
+      setUploadStep("");
     }
   }
 
@@ -160,18 +179,12 @@ export default function NewDigitalBookPage() {
         <CardHeader>
           <CardTitle>Detalles del Libro</CardTitle>
           <CardDescription>
-            Rellena la información del libro y sube el archivo EPUB.
+            Rellena la información del libro y sube los archivos necesarios.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-               <div className="space-y-2">
-                  <Label htmlFor="epub-file">Archivo EPUB</Label>
-                  <Input id="epub-file" type="file" accept=".epub" onChange={handleFileChange} disabled={isSubmitting} required />
-                  {epubFile && <p className="text-sm text-muted-foreground">Archivo seleccionado: {epubFile.name}</p>}
-               </div>
-
               <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField
@@ -193,6 +206,26 @@ export default function NewDigitalBookPage() {
                 )}
               />
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+              
+               <div className="space-y-4 rounded-lg border p-4">
+                 <h4 className="text-sm font-medium leading-none">Portada del Libro</h4>
+                 <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de la Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
+                 <div className="relative flex items-center justify-center">
+                    <div className="flex-grow border-t"></div><span className="flex-shrink mx-4 text-xs text-muted-foreground">O</span><div className="flex-grow border-t"></div>
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="cover-file">Opción 2: Subir Archivo de Portada</Label>
+                   <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
+                   {coverPreview && <Image src={coverPreview} alt="Vista previa de la portada" width={100} height={150} className="mt-2 rounded-md border object-cover aspect-[2/3]" />}
+                 </div>
+               </div>
+               
+               <div className="space-y-2">
+                  <Label htmlFor="epub-file">Archivo EPUB</Label>
+                  <Input id="epub-file" type="file" accept=".epub,application/epub+zip" onChange={handleEpubFileChange} disabled={isSubmitting} required />
+                  {epubFile && <p className="text-sm text-muted-foreground">Archivo seleccionado: {epubFile.name}</p>}
+               </div>
+              
               <FormField
                 control={form.control}
                 name="categories"
@@ -215,11 +248,10 @@ export default function NewDigitalBookPage() {
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem> )} />
               
-               {isSubmitting && (
+              {isSubmitting && (
                 <div className="space-y-2">
-                  <Label>{uploadProgress < 100 ? `Subiendo archivo... ${Math.round(uploadProgress)}%` : 'Guardando en base de datos...'}</Label>
+                  <Label>{uploadStep} {Math.round(uploadProgress)}%</Label>
                   <Progress value={uploadProgress} />
                 </div>
               )}

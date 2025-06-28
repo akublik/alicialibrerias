@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ import { bookCategories, bookTags } from "@/lib/options";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import Image from "next/image";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -41,14 +42,16 @@ const digitalBookFormSchema = z.object({
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
 });
-
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
 
 export default function EditDigitalBookPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newEpubFile, setNewEpubFile] = useState<File | null>(null);
+  const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStep, setUploadStep] = useState("");
 
   const { toast } = useToast();
   const router = useRouter();
@@ -57,17 +60,11 @@ export default function EditDigitalBookPage() {
 
   const form = useForm<DigitalBookFormValues>({
     resolver: zodResolver(digitalBookFormSchema),
-    defaultValues: {
-      title: "",
-      author: "",
-      description: "",
-      coverImageUrl: "",
-      epubFileUrl: "",
-      categories: [],
-      tags: [],
-    },
+    defaultValues: { title: "", author: "", description: "", coverImageUrl: "", epubFileUrl: "", categories: [], tags: [] },
   });
   
+  const currentCoverUrl = form.watch("coverImageUrl");
+
   useEffect(() => {
       if (!bookId || !db) return;
       
@@ -99,97 +96,101 @@ export default function EditDigitalBookPage() {
               setIsLoading(false);
           }
       };
-
       fetchBook();
   }, [bookId, form, router, toast]);
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEpubFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'application/epub+zip') {
-      setNewEpubFile(file);
+    if (file && file.type === 'application/epub+zip') setNewEpubFile(file);
+    else if (file) toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+  };
+
+  const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        setNewCoverFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setCoverPreview(reader.result as string);
+        reader.readAsDataURL(file);
     } else if (file) {
-      toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
+        setNewCoverFile(null);
+        setCoverPreview(null);
+        if (event.target) event.target.value = "";
     }
   };
 
+  const uploadFile = (file: File, path: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!storage) {
+        reject(new Error("Firebase Storage no está configurado."));
+        return;
+      }
+      const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      uploadTask.on('state_changed',
+        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+        (error) => {
+          console.error(`Error de subida en ${path}:`, error);
+          reject(error);
+        },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) {
+            reject(error);
+          }
+        }
+      );
+    });
+  };
+
   async function onSubmit(values: DigitalBookFormValues) {
-    if (!db || !bookId) {
-      toast({ title: "Error de configuración", variant: "destructive" });
-      return;
-    }
+    if (!db || !bookId) return;
     
     setIsSubmitting(true);
     setUploadProgress(0);
 
-    let finalEpubUrl = form.getValues('epubFileUrl');
-
-    // --- Step 1 (Optional): Upload a new file if provided ---
-    if (newEpubFile && storage) {
-      try {
-        console.log("Iniciando subida de nuevo archivo a Firebase Storage...");
-        const storageRef = ref(storage, `epubs/${Date.now()}-${newEpubFile.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, newEpubFile);
-
-        finalEpubUrl = await new Promise<string>((resolve, reject) => {
-          uploadTask.on('state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(progress);
-            },
-            (error) => {
-              console.error("Firebase Storage Upload Error:", error.code, error.message);
-              reject(error);
-            },
-            async () => {
-              try {
-                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                console.log("Nuevo archivo subido. URL:", url);
-                resolve(url);
-              } catch (error) {
-                console.error("Error al obtener URL de descarga:", error);
-                reject(error);
-              }
-            }
-          );
-        });
-      } catch (error: any) {
-        let errorMessage = "Ocurrió un error inesperado al subir el nuevo archivo.";
-        if (error.code === 'storage/unauthorized') {
-          errorMessage = "Error de Permisos en Firebase Storage. Asegúrate de que tus reglas de seguridad permiten escrituras públicas o autenticadas. Regla sugerida para empezar: `allow read, write: if true;` (no segura para producción).";
-        } else {
-          errorMessage = `Error de Storage: ${error.message}`;
-        }
-        toast({ title: "Error de Subida de Archivo", description: errorMessage, variant: "destructive", duration: 15000 });
-        setIsSubmitting(false);
-        setUploadProgress(0);
-        return;
-      }
-    }
-
-    // --- Step 2: Update metadata in Firestore ---
     try {
-      console.log("Actualizando metadatos en Firestore...");
-      const bookRef = doc(db, "digital_books", bookId);
-      const dataToUpdate = { ...values, epubFileUrl: finalEpubUrl || "" };
+      let finalCoverUrl = values.coverImageUrl;
+      if (newCoverFile) {
+        setUploadStep("Subiendo nueva portada...");
+        finalCoverUrl = await uploadFile(newCoverFile, 'covers');
+      }
 
+      let finalEpubUrl = values.epubFileUrl;
+      if (newEpubFile) {
+        setUploadStep("Subiendo nuevo EPUB...");
+        finalEpubUrl = await uploadFile(newEpubFile, 'epubs');
+      }
+      
+      setUploadStep("Actualizando información...");
+      const bookRef = doc(db, "digital_books", bookId);
+      const dataToUpdate = { ...values, coverImageUrl: finalCoverUrl, epubFileUrl: finalEpubUrl };
       await updateDoc(bookRef, dataToUpdate);
+      
       toast({ title: "Libro digital actualizado", description: `"${values.title}" se ha guardado.` });
       router.push("/superadmin/digital-library");
+
     } catch (error: any) {
-      console.error("Firestore Error:", error);
-      toast({ title: "Error al Guardar en Base de Datos", description: `Error: ${error.message}`, variant: "destructive", duration: 10000 });
+      let errorMessage = "Ocurrió un error inesperado.";
+      if (error.code === 'storage/unauthorized') errorMessage = "Error de Permisos en Firebase Storage.";
+      else errorMessage = `Error: ${error.message}`;
+      toast({ title: "Error en el Proceso", description: errorMessage, variant: "destructive", duration: 10000 });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(0);
+      setUploadStep("");
     }
   }
-  
+
   if (isLoading) {
-      return (
-          <div className="flex justify-center items-center py-16">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
-      );
+    return (
+        <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (
@@ -206,85 +207,56 @@ export default function EditDigitalBookPage() {
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Detalles del Libro Digital</CardTitle>
-          <CardDescription>Modifica la información del libro.</CardDescription>
+          <CardDescription>Modifica la información y archivos del libro.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField
-                control={form.control}
-                name="format"
-                render={({ field }) => (
+              <FormField control={form.control} name="format" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Formato</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona un formato" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Selecciona un formato" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        <SelectItem value="EPUB">EPUB</SelectItem>
-                        <SelectItem value="PDF">PDF</SelectItem>
-                        <SelectItem value="EPUB & PDF">EPUB & PDF</SelectItem>
+                        <SelectItem value="EPUB">EPUB</SelectItem><SelectItem value="PDF">PDF</SelectItem><SelectItem value="EPUB & PDF">EPUB & PDF</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
-                )}
-              />
+              )}/>
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
               
-              <FormField
-                control={form.control}
-                name="categories"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categorías</FormLabel>
-                    <FormControl>
-                      <MultiSelect
-                        placeholder="Selecciona categorías..."
-                        options={bookCategories}
-                        value={field.value || []}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="tags"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Etiquetas</FormLabel>
-                    <FormControl>
-                      <MultiSelect
-                        placeholder="Selecciona etiquetas..."
-                        options={bookTags}
-                        value={field.value || []}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
+              <div className="space-y-4 rounded-lg border p-4">
+                <h4 className="text-sm font-medium leading-none">Portada del Libro</h4>
+                <div className="flex gap-4 items-start">
+                    {(coverPreview || currentCoverUrl) && (
+                        <Image src={coverPreview || currentCoverUrl} alt="Vista previa de la portada" width={100} height={150} className="rounded-md border object-cover aspect-[2/3] bg-muted" />
+                    )}
+                    <div className="flex-grow space-y-4">
+                        <FormField control={form.control} name="coverImageUrl" render={({ field }) => ( <FormItem><FormLabel>Opción 1: URL de Portada</FormLabel><FormControl><Input type="url" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem> )} />
+                        <div className="space-y-2">
+                            <Label htmlFor="cover-file">Opción 2: Reemplazar Portada</Label>
+                            <Input id="cover-file" type="file" accept="image/*" onChange={handleCoverFileChange} disabled={isSubmitting} />
+                        </div>
+                    </div>
+                </div>
+              </div>
               
               <div className="space-y-2">
                   <Label htmlFor="epub-file">Reemplazar Archivo EPUB (Opcional)</Label>
-                  <Input id="epub-file" type="file" accept=".epub" onChange={handleFileChange} disabled={isSubmitting} />
+                  <Input id="epub-file" type="file" accept=".epub,application/epub+zip" onChange={handleEpubFileChange} disabled={isSubmitting} />
                   {newEpubFile && <p className="text-sm text-muted-foreground">Nuevo archivo a subir: {newEpubFile.name}</p>}
-                  {form.getValues('epubFileUrl') && !newEpubFile && <p className="text-sm text-muted-foreground">Hay un archivo EPUB asociado a este libro.</p>}
+                  {form.getValues('epubFileUrl') && !newEpubFile && <p className="text-sm text-muted-foreground">Hay un archivo EPUB asociado. Sube uno nuevo para reemplazarlo.</p>}
               </div>
-
-               {isSubmitting && newEpubFile && (
+              
+              <FormField control={form.control} name="categories" render={({ field }) => (<FormItem><FormLabel>Categorías</FormLabel><FormControl><MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="tags" render={({ field }) => (<FormItem><FormLabel>Etiquetas</FormLabel><FormControl><MultiSelect placeholder="Selecciona etiquetas..." options={bookTags} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+              
+              {isSubmitting && (
                 <div className="space-y-2">
-                  <Label>Subiendo nuevo archivo... {Math.round(uploadProgress)}%</Label>
+                  <Label>{uploadStep} {Math.round(uploadProgress)}%</Label>
                   <Progress value={uploadProgress} />
                 </div>
               )}

@@ -2,11 +2,20 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
+    // Permitir lectura pública de todos los archivos
     match /{allPaths=**} {
-      // WARNING: These rules are completely insecure and are for debugging only.
-      // They allow anyone on the internet to read, write, and delete your files.
-      // You MUST secure these rules before launching your app.
-      allow read, write: if true;
+      allow read;
+    }
+
+    // Permitir escritura en 'epubs' y 'covers'
+    // Esta regla es abierta para la demostración. En producción, se debe restringir
+    // a usuarios autenticados con un rol específico.
+    match /epubs/{epubId} {
+      allow write: if true;
+    }
+
+    match /covers/{coverId} {
+      allow write: if true;
     }
   }
 }
