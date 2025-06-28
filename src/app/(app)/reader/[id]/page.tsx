@@ -4,9 +4,8 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { ref, getDownloadURL } from 'firebase/storage';
 import type { DigitalBook } from '@/types';
 import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen } from 'lucide-react';
 import { ReactReader } from "react-reader";
@@ -32,7 +31,7 @@ export default function ReaderPage() {
   const [isTocVisible, setIsTocVisible] = useState(false);
 
   useEffect(() => {
-    if (!bookId || !db || !storage) {
+    if (!bookId || !db) {
       setError("Error de configuración de la aplicación.");
       setIsLoading(false);
       return;
@@ -52,9 +51,8 @@ export default function ReaderPage() {
             throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
           }
 
-          // Get download URL from Firebase Storage
-          const epubStorageRef = ref(storage, `epubs/${bookData.epubFilename}`);
-          const url = await getDownloadURL(epubStorageRef);
+          // Construct local URL from the public folder
+          const url = `/epubs/${bookData.epubFilename}`;
           setEpubUrl(url);
 
         } else {
@@ -62,11 +60,7 @@ export default function ReaderPage() {
         }
       } catch (e: any) {
         console.error("Error al cargar el libro:", e);
-        if (e.code === 'storage/object-not-found') {
-             setError(`El archivo EPUB (${e.config?.resource?.name}) no fue encontrado en el servidor. Contacta al administrador.`);
-        } else {
-            setError(`Error al cargar el libro: ${e.message}`);
-        }
+        setError(`Error al cargar el libro: ${e.message}`);
       } finally {
         setIsLoading(false);
       }

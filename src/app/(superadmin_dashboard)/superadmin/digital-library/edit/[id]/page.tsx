@@ -34,14 +34,11 @@ const digitalBookFormSchema = z.object({
   author: z.string().min(3, "El autor es requerido."),
   description: z.string().optional(),
   coverImageUrl: z.string().url("La URL de la portada es requerida y debe ser válida."),
-  epubFilename: z.string().optional(),
+  epubFilename: z.string().min(5, "El nombre del archivo EPUB es requerido.").endsWith('.epub', "El archivo debe ser .epub"),
   pdfFilename: z.string().optional(),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-}).refine(data => data.epubFilename || data.pdfFilename, {
-  message: "Debes proporcionar al menos un nombre de archivo (EPUB o PDF).",
-  path: ["epubFilename"],
 });
 
 type DigitalBookFormValues = z.infer<typeof digitalBookFormSchema>;
@@ -217,7 +214,7 @@ export default function EditDigitalBookPage() {
               
               <FormField control={form.control} name="epubFilename" render={({ field }) => ( 
                   <FormItem>
-                      <FormLabel>Nombre del Archivo EPUB (Opcional)</FormLabel>
+                      <FormLabel>Nombre del Archivo EPUB</FormLabel>
                       <FormControl><Input placeholder="libro-ejemplo.epub" {...field} /></FormControl>
                       <FormDescription>
                           Asegúrate de que este archivo exista en la carpeta `public/epubs/`.
@@ -230,7 +227,7 @@ export default function EditDigitalBookPage() {
                       <FormLabel>Nombre del Archivo PDF (Opcional)</FormLabel>
                       <FormControl><Input placeholder="libro-ejemplo.pdf" {...field} /></FormControl>
                       <FormDescription>
-                          Considera crear una carpeta `public/pdfs/` y subir el archivo allí.
+                          Si aplica, el nombre del archivo en la carpeta `public/pdfs`.
                       </FormDescription>
                       <FormMessage />
                   </FormItem>
