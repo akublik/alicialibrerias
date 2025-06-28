@@ -130,8 +130,7 @@ export default function EditDigitalBookPage() {
             const storageRef = ref(storage, `epubs/${Date.now()}-${newEpubFile.name}`);
             const uploadTask = uploadBytesResumable(storageRef, newEpubFile);
             
-            // This is a promise that we can await
-            finalEpubUrl = await new Promise((resolve, reject) => {
+            finalEpubUrl = await new Promise<string>((resolve, reject) => {
                 uploadTask.on('state_changed',
                     (snapshot) => {
                         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -142,8 +141,12 @@ export default function EditDigitalBookPage() {
                         reject(error);
                     },
                     async () => {
-                        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                        resolve(downloadURL);
+                        try {
+                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                            resolve(downloadURL);
+                        } catch (error) {
+                            reject(error);
+                        }
                     }
                 );
             });
@@ -159,6 +162,7 @@ export default function EditDigitalBookPage() {
       toast({ title: "Error al actualizar el libro", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(0);
     }
   }
   

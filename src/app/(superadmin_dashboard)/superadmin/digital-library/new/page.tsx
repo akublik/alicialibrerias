@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, PlusCircle, FileUp, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db, storage } from "@/lib/firebase"; 
@@ -22,6 +22,7 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Progress } from "@/components/ui/progress";
 import * as epubjs from "epubjs";
+import { Label } from "@/components/ui/label";
 
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -48,27 +49,44 @@ export default function NewDigitalBookPage() {
     },
   });
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'application/epub+zip') {
-      setEpubFile(file);
-      const book = epubjs.default(file as any);
-      book.loaded.metadata.then(async (metadata) => {
-        form.setValue("title", metadata.title || "Título no encontrado");
-        form.setValue("author", metadata.creator || "Autor desconocido");
-        form.setValue("description", metadata.description || "");
+    if (!file) return;
 
-        const coverUrl = await book.coverUrl();
-        if (coverUrl) {
-          // This will be a blob URL, we can use it for display if needed
-          // but for now, we'll prompt user for a proper URL.
-           toast({ title: "Portada encontrada", description: "Por favor, sube esta portada a un servicio de imágenes y pega la URL en el campo 'URL de la Portada'." });
-        }
-      });
-    } else {
+    if (file.type !== 'application/epub+zip') {
       toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo .epub", variant: "destructive" });
+      return;
+    }
+    
+    setEpubFile(file);
+
+    try {
+      const book = epubjs.default(file);
+      const metadata = await book.loaded.metadata;
+      
+      form.setValue("title", metadata.title || "Título no encontrado");
+      form.setValue("author", metadata.creator || "Autor desconocido");
+      form.setValue("description", metadata.description || "");
+
+      const coverBlobUrl = await book.coverUrl();
+      if (coverBlobUrl) {
+        toast({
+          title: "Portada Encontrada en el EPUB",
+          description: "La portada se ha detectado, pero debe ser subida a un servicio de imágenes y su URL pegada en el campo 'URL de la Portada' para poder guardarla.",
+          duration: 8000,
+        });
+      }
+      book.destroy(); // Clean up memory
+    } catch (error) {
+      console.error("Error al procesar el EPUB:", error);
+      toast({
+        title: "Error al leer el archivo",
+        description: "No se pudieron extraer los metadatos del archivo EPUB.",
+        variant: "destructive"
+      });
     }
   };
+
 
   async function onSubmit(values: DigitalBookFormValues) {
     if (!epubFile) {
@@ -79,39 +97,51 @@ export default function NewDigitalBookPage() {
       toast({ title: "Error de configuración", variant: "destructive" });
       return;
     }
+
     setIsSubmitting(true);
     setUploadProgress(0);
 
-    const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, epubFile);
+    try {
+      const storageRef = ref(storage, `epubs/${Date.now()}-${epubFile.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, epubFile);
 
-    uploadTask.on('state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload error:", error);
-        toast({ title: "Error al subir archivo", description: error.message, variant: "destructive" });
-        setIsSubmitting(false);
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          await addDoc(collection(db, "digital_books"), {
-            ...values,
-            epubFileUrl: downloadURL,
-            createdAt: serverTimestamp(),
-          });
-          toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
-          router.push("/superadmin/digital-library");
-        } catch (error: any) {
-           console.error("Error al guardar en DB:", error);
-           toast({ title: "Error al guardar datos", description: error.message, variant: "destructive" });
-           setIsSubmitting(false);
-        }
-      }
-    );
+      const downloadURL = await new Promise<string>((resolve, reject) => {
+        uploadTask.on('state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Upload error:", error);
+            reject(error);
+          },
+          async () => {
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(url);
+            } catch (error) {
+              reject(error);
+            }
+          }
+        );
+      });
+
+      await addDoc(collection(db, "digital_books"), {
+        ...values,
+        epubFileUrl: downloadURL,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({ title: "¡Libro digital añadido!", description: `"${values.title}" ahora está en la biblioteca.` });
+      router.push("/superadmin/digital-library");
+
+    } catch (error: any) {
+      console.error("Error en onSubmit:", error);
+      toast({ title: "Error en la operación", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+      setUploadProgress(0);
+    }
   }
 
   return (
