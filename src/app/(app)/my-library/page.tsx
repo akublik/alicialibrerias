@@ -12,8 +12,6 @@ import type { DigitalBook } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from 'next/navigation';
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 
 export default function MyLibraryPage() {
   const [myBooks, setMyBooks] = useState<DigitalBook[]>([]);
@@ -88,7 +86,7 @@ export default function MyLibraryPage() {
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       ) : filteredBooks.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
           {filteredBooks.map((book) => (
             <Link key={book.id} href={`/reader/${book.id}`} passHref>
                 <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl group cursor-pointer flex flex-col h-full">
@@ -103,37 +101,13 @@ export default function MyLibraryPage() {
                             />
                         </div>
                     </CardHeader>
-                    <CardContent className="p-4 flex flex-col flex-grow">
-                        <CardTitle className="text-lg font-semibold leading-tight line-clamp-2 group-hover:text-primary">
+                    <CardContent className="p-3 flex flex-col flex-grow">
+                        <CardTitle className="text-base font-semibold leading-tight line-clamp-2 group-hover:text-primary">
                             {book.title}
                         </CardTitle>
-                        <CardDescription className="text-sm mt-1 mb-3 line-clamp-1">
+                        <CardDescription className="text-xs mt-1 line-clamp-1">
                             {book.author}
                         </CardDescription>
-                        
-                        <Separator />
-                        
-                        <div className="mt-3 space-y-3 text-xs text-muted-foreground flex-grow">
-                          {book.description && (
-                            <div>
-                                <h4 className="font-semibold text-foreground/90 mb-1">Reseña</h4>
-                                <p className="line-clamp-3">{book.description}</p>
-                            </div>
-                          )}
-                          <div>
-                              <h4 className="font-semibold text-foreground/90 mb-1">Ficha del Libro</h4>
-                              <div className="flex flex-wrap gap-1">
-                                {book.format && <Badge variant="outline">Formato: {book.format}</Badge>}
-                                {book.tags?.slice(0, 3).map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                              </div>
-                          </div>
-                          {book.categories && book.categories.length > 0 && (
-                            <div>
-                                <h4 className="font-semibold text-foreground/90 mb-1">Categorías</h4>
-                                <p className="line-clamp-2">{book.categories.join(', ')}</p>
-                            </div>
-                          )}
-                        </div>
                     </CardContent>
                 </Card>
             </Link>
