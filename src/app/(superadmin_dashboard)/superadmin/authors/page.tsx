@@ -120,7 +120,7 @@ export default function ManageAuthorsPage() {
                           />
                         </TableCell>
                         <TableCell className="font-medium">{author.name}</TableCell>
-                        <TableCell>{author.countries.join(', ')}</TableCell>
+                        <TableCell>{(author.countries || []).join(', ')}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
