@@ -50,3 +50,13 @@ export const bookTags: Option[] = [
   { value: 'siglo-xx', label: 'Siglo XX' },
   { value: 'thriller', label: 'Thriller' },
 ];
+
+export const countryOptions: Option[] = [
+    { value: 'Ecuador', label: 'Ecuador' },
+    { value: 'Colombia', label: 'Colombia' },
+    { value: 'Peru', label: 'Perú' },
+    { value: 'Argentina', label: 'Argentina' },
+    { value: 'Mexico', label: 'México' },
+    { value: 'Chile', label: 'Chile' },
+    { value: 'Global', label: 'Global' },
+];

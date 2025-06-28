@@ -7,6 +7,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -161,6 +162,8 @@ export interface Author {
   bio: string;
   imageUrl: string;
   dataAiHint?: string;
+  countries: string[];
+  createdAt: any;
 }
 
 export interface SecondaryBannerSlide {
