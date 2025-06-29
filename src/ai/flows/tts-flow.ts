@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Text-to-Speech (TTS) AI flow.
@@ -11,9 +12,13 @@ import {z} from 'genkit';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/googleai';
 
-export type TextToSpeechOutput = {
-  media: string;
-};
+// Define the Zod schema for the output
+const TextToSpeechOutputSchema = z.object({
+  media: z.string().describe("A data URI of the generated audio in WAV format."),
+});
+
+// Export the TypeScript type inferred from the Zod schema
+export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
 
 
 export async function textToSpeech(text: string): Promise<TextToSpeechOutput> {
@@ -60,7 +65,7 @@ const textToSpeechFlow = ai.defineFlow(
   {
     name: 'textToSpeechFlow',
     inputSchema: z.string(),
-    outputSchema: z.any(),
+    outputSchema: TextToSpeechOutputSchema,
   },
   async (query) => {
     // The Gemini TTS model has an 8192 token limit.
