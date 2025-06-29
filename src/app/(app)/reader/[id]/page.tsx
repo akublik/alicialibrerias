@@ -90,10 +90,18 @@ export default function ReaderPage() {
   useEffect(() => {
     if (audioUrl && audioRef.current) {
         audioRef.current.src = audioUrl;
-        audioRef.current.play();
-        setIsPlaying(true);
+        audioRef.current.play().catch(e => {
+            console.error("Audio playback failed:", e);
+            toast({
+                title: "Error de reproducción",
+                description: "El navegador bloqueó la reproducción automática. Por favor, haz clic de nuevo para reproducir.",
+                variant: "destructive"
+            });
+            // Reset state if autoplay fails
+            setIsPlaying(false);
+        });
     }
-  }, [audioUrl]);
+  }, [audioUrl, toast]);
 
   const onTocLocationChanges = (href: string) => {
     if (rendition) {
@@ -120,7 +128,6 @@ export default function ReaderPage() {
       } else {
         audioRef.current.play();
       }
-      setIsPlaying(!isPlaying);
       return;
     }
 
