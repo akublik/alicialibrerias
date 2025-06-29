@@ -215,6 +215,22 @@ export default function LibraryBooksPage() {
            setIsImporting(false);
            return;
         }
+        
+        const headers = results.meta.fields;
+        if (!headers) {
+          toast({ title: "Error de CSV", description: "El archivo no tiene encabezados.", variant: "destructive" });
+          setIsImporting(false);
+          return;
+        }
+
+        const isNewFormat = headers.includes('pvp');
+        const isOldFormat = headers.includes('title');
+
+        if (!isNewFormat && !isOldFormat) {
+          toast({ title: "Formato de CSV no reconocido", description: "Las columnas no coinciden con ninguna de las plantillas. Descargue una de las plantillas para ver el formato correcto.", variant: "destructive", duration: 10000 });
+          setIsImporting(false);
+          return;
+        }
 
         const batch = writeBatch(db);
         const booksCollection = collection(db, "books");
@@ -222,38 +238,43 @@ export default function LibraryBooksPage() {
         const validationErrors: string[] = [];
 
         results.data.forEach((row, index) => {
-          const isNewFormat = row.hasOwnProperty('pvp');
           let bookData: Partial<Book>;
 
           if (isNewFormat) {
             if (!row.titulo || !row.autor || !row.pvp) {
-              validationErrors.push(`Fila ${index + 2}: Faltan columnas (titulo, autor, pvp).`);
+              validationErrors.push(`Fila ${index + 2}: Faltan columnas requeridas (titulo, autor, pvp).`);
               return;
             }
             const price = parseFloat(row.pvp);
             const pageCount = row.paginas ? parseInt(row.paginas, 10) : null;
-            if (isNaN(price) || (row.paginas && isNaN(pageCount!))) {
-              validationErrors.push(`Fila ${index + 2}: 'pvp' y 'paginas' deben ser números.`);
+            if (isNaN(price)) {
+              validationErrors.push(`Fila ${index + 2}: La columna 'pvp' debe ser un número.`);
               return;
             }
+             if (row.paginas && isNaN(pageCount!)) {
+              validationErrors.push(`Fila ${index + 2}: La columna 'paginas' debe ser un número.`);
+              return;
+            }
+
             bookData = {
               title: row.titulo,
               authors: (row.autor || "").split(',').map((a: string) => a.trim()),
               price,
-              stock: 0,
+              stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 0, // Default stock to 0 if not present
               isbn: row.isbn13 || '',
               description: row.resumen || '',
-              categories: (row.clasificacion || "").split(',').map((c: string) => c.trim()).filter(Boolean),
-              tags: [],
+              categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
+              tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
               imageUrl: row.imagen_tapa,
               pageCount,
               coverType: row.formato || null,
-              publisher: row.editor || null,
+              publisher: row.editor || row.sello || null,
+              condition: 'Nuevo',
             };
 
-          } else {
+          } else { // Old format
             if (!row.title || !row.authors || !row.price || !row.stock) {
-              validationErrors.push(`Fila ${index + 2}: Faltan columnas (title, authors, price, stock).`);
+              validationErrors.push(`Fila ${index + 2}: Faltan columnas requeridas (title, authors, price, stock).`);
               return;
             }
             const price = parseFloat(row.price);
@@ -289,7 +310,7 @@ export default function LibraryBooksPage() {
             libraryName,
             libraryLocation,
             status: 'published' as const,
-            format: 'Físico' as const,
+            format: 'Físico' as const, // Assuming all imported books are physical for now
           };
           
           if (!newBookData.imageUrl) {
@@ -304,7 +325,7 @@ export default function LibraryBooksPage() {
         if (validationErrors.length > 0) {
           toast({
             title: `Errores en el archivo CSV (${validationErrors.length})`,
-            description: ( <ScrollArea className="h-40"><ul className="list-disc list-inside">{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul></ScrollArea>),
+            description: ( <ScrollArea className="h-40"><ul className="list-disc list-inside">{validationErrors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}</ul></ScrollArea>),
             variant: "destructive",
             duration: 10000,
           });
