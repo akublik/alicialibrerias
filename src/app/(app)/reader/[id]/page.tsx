@@ -131,7 +131,10 @@ export default function ReaderPage() {
     try {
       // @ts-ignore // epubjs has incomplete types for getContents
       const contents = renditionRef.current.getContents();
-      const text = contents.map((c: any) => c.text?.trim()).join('\n').trim();
+      // A more robust way to extract text from the current view.
+      // Instead of relying on the 'text' property, we get the textContent
+      // directly from the document body of each content part.
+      const text = contents.map((c: any) => c.document?.body?.textContent?.trim() || '').join('\n').trim();
 
       if (!text) {
         toast({
