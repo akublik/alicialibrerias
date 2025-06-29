@@ -11,10 +11,9 @@ import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play } 
 import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/button';
-import { ConverseWithBookTrigger } from '@/components/ConverseWithBookTrigger';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { textToSpeech } from '@/ai/flows/tts-flow';
+import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/tts-flow';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -293,8 +292,6 @@ export default function ReaderPage() {
             </div>
         </div>
         
-        <ConverseWithBookTrigger bookTitle={book.title} />
-
         <div 
             className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
             onClick={() => rendition?.prev()}
