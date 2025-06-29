@@ -157,8 +157,8 @@ export default function LibraryBooksPage() {
   };
 
   const handleDownloadTemplate = () => {
-      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher,condition";
-      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana,"Nuevo"`;
+      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher,condition,imageUrl";
+      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana,"Nuevo","https://ejemplo.com/portada.jpg"`;
       const csvContent = `${header}\n${example}`;
       const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -224,21 +224,35 @@ export default function LibraryBooksPage() {
           return;
         }
 
-        const isNewFormat = headers.includes('pvp');
-        const isOldFormat = headers.includes('title');
+        const cleanedHeaders = headers.map(h => h.trim().toLowerCase());
+        const isNewFormat = cleanedHeaders.includes('pvp');
+        const isOldFormat = cleanedHeaders.includes('title');
 
         if (!isNewFormat && !isOldFormat) {
-          toast({ title: "Formato de CSV no reconocido", description: "Las columnas no coinciden con ninguna de las plantillas. Descargue una de las plantillas para ver el formato correcto.", variant: "destructive", duration: 10000 });
+          toast({
+            title: "Formato de CSV no reconocido",
+            description: `Las columnas no coinciden con las plantillas. Encabezados detectados: "${headers.join(', ')}"`,
+            variant: "destructive",
+            duration: 10000
+          });
           setIsImporting(false);
           return;
         }
+        
+        const dataWithCleanedKeys = results.data.map(row => {
+            const newRow: Record<string, string> = {};
+            for (const key in row) {
+                newRow[key.trim().toLowerCase()] = row[key];
+            }
+            return newRow;
+        });
 
         const batch = writeBatch(db);
         const booksCollection = collection(db, "books");
         let booksAdded = 0;
         const validationErrors: string[] = [];
 
-        results.data.forEach((row, index) => {
+        dataWithCleanedKeys.forEach((row, index) => {
           let bookData: Partial<Book>;
 
           if (isNewFormat) {
@@ -280,8 +294,8 @@ export default function LibraryBooksPage() {
             }
             const price = parseFloat(row.price);
             const stock = parseInt(row.stock, 10);
-            const pageCount = row.pageCount ? parseInt(row.pageCount, 10) : null;
-            if (isNaN(price) || isNaN(stock) || (row.pageCount && isNaN(pageCount!))) {
+            const pageCount = row.pagecount ? parseInt(row.pagecount, 10) : null;
+            if (isNaN(price) || isNaN(stock) || (row.pagecount && isNaN(pageCount!))) {
               validationErrors.push(`Fila ${index + 2}: 'price', 'stock', y 'pageCount' deben ser números.`);
               return;
             }
@@ -295,10 +309,10 @@ export default function LibraryBooksPage() {
               description: row.description || '',
               categories: (row.categories || "").split(',').map((c: string) => c.trim()).filter(Boolean),
               tags: (row.tags || "").split(',').map((t: string) => t.trim()).filter(Boolean),
-              imageUrl: row.imageUrl,
-              isFeatured: (row.isFeatured || 'false').toUpperCase() === 'TRUE',
+              imageUrl: row.imageurl,
+              isFeatured: (row.isfeatured || 'false').toUpperCase() === 'TRUE',
               pageCount,
-              coverType: row.coverType || null,
+              coverType: row.covertype || null,
               publisher: row.publisher || null,
               condition: row.condition === 'Usado' ? 'Usado' : 'Nuevo',
             };
