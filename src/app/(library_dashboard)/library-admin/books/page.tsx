@@ -224,8 +224,9 @@ export default function LibraryBooksPage() {
           return;
         }
 
-        const isNewFormat = headers.includes('pvp');
-        const isOldFormat = headers.includes('title');
+        const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
+        const isNewFormat = normalizedHeaders.includes('pvp');
+        const isOldFormat = normalizedHeaders.includes('title');
 
         if (!isNewFormat && !isOldFormat) {
           toast({
