@@ -170,6 +170,21 @@ export default function LibraryBooksPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
   };
+  
+  const handleDownloadNewTemplate = () => {
+      const header = "pvp,moneda,formato,tipo_notificacion,isbn13,alto,ancho,peso,titulo,edicion,idioma_edicion,paginas,resumen,imagen_tapa,editor,pais_edicion,fecha_publicacion,codigo_bmg,autor,colección,sello,clasificacion";
+      const example = `"12.99","USD","Tapa Blanda","Novedad","9780307348129","21","14","0.4","El amor en los tiempos del cólera","1","Español","368","La historia de amor entre...","https://ejemplo.com/tapa.jpg","Debolsillo","Colombia","1985","12345","Gabriel García Márquez","Contemporánea","Debolsillo","Realismo Mágico"`;
+      const csvContent = `${header}\n${example}`;
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "plantilla_formato_b.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
 
   const handleImportCSV = async () => {
     if (!csvFile) {
@@ -207,21 +222,49 @@ export default function LibraryBooksPage() {
         const validationErrors: string[] = [];
 
         results.data.forEach((row, index) => {
-          if (!row.title || !row.authors || !row.price || !row.stock) {
-            validationErrors.push(`Fila ${index + 2}: Faltan columnas requeridas (title, authors, price, stock).`);
-            return;
-          }
+          const isNewFormat = row.hasOwnProperty('pvp');
+          let bookData: Partial<Book>;
 
-          const price = parseFloat(row.price);
-          const stock = parseInt(row.stock, 10);
-          const pageCount = row.pageCount ? parseInt(row.pageCount, 10) : null;
-          
-          if (isNaN(price) || isNaN(stock) || (row.pageCount && isNaN(pageCount!))) {
-             validationErrors.push(`Fila ${index + 2}: 'price', 'stock', y 'pageCount' deben ser números válidos.`);
-             return;
-          }
+          if (isNewFormat) {
+            if (!row.titulo || !row.autor || !row.pvp) {
+              validationErrors.push(`Fila ${index + 2}: Faltan columnas (titulo, autor, pvp).`);
+              return;
+            }
+            const price = parseFloat(row.pvp);
+            const pageCount = row.paginas ? parseInt(row.paginas, 10) : null;
+            if (isNaN(price) || (row.paginas && isNaN(pageCount!))) {
+              validationErrors.push(`Fila ${index + 2}: 'pvp' y 'paginas' deben ser números.`);
+              return;
+            }
+            bookData = {
+              title: row.titulo,
+              authors: (row.autor || "").split(',').map((a: string) => a.trim()),
+              price,
+              stock: 0,
+              isbn: row.isbn13 || '',
+              description: row.resumen || '',
+              categories: (row.clasificacion || "").split(',').map((c: string) => c.trim()).filter(Boolean),
+              tags: [],
+              imageUrl: row.imagen_tapa,
+              pageCount,
+              coverType: row.formato || null,
+              publisher: row.editor || null,
+            };
 
-          const newBookData = {
+          } else {
+            if (!row.title || !row.authors || !row.price || !row.stock) {
+              validationErrors.push(`Fila ${index + 2}: Faltan columnas (title, authors, price, stock).`);
+              return;
+            }
+            const price = parseFloat(row.price);
+            const stock = parseInt(row.stock, 10);
+            const pageCount = row.pageCount ? parseInt(row.pageCount, 10) : null;
+            if (isNaN(price) || isNaN(stock) || (row.pageCount && isNaN(pageCount!))) {
+              validationErrors.push(`Fila ${index + 2}: 'price', 'stock', y 'pageCount' deben ser números.`);
+              return;
+            }
+
+            bookData = {
               title: row.title,
               authors: (row.authors || "").split(',').map((a: string) => a.trim()),
               price,
@@ -230,19 +273,28 @@ export default function LibraryBooksPage() {
               description: row.description || '',
               categories: (row.categories || "").split(',').map((c: string) => c.trim()).filter(Boolean),
               tags: (row.tags || "").split(',').map((t: string) => t.trim()).filter(Boolean),
-              imageUrl: `https://placehold.co/300x450.png?text=${encodeURIComponent(row.title)}`,
-              dataAiHint: 'book cover',
+              imageUrl: row.imageUrl,
               isFeatured: (row.isFeatured || 'false').toUpperCase() === 'TRUE',
               pageCount,
               coverType: row.coverType || null,
               publisher: row.publisher || null,
               condition: row.condition === 'Usado' ? 'Usado' : 'Nuevo',
-              libraryId,
-              libraryName,
-              libraryLocation,
-              status: 'published' as const,
-              format: 'Físico' as const,
+            };
+          }
+
+          const newBookData = {
+            ...bookData,
+            dataAiHint: 'book cover',
+            libraryId,
+            libraryName,
+            libraryLocation,
+            status: 'published' as const,
+            format: 'Físico' as const,
           };
+          
+          if (!newBookData.imageUrl) {
+            newBookData.imageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(newBookData.title as string)}`;
+          }
 
           const newBookRef = doc(booksCollection);
           batch.set(newBookRef, newBookData);
@@ -252,13 +304,7 @@ export default function LibraryBooksPage() {
         if (validationErrors.length > 0) {
           toast({
             title: `Errores en el archivo CSV (${validationErrors.length})`,
-            description: (
-              <ScrollArea className="h-40">
-                <ul className="list-disc list-inside">
-                  {validationErrors.map((e, i) => <li key={i}>{e}</li>)}
-                </ul>
-              </ScrollArea>
-            ),
+            description: ( <ScrollArea className="h-40"><ul className="list-disc list-inside">{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul></ScrollArea>),
             variant: "destructive",
             duration: 10000,
           });
@@ -269,14 +315,11 @@ export default function LibraryBooksPage() {
         if (booksAdded > 0) {
           try {
             await batch.commit();
-            toast({
-              title: "¡Importación Exitosa!",
-              description: `Se han añadido ${booksAdded} libros a tu inventario.`,
-            });
+            toast({ title: "¡Importación Exitosa!", description: `Se han añadido ${booksAdded} libros.` });
             setIsImportDialogOpen(false);
             setCsvFile(null);
           } catch (e: any) {
-            toast({ title: "Error al guardar en la base de datos", description: e.message, variant: "destructive" });
+            toast({ title: "Error al guardar", description: e.message, variant: "destructive" });
           }
         } else {
            toast({ title: "Nada que importar", description: "El archivo CSV estaba vacío o no contenía datos válidos." });
@@ -284,11 +327,12 @@ export default function LibraryBooksPage() {
         setIsImporting(false);
       },
       error: (error: any) => {
-          toast({ title: "Error al leer el archivo CSV", description: error.message, variant: "destructive" });
+          toast({ title: "Error al leer el archivo", description: error.message, variant: "destructive" });
           setIsImporting(false);
       }
     });
   };
+
 
   return (
     <>
@@ -319,12 +363,16 @@ export default function LibraryBooksPage() {
                         <Card>
                             <CardHeader className="p-4"><CardTitle className="text-base">Instrucciones</CardTitle></CardHeader>
                             <CardContent className="p-4 pt-0 text-sm space-y-2">
-                                <p>1. Descarga la plantilla para asegurarte de que el formato es correcto.</p>
-                                <p>2. Las columnas <strong>title, authors, price, y stock</strong> son obligatorias.</p>
-                                <p>3. Para múltiples autores, categorías o etiquetas, sepáralos por comas.</p>
-                                <Button variant="link" className="p-0 h-auto" onClick={handleDownloadTemplate}>
-                                    <FileText className="mr-2 h-4 w-4"/> Descargar plantilla CSV
-                                </Button>
+                                <p>Sube un archivo CSV para añadir libros. La importación ahora es compatible con múltiples formatos.</p>
+                                <p>Asegúrate de que tu archivo CSV tenga los encabezados correctos. Puedes descargar nuestras plantillas como guía:</p>
+                                <div className="flex gap-4">
+                                    <Button variant="link" className="p-0 h-auto" onClick={handleDownloadTemplate}>
+                                        <FileText className="mr-2 h-4 w-4"/> Plantilla Estándar
+                                    </Button>
+                                    <Button variant="link" className="p-0 h-auto" onClick={handleDownloadNewTemplate}>
+                                        <FileText className="mr-2 h-4 w-4"/> Plantilla Formato B
+                                    </Button>
+                                </div>
                             </CardContent>
                         </Card>
                         <div>
