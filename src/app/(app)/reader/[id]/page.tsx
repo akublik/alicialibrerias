@@ -13,7 +13,7 @@ import type { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/tts-flow';
+import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -30,7 +30,7 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [location, setLocation] = useState<string | number>(0);
-  const [rendition, setRendition] = useState<Rendition | null>(null);
+  const renditionRef = useRef<Rendition | null>(null);
   const [toc, setToc] = useState<any[]>([]);
   const [isTocVisible, setIsTocVisible] = useState(false);
 
@@ -89,7 +89,6 @@ export default function ReaderPage() {
     fetchBookAndData();
   }, [bookId]);
   
-  // Effect to play audio when URL is set
   useEffect(() => {
     if (audioUrl && audioRef.current) {
         audioRef.current.src = audioUrl;
@@ -100,22 +99,20 @@ export default function ReaderPage() {
                 description: "El navegador bloqueó la reproducción automática. Por favor, haz clic de nuevo para reproducir.",
                 variant: "destructive"
             });
-            // Reset state if autoplay fails
             setIsPlaying(false);
         });
     }
   }, [audioUrl, toast]);
 
   const onTocLocationChanges = (href: string) => {
-    if (rendition) {
-        rendition.display(href);
+    if (renditionRef.current) {
+        renditionRef.current.display(href);
         setIsTocVisible(false);
     }
   };
   
   const handleLocationChanged = (epubcfi: string) => {
     setLocation(epubcfi);
-    // When location changes, reset the audio state
     if (audioRef.current && !audioRef.current.paused) {
       audioRef.current.pause();
     }
@@ -124,7 +121,6 @@ export default function ReaderPage() {
   };
 
   const handleTextToSpeech = async () => {
-    // If audio is already loaded, just toggle play/pause
     if (audioUrl && audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
@@ -134,16 +130,12 @@ export default function ReaderPage() {
       return;
     }
 
-    // If no audio is loaded yet, generate it
-    if (!rendition) return;
+    if (!renditionRef.current) return;
     
     setIsLoadingAudio(true);
     try {
-      // @ts-ignore // epubjs has incomplete types for getContents
-      const contents = rendition.getContents();
-      // A more robust way to extract text from the current view.
-      // Instead of relying on the 'text' property, we get the textContent
-      // directly from the document body of each content part.
+      // @ts-ignore
+      const contents = renditionRef.current.getContents();
       const text = contents.map((c: any) => c.document?.body?.textContent?.trim() || '').join('\n').trim();
 
       if (!text) {
@@ -158,7 +150,6 @@ export default function ReaderPage() {
 
       const response = await textToSpeech({ text, voice: selectedVoice });
       setAudioUrl(response.media);
-      // The useEffect will handle playing the audio
     } catch (error: any) {
       console.error("Error generating audio:", error);
       toast({
@@ -281,7 +272,7 @@ export default function ReaderPage() {
                         location={location}
                         locationChanged={handleLocationChanged}
                         getRendition={(rendition) => {
-                            setRendition(rendition);
+                            renditionRef.current = rendition;
                             // @ts-ignore
                             rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
                                 setToc(bookToc);
@@ -294,13 +285,13 @@ export default function ReaderPage() {
         
         <div 
             className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-            onClick={() => rendition?.prev()}
+            onClick={() => renditionRef.current?.prev()}
         >
             <ArrowLeft className="fixed left-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
         </div>
         <div 
             className="fixed right-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-            onClick={() => rendition?.next()}
+            onClick={() => renditionRef.current?.next()}
         >
             <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
         </div>
