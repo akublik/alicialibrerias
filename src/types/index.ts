@@ -11,6 +11,7 @@
 
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -31,6 +32,7 @@ export interface Book {
   pageCount?: number | null;
   coverType?: string | null;
   publisher?: string | null;
+  condition?: 'Nuevo' | 'Usado';
 }
 
 export interface DigitalBook {

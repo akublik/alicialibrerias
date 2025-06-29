@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send, Bookmark } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send, Bookmark, PackageCheck } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -321,6 +321,13 @@ export default function BookDetailsPage() {
                 <BookCopy className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
                 <span className="font-semibold text-foreground mr-1">Tapa:</span>
                 <span className="text-muted-foreground">{book.coverType}</span>
+              </p>
+            )}
+            {book.condition && (
+              <p className="flex items-center">
+                <PackageCheck className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                <span className="font-semibold text-foreground mr-1">Condición:</span>
+                <span className="text-muted-foreground">{book.condition}</span>
               </p>
             )}
             {book.pageCount && (

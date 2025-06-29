@@ -141,6 +141,7 @@ export default function LibraryBooksPage() {
       pageCount: book.pageCount,
       coverType: book.coverType,
       publisher: book.publisher,
+      condition: book.condition,
     })));
 
     const blob = new Blob([`\uFEFF${csvData}`], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel
@@ -156,8 +157,8 @@ export default function LibraryBooksPage() {
   };
 
   const handleDownloadTemplate = () => {
-      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher";
-      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana`;
+      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher,condition";
+      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana,"Nuevo"`;
       const csvContent = `${header}\n${example}`;
       const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement("a");
@@ -235,6 +236,7 @@ export default function LibraryBooksPage() {
               pageCount,
               coverType: row.coverType || null,
               publisher: row.publisher || null,
+              condition: row.condition === 'Usado' ? 'Usado' : 'Nuevo',
               libraryId,
               libraryName,
               libraryLocation,

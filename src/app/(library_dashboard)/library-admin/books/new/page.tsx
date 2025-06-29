@@ -49,6 +49,7 @@ const bookFormSchema = z.object({
   pageCount: z.union([z.coerce.number().int().positive({ message: "Debe ser un número positivo." }), z.literal('')]).optional(),
   coverType: z.string().optional(),
   publisher: z.string().optional(),
+  condition: z.string().optional(),
 });
 
 type BookFormValues = z.infer<typeof bookFormSchema>;
@@ -79,6 +80,7 @@ export default function NewBookPage() {
       pageCount: '',
       coverType: '',
       publisher: '',
+      condition: 'Nuevo',
     },
   });
 
@@ -235,6 +237,7 @@ export default function NewBookPage() {
             pageCount: values.pageCount ? Number(values.pageCount) : null,
             coverType: values.coverType || null,
             publisher: values.publisher || null,
+            condition: values.condition || 'Nuevo',
         };
 
         await addDoc(collection(db, "books"), newBookData);
@@ -288,10 +291,23 @@ export default function NewBookPage() {
                </div>
               
               <h4 className="font-headline text-lg text-foreground border-b pb-2 pt-4">Ficha Técnica (Opcional)</h4>
-              <div className="grid sm:grid-cols-3 gap-4">
+              <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <FormField control={form.control} name="pageCount" render={({ field }) => ( <FormItem><FormLabel>Nº de Páginas</FormLabel><FormControl><Input type="number" placeholder="320" {...field} /></FormControl><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name="coverType" render={({ field }) => ( <FormItem> <FormLabel>Tipo de Tapa</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Tapa Blanda">Tapa Blanda</SelectItem><SelectItem value="Tapa Dura">Tapa Dura</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                   <FormField control={form.control} name="publisher" render={({ field }) => ( <FormItem><FormLabel>Editorial</FormLabel><FormControl><Input placeholder="Ej: Planeta" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                   <FormField control={form.control} name="condition" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Condición</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="Nuevo">Nuevo</SelectItem>
+                          <SelectItem value="Usado">Usado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
               </div>
 
               <FormField control={form.control} name="description" render={({ field }) => (
