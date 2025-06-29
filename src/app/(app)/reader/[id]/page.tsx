@@ -16,6 +16,9 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const availableVoices = ['Algenib', 'Achernar', 'Canopus', 'Sirius', 'Rigel', 'Procyon'];
 
 export default function ReaderPage() {
   const params = useParams();
@@ -37,6 +40,7 @@ export default function ReaderPage() {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [selectedVoice, setSelectedVoice] = useState('Algenib');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -153,7 +157,7 @@ export default function ReaderPage() {
         return;
       }
 
-      const response = await textToSpeech(text);
+      const response = await textToSpeech({ text, voice: selectedVoice });
       setAudioUrl(response.media);
       // The useEffect will handle playing the audio
     } catch (error: any) {
@@ -225,9 +229,21 @@ export default function ReaderPage() {
                     <h1 className="font-headline text-xl font-bold text-primary truncate">{book.title}</h1>
                     <p className="text-sm text-muted-foreground truncate">{book.author}</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleTextToSpeech} disabled={isLoadingAudio}>
-                  {getButtonContent()}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                      <SelectTrigger className="w-[120px] h-9 text-xs">
+                        <SelectValue placeholder="Selecciona una voz" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableVoices.map(voice => (
+                          <SelectItem key={voice} value={voice}>{voice}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button variant="outline" size="sm" onClick={handleTextToSpeech} disabled={isLoadingAudio}>
+                      {getButtonContent()}
+                    </Button>
+                </div>
             </div>
         </header>
         

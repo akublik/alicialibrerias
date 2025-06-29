@@ -4,6 +4,7 @@
  * @fileOverview A Text-to-Speech (TTS) AI flow.
  *
  * - textToSpeech - A function that converts a string of text into speech audio.
+ * - TextToSpeechInput - The input type for the textToSpeech function.
  * - TextToSpeechOutput - The return type for the textToSpeech function.
  */
 
@@ -11,6 +12,14 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/googleai';
+
+// Define the Zod schema for the input, now including an optional voice
+const TextToSpeechInputSchema = z.object({
+  text: z.string().describe("The text to convert to speech."),
+  voice: z.string().optional().describe("The prebuilt voice to use (e.g., 'Algenib', 'Sirius'). Defaults to 'Algenib' if not provided."),
+});
+export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
+
 
 // Define the Zod schema for the output
 const TextToSpeechOutputSchema = z.object({
@@ -21,8 +30,8 @@ const TextToSpeechOutputSchema = z.object({
 export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
 
 
-export async function textToSpeech(text: string): Promise<TextToSpeechOutput> {
-  return textToSpeechFlow(text);
+export async function textToSpeech(input: TextToSpeechInput): Promise<TextToSpeechOutput> {
+  return textToSpeechFlow(input);
 }
 
 /**
@@ -64,17 +73,17 @@ async function toWav(
 const textToSpeechFlow = ai.defineFlow(
   {
     name: 'textToSpeechFlow',
-    inputSchema: z.string(),
+    inputSchema: TextToSpeechInputSchema,
     outputSchema: TextToSpeechOutputSchema,
   },
-  async (query) => {
+  async ({ text, voice }) => {
     // The Gemini TTS model has an 8192 token limit.
     // Truncate the input to a safe character limit to avoid errors.
     const CHARACTER_LIMIT = 15000; 
-    let textToProcess = query;
-    if (query.length > CHARACTER_LIMIT) {
-      textToProcess = query.substring(0, CHARACTER_LIMIT);
-      console.log(`TTS input was too long (${query.length} chars) and has been truncated to ${CHARACTER_LIMIT} characters.`);
+    let textToProcess = text;
+    if (text.length > CHARACTER_LIMIT) {
+      textToProcess = text.substring(0, CHARACTER_LIMIT);
+      console.log(`TTS input was too long (${text.length} chars) and has been truncated to ${CHARACTER_LIMIT} characters.`);
     }
 
     const { media } = await ai.generate({
@@ -83,7 +92,7 @@ const textToSpeechFlow = ai.defineFlow(
         responseModalities: ['AUDIO'],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
+            prebuiltVoiceConfig: { voiceName: voice || 'Algenib' },
           },
         },
       },
