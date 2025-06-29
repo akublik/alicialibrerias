@@ -7,13 +7,15 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play } from 'lucide-react';
 import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/button';
 import { ConverseWithBookTrigger } from '@/components/ConverseWithBookTrigger';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { textToSpeech } from '@/ai/flows/tts-flow';
+import { useToast } from "@/hooks/use-toast";
 
 export default function ReaderPage() {
   const params = useParams();
@@ -30,6 +32,13 @@ export default function ReaderPage() {
   const [toc, setToc] = useState<any[]>([]);
   const [isTocVisible, setIsTocVisible] = useState(false);
 
+  // TTS State
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const { toast } = useToast();
+
   useEffect(() => {
     if (!bookId || !db) {
       setError("Error de configuración de la aplicación.");
@@ -43,7 +52,6 @@ export default function ReaderPage() {
       setEpubData(null);
       
       try {
-        // Step 1: Fetch book metadata from Firestore
         const bookRef = doc(db, "digital_books", bookId);
         const docSnap = await getDoc(bookRef);
         if (!docSnap.exists()) {
@@ -57,7 +65,6 @@ export default function ReaderPage() {
           throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
         }
 
-        // Step 2: Fetch the actual EPUB file via the proxy
         const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
         const response = await fetch(proxyUrl);
         
@@ -78,12 +85,90 @@ export default function ReaderPage() {
 
     fetchBookAndData();
   }, [bookId]);
+  
+  // Effect to play audio when URL is set
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
+        setIsPlaying(true);
+    }
+  }, [audioUrl]);
 
   const onTocLocationChanges = (href: string) => {
     if (renditionRef.current) {
         renditionRef.current.display(href);
         setIsTocVisible(false);
     }
+  };
+  
+  const handleLocationChanged = (epubcfi: string) => {
+    setLocation(epubcfi);
+    // When location changes, reset the audio state
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+    }
+    setAudioUrl(null);
+    setIsPlaying(false);
+  };
+
+  const handleTextToSpeech = async () => {
+    // If audio is already loaded, just toggle play/pause
+    if (audioUrl && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+      return;
+    }
+
+    // If no audio is loaded yet, generate it
+    if (!renditionRef.current) return;
+    
+    setIsLoadingAudio(true);
+    try {
+      // @ts-ignore // epubjs has incomplete types for getContents
+      const contents = renditionRef.current.getContents();
+      const text = contents.map((c: any) => c.text?.trim()).join('\n').trim();
+
+      if (!text) {
+        toast({
+          title: "No hay texto para leer",
+          description: "No se encontró texto en la página actual para leer en voz alta.",
+          variant: "destructive",
+        });
+        setIsLoadingAudio(false);
+        return;
+      }
+
+      const response = await textToSpeech(text);
+      setAudioUrl(response.media);
+      // The useEffect will handle playing the audio
+    } catch (error: any) {
+      console.error("Error generating audio:", error);
+      toast({
+        title: "Error al generar audio",
+        description: error.message || "No se pudo crear la narración. Inténtalo de nuevo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  };
+  
+  const getButtonContent = () => {
+    if (isLoadingAudio) {
+      return <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Cargando...</>;
+    }
+    if (audioUrl && isPlaying) {
+      return <><Pause className="mr-2 h-4 w-4" />Pausar</>;
+    }
+    if (audioUrl && !isPlaying) {
+      return <><Play className="mr-2 h-4 w-4" />Reproducir</>;
+    }
+    return <><Volume2 className="mr-2 h-4 w-4" />Leer en voz alta</>;
   };
 
   if (isLoading || !book || !epubData) {
@@ -114,19 +199,24 @@ export default function ReaderPage() {
     <div className="flex flex-col h-screen w-screen bg-muted overflow-hidden">
         <header className="flex-shrink-0 bg-background shadow-md z-30">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <Link href="/my-library" passHref>
-                    <Button variant="outline">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Volver a la Biblioteca
-                    </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link href="/my-library" passHref>
+                      <Button variant="outline" size="sm">
+                          <ArrowLeft className="mr-2 h-4 w-4" />
+                          Biblioteca
+                      </Button>
+                  </Link>
+                   <Button variant="outline" size="sm" onClick={() => setIsTocVisible(!isTocVisible)}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Índice
+                  </Button>
+                </div>
                 <div className="text-center hidden sm:block mx-4 overflow-hidden">
                     <h1 className="font-headline text-xl font-bold text-primary truncate">{book.title}</h1>
                     <p className="text-sm text-muted-foreground truncate">{book.author}</p>
                 </div>
-                <Button variant="outline" onClick={() => setIsTocVisible(!isTocVisible)}>
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Índice
+                <Button variant="outline" size="sm" onClick={handleTextToSpeech} disabled={isLoadingAudio}>
+                  {getButtonContent()}
                 </Button>
             </div>
         </header>
@@ -164,9 +254,10 @@ export default function ReaderPage() {
                         key={book.id}
                         url={epubData}
                         location={location}
-                        locationChanged={(epubcfi: string) => setLocation(epubcfi)}
+                        locationChanged={handleLocationChanged}
                         getRendition={(rendition) => {
                             renditionRef.current = rendition;
+                            // @ts-ignore
                             rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
                                 setToc(bookToc);
                             });
@@ -190,6 +281,7 @@ export default function ReaderPage() {
         >
             <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
         </div>
+        <audio ref={audioRef} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} />
     </div>
   );
 }
