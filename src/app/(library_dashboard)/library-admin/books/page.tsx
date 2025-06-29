@@ -209,7 +209,7 @@ export default function LibraryBooksPage() {
     Papa.parse<Record<string, string>>(csvFile, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim().toLowerCase(),
+      transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
       complete: async (results) => {
         if (results.errors.length > 0) {
            toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
@@ -224,14 +224,13 @@ export default function LibraryBooksPage() {
           return;
         }
 
-        const cleanedHeaders = headers.map(h => h.trim().toLowerCase());
-        const isNewFormat = cleanedHeaders.includes('pvp');
-        const isOldFormat = cleanedHeaders.includes('title');
+        const isNewFormat = headers.includes('pvp');
+        const isOldFormat = headers.includes('title');
 
         if (!isNewFormat && !isOldFormat) {
           toast({
             title: "Formato de CSV no reconocido",
-            description: `Las columnas no coinciden con las plantillas. Encabezados detectados: "${cleanedHeaders.join(', ')}"`,
+            description: `Las columnas no coinciden con ninguna plantilla. Encabezados detectados: "${headers.join(', ')}"`,
             variant: "destructive",
             duration: 10000
           });
@@ -239,7 +238,7 @@ export default function LibraryBooksPage() {
           return;
         }
         
-        const dataWithCleanedKeys = results.data; // Headers are already cleaned by transformHeader
+        const dataWithCleanedKeys = results.data;
 
         const batch = writeBatch(db);
         const booksCollection = collection(db, "books");
