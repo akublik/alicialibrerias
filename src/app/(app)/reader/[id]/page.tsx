@@ -28,7 +28,7 @@ export default function ReaderPage() {
   const [error, setError] = useState<string | null>(null);
   
   const [location, setLocation] = useState<string | number>(0);
-  const renditionRef = useRef<Rendition | null>(null);
+  const [rendition, setRendition] = useState<Rendition | null>(null);
   const [toc, setToc] = useState<any[]>([]);
   const [isTocVisible, setIsTocVisible] = useState(false);
 
@@ -96,8 +96,8 @@ export default function ReaderPage() {
   }, [audioUrl]);
 
   const onTocLocationChanges = (href: string) => {
-    if (renditionRef.current) {
-        renditionRef.current.display(href);
+    if (rendition) {
+        rendition.display(href);
         setIsTocVisible(false);
     }
   };
@@ -125,12 +125,12 @@ export default function ReaderPage() {
     }
 
     // If no audio is loaded yet, generate it
-    if (!renditionRef.current) return;
+    if (!rendition) return;
     
     setIsLoadingAudio(true);
     try {
       // @ts-ignore // epubjs has incomplete types for getContents
-      const contents = renditionRef.current.getContents();
+      const contents = rendition.getContents();
       // A more robust way to extract text from the current view.
       // Instead of relying on the 'text' property, we get the textContent
       // directly from the document body of each content part.
@@ -259,7 +259,7 @@ export default function ReaderPage() {
                         location={location}
                         locationChanged={handleLocationChanged}
                         getRendition={(rendition) => {
-                            renditionRef.current = rendition;
+                            setRendition(rendition);
                             // @ts-ignore
                             rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
                                 setToc(bookToc);
@@ -274,13 +274,13 @@ export default function ReaderPage() {
 
         <div 
             className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-            onClick={() => renditionRef.current?.prev()}
+            onClick={() => rendition?.prev()}
         >
             <ArrowLeft className="fixed left-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
         </div>
         <div 
             className="fixed right-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-            onClick={() => renditionRef.current?.next()}
+            onClick={() => rendition?.next()}
         >
             <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
         </div>
