@@ -241,6 +241,7 @@ export default function LibraryBooksPage() {
               libraryName,
               libraryLocation,
               status: 'published' as const,
+              format: 'Físico' as const,
           };
 
           const newBookRef = doc(booksCollection);
@@ -370,7 +371,7 @@ export default function LibraryBooksPage() {
                         <span className="sr-only">Imagen</span>
                       </TableHead>
                       <TableHead>Título</TableHead>
-                      <TableHead>Autor(es)</TableHead>
+                      <TableHead>Formato</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="hidden md:table-cell">Stock</TableHead>
                       <TableHead className="hidden md:table-cell">Precio</TableHead>
@@ -410,8 +411,11 @@ export default function LibraryBooksPage() {
                             )}
                             <span>{book.title}</span>
                           </div>
+                           <div className="text-xs text-muted-foreground">{book.authors.join(', ')}</div>
                         </TableCell>
-                        <TableCell className="line-clamp-2">{book.authors.join(', ')}</TableCell>
+                         <TableCell>
+                          <Badge variant="outline">{book.format || 'Físico'}</Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={status === 'published' ? "secondary" : "destructive"}>
                             {status === 'published' ? 'Publicado' : 'No Publicado'}

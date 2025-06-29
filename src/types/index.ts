@@ -1,17 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 export interface Book {
   id: string;
   isbn?: string;
@@ -33,6 +19,9 @@ export interface Book {
   coverType?: string | null;
   publisher?: string | null;
   condition?: 'Nuevo' | 'Usado';
+  format?: 'Físico' | 'Digital';
+  epubFileUrl?: string;
+  pdfFileUrl?: string;
 }
 
 export interface DigitalBook {

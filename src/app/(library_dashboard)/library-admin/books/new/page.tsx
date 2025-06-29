@@ -39,6 +39,7 @@ import Image from "next/image";
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
   authors: z.string().min(3, { message: "Debe haber al menos un autor." }),
+  format: z.enum(['Físico', 'Digital'], { required_error: "Debes seleccionar un formato." }),
   isbn: z.string().optional(),
   price: z.coerce.number().positive({ message: "El precio debe ser un número positivo." }),
   stock: z.coerce.number().int().min(0, { message: "El stock no puede ser negativo." }),
@@ -59,6 +60,8 @@ export default function NewBookPage() {
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [epubFile, setEpubFile] = useState<File | null>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState("");
@@ -70,7 +73,7 @@ export default function NewBookPage() {
     defaultValues: {
       title: "",
       authors: "",
-      isbn: "",
+      format: 'Físico',
       price: undefined,
       stock: undefined,
       description: "",
@@ -83,6 +86,8 @@ export default function NewBookPage() {
       condition: 'Nuevo',
     },
   });
+
+  const bookFormat = form.watch('format');
 
   const handleCoverFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -98,6 +103,14 @@ export default function NewBookPage() {
         if (event.target) event.target.value = "";
     }
   };
+
+  const handleEpubFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) setEpubFile(e.target.files[0]);
+  };
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) setPdfFile(e.target.files[0]);
+  };
+
 
   const uploadFile = (file: File, path: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -188,6 +201,11 @@ export default function NewBookPage() {
         toast({ title: "Falta la portada", description: "Debes subir un archivo para la portada del libro.", variant: "destructive" });
         return;
     }
+    if (values.format === 'Digital' && !epubFile && !pdfFile) {
+        toast({ title: "Falta archivo digital", description: "Debes subir al menos un archivo EPUB o PDF para un libro digital.", variant: "destructive" });
+        return;
+    }
+
 
     setIsSubmitting(true);
     setUploadProgress(0);
@@ -208,19 +226,31 @@ export default function NewBookPage() {
         const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
         if (!libraryDataString) throw new Error("No se pudo encontrar la información de la librería registrada.");
         const libraryData = JSON.parse(libraryDataString);
-
-        let finalImageUrl = `https://placehold.co/300x450.png?text=${encodeURIComponent(values.title)}`;
-        let finalDataAiHint = 'book cover';
-
-        if (coverFile) {
-            setUploadStep("Subiendo portada...");
-            finalImageUrl = await uploadFile(coverFile, 'covers');
+        
+        setUploadStep("Subiendo portada...");
+        const finalImageUrl = await uploadFile(coverFile, 'covers');
+        
+        let finalEpubUrl = '';
+        let finalPdfUrl = '';
+        
+        if (values.format === 'Digital') {
+            if (epubFile) {
+                setUploadStep("Subiendo EPUB...");
+                finalEpubUrl = await uploadFile(epubFile, 'epubs');
+            }
+            if (pdfFile) {
+                setUploadStep("Subiendo PDF...");
+                finalPdfUrl = await uploadFile(pdfFile, 'pdfs');
+            }
         }
         
         setUploadStep("Guardando información...");
         const newBookData = {
             title: values.title,
             authors: values.authors.split(',').map(a => a.trim()),
+            format: values.format,
+            epubFileUrl: finalEpubUrl,
+            pdfFileUrl: finalPdfUrl,
             isbn: values.isbn || '',
             price: values.price,
             stock: values.stock,
@@ -228,7 +258,7 @@ export default function NewBookPage() {
             categories: values.categories || [],
             tags: values.tags || [],
             imageUrl: finalImageUrl,
-            dataAiHint: finalDataAiHint,
+            dataAiHint: 'book cover',
             libraryId,
             libraryName: libraryData.name,
             libraryLocation: libraryData.location,
@@ -283,6 +313,27 @@ export default function NewBookPage() {
                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Cien Años de Soledad" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="authors" render={({ field }) => ( <FormItem><FormLabel>Autor(es) (separados por coma)</FormLabel><FormControl><Input placeholder="Gabriel García Márquez" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
+              
+              <FormField control={form.control} name="format" render={({ field }) => ( <FormItem><FormLabel>Formato del Libro</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un formato" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Físico">Físico</SelectItem><SelectItem value="Digital">Digital</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+
+              {bookFormat === 'Digital' && (
+                  <Card className="bg-muted/50">
+                      <CardHeader><CardTitle className="text-lg">Archivos Digitales</CardTitle><CardDescription>Sube los archivos para el libro digital. Debes subir al menos un formato.</CardDescription></CardHeader>
+                      <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                              <Label htmlFor="epub-file">Archivo EPUB (Recomendado)</Label>
+                              <Input id="epub-file" type="file" accept=".epub" onChange={handleEpubFileChange} disabled={isSubmitting} />
+                              {epubFile && <p className="text-xs text-muted-foreground">Archivo seleccionado: {epubFile.name}</p>}
+                          </div>
+                           <div className="space-y-2">
+                              <Label htmlFor="pdf-file">Archivo PDF</Label>
+                              <Input id="pdf-file" type="file" accept=".pdf" onChange={handlePdfFileChange} disabled={isSubmitting} />
+                              {pdfFile && <p className="text-xs text-muted-foreground">Archivo seleccionado: {pdfFile.name}</p>}
+                          </div>
+                      </CardContent>
+                  </Card>
+              )}
+
 
                <div className="grid sm:grid-cols-3 gap-4">
                   <FormField control={form.control} name="isbn" render={({ field }) => ( <FormItem><FormLabel>ISBN</FormLabel><FormControl><Input placeholder="978-3-16-148410-0" {...field} /></FormControl><FormMessage /></FormItem> )} />

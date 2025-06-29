@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Save, Sparkles, Share2, MessageSquarePlus, Star, Wand2 } from "lucide-react";
+import { Loader2, ArrowLeft, Save, Sparkles, Share2, MessageSquarePlus, Star, Wand2, Upload } from "lucide-react";
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from "react";
@@ -43,6 +43,7 @@ import { Label } from "@/components/ui/label";
 const bookFormSchema = z.object({
   title: z.string().min(3, { message: "El título debe tener al menos 3 caracteres." }),
   authors: z.string().min(3, { message: "Debe haber al menos un autor." }),
+  format: z.enum(['Físico', 'Digital'], { required_error: "Debes seleccionar un formato." }),
   isbn: z.string().optional(),
   price: z.coerce.number().positive({ message: "El precio debe ser un número positivo." }),
   stock: z.coerce.number().int().min(0, { message: "El stock no puede ser negativo." }),
@@ -73,6 +74,8 @@ export default function EditBookPage() {
   const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   
   const [newCoverFile, setNewCoverFile] = useState<File | null>(null);
+  const [newEpubFile, setNewEpubFile] = useState<File | null>(null);
+  const [newPdfFile, setNewPdfFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStep, setUploadStep] = useState("");
@@ -84,24 +87,10 @@ export default function EditBookPage() {
 
   const form = useForm<BookFormValues>({
     resolver: zodResolver(bookFormSchema),
-    defaultValues: {
-      title: "",
-      authors: "",
-      isbn: "",
-      price: 0,
-      stock: 0,
-      description: "",
-      categories: [],
-      tags: [],
-      isFeatured: false,
-      pageCount: '',
-      coverType: '',
-      publisher: '',
-      condition: 'Nuevo',
-    },
   });
 
   const currentCoverUrl = book?.imageUrl;
+  const bookFormat = form.watch('format');
 
   useEffect(() => {
     if (!bookId || !db) return;
@@ -116,9 +105,10 @@ export default function EditBookPage() {
           const bookData = { id: docSnap.id, ...docSnap.data() } as Book;
           setBook(bookData);
           
-          const formValues = {
+          form.reset({
             title: bookData.title,
             authors: bookData.authors.join(', '),
+            format: bookData.format || 'Físico',
             isbn: bookData.isbn || '',
             price: bookData.price,
             stock: bookData.stock,
@@ -130,8 +120,7 @@ export default function EditBookPage() {
             coverType: bookData.coverType || '',
             publisher: bookData.publisher || '',
             condition: bookData.condition || 'Nuevo',
-          };
-          form.reset(formValues);
+          });
 
         } else {
           toast({ title: "Error", description: "Libro no encontrado.", variant: "destructive" });
@@ -244,6 +233,13 @@ export default function EditBookPage() {
     }
   };
 
+  const handleEpubFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) setNewEpubFile(e.target.files[0]);
+  };
+  const handlePdfFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) setNewPdfFile(e.target.files[0]);
+  };
+
   const uploadFile = (file: File, path: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (!storage) { reject(new Error("Firebase Storage no está configurado.")); return; }
@@ -270,10 +266,22 @@ export default function EditBookPage() {
     
     try {
       let finalImageUrl = book.imageUrl;
+      let finalEpubUrl = book.epubFileUrl || '';
+      let finalPdfUrl = book.pdfFileUrl || '';
+
       if (newCoverFile) {
         setUploadStep("Subiendo nueva portada...");
         finalImageUrl = await uploadFile(newCoverFile, 'covers');
       }
+      if (newEpubFile) {
+        setUploadStep("Subiendo EPUB...");
+        finalEpubUrl = await uploadFile(newEpubFile, 'epubs');
+      }
+      if (newPdfFile) {
+        setUploadStep("Subiendo PDF...");
+        finalPdfUrl = await uploadFile(newPdfFile, 'pdfs');
+      }
+
 
       setUploadStep("Actualizando información...");
       const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
@@ -283,6 +291,7 @@ export default function EditBookPage() {
       const updatedData = {
           title: values.title,
           authors: values.authors.split(',').map(a => a.trim()),
+          format: values.format,
           isbn: values.isbn || '',
           price: values.price,
           stock: values.stock,
@@ -290,6 +299,8 @@ export default function EditBookPage() {
           categories: values.categories || [],
           tags: values.tags || [],
           imageUrl: finalImageUrl,
+          epubFileUrl: finalEpubUrl,
+          pdfFileUrl: finalPdfUrl,
           isFeatured: values.isFeatured,
           pageCount: values.pageCount ? Number(values.pageCount) : null,
           coverType: values.coverType || null,
@@ -345,6 +356,27 @@ export default function EditBookPage() {
                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input placeholder="Cien Años de Soledad" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="authors" render={({ field }) => ( <FormItem><FormLabel>Autor(es) (separados por coma)</FormLabel><FormControl><Input placeholder="Gabriel García Márquez" {...field} /></FormControl><FormMessage /></FormItem> )} />
               </div>
+              
+              <FormField control={form.control} name="format" render={({ field }) => ( <FormItem><FormLabel>Formato del Libro</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un formato" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Físico">Físico</SelectItem><SelectItem value="Digital">Digital</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+
+              {bookFormat === 'Digital' && (
+                  <Card className="bg-muted/50">
+                      <CardHeader><CardTitle className="text-lg">Archivos Digitales</CardTitle><CardDescription>Sube los archivos para el libro digital. Puedes reemplazar los existentes.</CardDescription></CardHeader>
+                      <CardContent className="space-y-4">
+                          <div className="space-y-2">
+                              <Label htmlFor="epub-file">Reemplazar Archivo EPUB</Label>
+                              <Input id="epub-file" type="file" accept=".epub" onChange={handleEpubFileChange} disabled={isSubmitting} />
+                              {book.epubFileUrl && !newEpubFile && <p className="text-xs text-muted-foreground">Archivo actual: <Link href={book.epubFileUrl} target="_blank" className="underline">Ver EPUB</Link></p>}
+                          </div>
+                           <div className="space-y-2">
+                              <Label htmlFor="pdf-file">Reemplazar Archivo PDF</Label>
+                              <Input id="pdf-file" type="file" accept=".pdf" onChange={handlePdfFileChange} disabled={isSubmitting} />
+                              {book.pdfFileUrl && !newPdfFile && <p className="text-xs text-muted-foreground">Archivo actual: <Link href={book.pdfFileUrl} target="_blank" className="underline">Ver PDF</Link></p>}
+                          </div>
+                      </CardContent>
+                  </Card>
+              )}
+
 
                <div className="grid sm:grid-cols-3 gap-4">
                   <FormField control={form.control} name="isbn" render={({ field }) => ( <FormItem><FormLabel>ISBN</FormLabel><FormControl><Input placeholder="978-3-16-148410-0" {...field} /></FormControl><FormMessage /></FormItem> )} />
