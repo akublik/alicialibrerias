@@ -95,13 +95,18 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
            <Star key={5} className={cn('text-muted-foreground/50', size === 'small' ? 'w-3 h-3' : 'w-4 h-4')} />
         </div>
         
-        {book.condition && (
-          <div className="mt-2">
-            <Badge variant={book.condition === 'Nuevo' ? 'secondary' : 'outline'} className={cn('font-normal', size === 'small' ? 'text-[10px] px-1.5 py-0' : 'text-xs')}>
-              {book.condition}
-            </Badge>
-          </div>
-        )}
+        <div className="mt-2 flex items-center flex-wrap gap-2">
+            {book.condition && (
+                <Badge variant={book.condition === 'Nuevo' ? 'secondary' : 'outline'} className={cn('font-normal', size === 'small' ? 'text-[10px] px-1.5 py-0' : 'text-xs')}>
+                    {book.condition}
+                </Badge>
+            )}
+            {book.format && (
+                <Badge variant={book.format === 'Digital' ? 'default' : 'secondary'} className={cn('font-normal', size === 'small' ? 'text-[10px] px-1.5 py-0' : 'text-xs')}>
+                    {book.format}
+                </Badge>
+            )}
+        </div>
 
       </CardContent>
       <CardFooter

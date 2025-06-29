@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send, Bookmark, PackageCheck } from 'lucide-react';
+import { ShoppingCart, Star, Tag, BookOpenCheck, Users, MessageSquare, ThumbsUp, ArrowLeft, Loader2, Building2, FileText, BookCopy, Store, Facebook, Twitter, Send, Bookmark, PackageCheck, Layers } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -316,9 +316,16 @@ export default function BookDetailsPage() {
                 <span className="text-muted-foreground">{book.publisher}</span>
               </p>
             )}
-             {book.coverType && (
+             {book.format && (
               <p className="flex items-center">
                 <BookCopy className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
+                <span className="font-semibold text-foreground mr-1">Formato:</span>
+                <span className="text-muted-foreground">{book.format}</span>
+              </p>
+            )}
+             {book.coverType && (
+              <p className="flex items-center">
+                <Layers className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
                 <span className="font-semibold text-foreground mr-1">Tapa:</span>
                 <span className="text-muted-foreground">{book.coverType}</span>
               </p>
