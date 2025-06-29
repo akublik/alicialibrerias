@@ -209,6 +209,7 @@ export default function LibraryBooksPage() {
     Papa.parse<Record<string, string>>(csvFile, {
       header: true,
       skipEmptyLines: true,
+      delimitersToGuess: [',', '\t', '|', ';'],
       complete: async (results) => {
         if (results.errors.length > 0) {
            toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
