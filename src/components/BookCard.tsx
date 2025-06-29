@@ -8,6 +8,7 @@ import { ShoppingCart, Star, Eye, Bookmark, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
+import { Badge } from "@/components/ui/badge";
 
 interface BookCardProps {
   book: Book;
@@ -93,6 +94,15 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
           ))}
            <Star key={5} className={cn('text-muted-foreground/50', size === 'small' ? 'w-3 h-3' : 'w-4 h-4')} />
         </div>
+        
+        {book.condition && (
+          <div className="mt-2">
+            <Badge variant={book.condition === 'Nuevo' ? 'secondary' : 'outline'} className={cn('font-normal', size === 'small' ? 'text-[10px] px-1.5 py-0' : 'text-xs')}>
+              {book.condition}
+            </Badge>
+          </div>
+        )}
+
       </CardContent>
       <CardFooter
         className={cn(

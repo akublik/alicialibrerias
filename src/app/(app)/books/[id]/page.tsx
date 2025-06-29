@@ -326,7 +326,7 @@ export default function BookDetailsPage() {
             {book.condition && (
               <p className="flex items-center">
                 <PackageCheck className="mr-2 h-4 w-4 text-foreground flex-shrink-0" />
-                <span className="font-semibold text-foreground mr-1">Condición:</span>
+                <span className="font-semibold text-foreground mr-1">Estado:</span>
                 <span className="text-muted-foreground">{book.condition}</span>
               </p>
             )}
