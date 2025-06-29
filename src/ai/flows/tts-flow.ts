@@ -11,10 +11,10 @@ import {z} from 'genkit';
 import wav from 'wav';
 import { googleAI } from '@genkit-ai/googleai';
 
-const TextToSpeechOutputSchema = z.object({
-  media: z.string().describe("The audio data URI in WAV format. Expected format: 'data:audio/wav;base64,<encoded_data>'"),
-});
-export type TextToSpeechOutput = z.infer<typeof TextToSpeechOutputSchema>;
+export type TextToSpeechOutput = {
+  media: string;
+};
+
 
 export async function textToSpeech(text: string): Promise<TextToSpeechOutput> {
   return textToSpeechFlow(text);
@@ -60,9 +60,18 @@ const textToSpeechFlow = ai.defineFlow(
   {
     name: 'textToSpeechFlow',
     inputSchema: z.string(),
-    outputSchema: TextToSpeechOutputSchema,
+    outputSchema: z.any(),
   },
   async (query) => {
+    // The Gemini TTS model has an 8192 token limit.
+    // Truncate the input to a safe character limit to avoid errors.
+    const CHARACTER_LIMIT = 20000; 
+    let textToProcess = query;
+    if (query.length > CHARACTER_LIMIT) {
+      textToProcess = query.substring(0, CHARACTER_LIMIT);
+      console.log(`TTS input was too long and has been truncated to ${CHARACTER_LIMIT} characters.`);
+    }
+
     const { media } = await ai.generate({
       model: googleAI.model('gemini-2.5-flash-preview-tts'),
       config: {
@@ -73,7 +82,7 @@ const textToSpeechFlow = ai.defineFlow(
           },
         },
       },
-      prompt: query,
+      prompt: textToProcess,
     });
     
     if (!media) {
