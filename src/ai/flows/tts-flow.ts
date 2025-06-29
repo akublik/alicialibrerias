@@ -70,11 +70,11 @@ const textToSpeechFlow = ai.defineFlow(
   async (query) => {
     // The Gemini TTS model has an 8192 token limit.
     // Truncate the input to a safe character limit to avoid errors.
-    const CHARACTER_LIMIT = 20000; 
+    const CHARACTER_LIMIT = 15000; 
     let textToProcess = query;
     if (query.length > CHARACTER_LIMIT) {
       textToProcess = query.substring(0, CHARACTER_LIMIT);
-      console.log(`TTS input was too long and has been truncated to ${CHARACTER_LIMIT} characters.`);
+      console.log(`TTS input was too long (${query.length} chars) and has been truncated to ${CHARACTER_LIMIT} characters.`);
     }
 
     const { media } = await ai.generate({
