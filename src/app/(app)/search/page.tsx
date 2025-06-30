@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import type { Book } from '@/types';
 import { Loader2, SearchX } from 'lucide-react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -15,6 +16,8 @@ function SearchResults() {
   
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -58,6 +61,14 @@ function SearchResults() {
       (book.isbn?.toLowerCase().includes(lowercasedQuery))
     );
   }, [allBooks, query]);
+
+  const { currentBooks, totalPages } = useMemo(() => {
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentBooks = filteredBooks.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
+    return { currentBooks, totalPages };
+  }, [filteredBooks, currentPage]);
 
   useEffect(() => {
     const logSearch = async () => {
@@ -111,7 +122,7 @@ function SearchResults() {
         </h1>
         {query && (
           <p className="text-lg text-foreground/80 mt-2">
-            Mostrando resultados para: <span className="font-semibold text-foreground">"{query}"</span>
+            Mostrando {filteredBooks.length} resultados para: <span className="font-semibold text-foreground">"{query}"</span>
           </p>
         )}
       </header>
@@ -121,12 +132,31 @@ function SearchResults() {
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary" />
           <p className="mt-4 text-muted-foreground">Buscando libros...</p>
         </div>
-      ) : filteredBooks.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {filteredBooks.map(book => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+      ) : currentBooks.length > 0 ? (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+            {currentBooks.map(book => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <Pagination className="mt-12">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} />
+                </PaginationItem>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>{page}</PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       ) : (
         <div className="text-center py-24">
           <SearchX className="mx-auto h-16 w-16 text-muted-foreground mb-4" />

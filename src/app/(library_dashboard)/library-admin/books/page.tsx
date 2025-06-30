@@ -1,7 +1,7 @@
 // src/app/(library_dashboard)/library-admin/books/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input";
 import Papa from 'papaparse';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 export default function LibraryBooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -33,6 +34,8 @@ export default function LibraryBooksPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     if (!db) {
@@ -73,6 +76,15 @@ export default function LibraryBooksPage() {
     
     return () => unsubscribe();
   }, []);
+  
+  const { currentBooks, totalPages } = useMemo(() => {
+    const indexOfLastBook = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstBook = indexOfLastBook - ITEMS_PER_PAGE;
+    const currentBooks = books.slice(indexOfFirstBook, indexOfLastBook);
+    const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
+    return { currentBooks, totalPages };
+  }, [books, currentPage]);
+
 
   const handleToggleStatus = async (book: Book) => {
     if (!db) return;
@@ -206,7 +218,7 @@ export default function LibraryBooksPage() {
 
     setIsImporting(true);
 
-    Papa.parse<Record<string, string>>(csvFile, {
+    Papa.parse<Record<string, any>>(csvFile, {
       header: true,
       skipEmptyLines: true,
       transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
@@ -239,14 +251,12 @@ export default function LibraryBooksPage() {
           return;
         }
         
-        const dataWithCleanedKeys = results.data;
-
         const batch = writeBatch(db);
         const booksCollection = collection(db, "books");
         let booksAdded = 0;
         const validationErrors: string[] = [];
 
-        dataWithCleanedKeys.forEach((row, index) => {
+        results.data.forEach((row, index) => {
           let bookData: Partial<Book>;
 
           if (isNewFormat) {
@@ -442,6 +452,7 @@ export default function LibraryBooksPage() {
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                   </div>
               ) : (
+                <>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -459,7 +470,7 @@ export default function LibraryBooksPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {books.length > 0 ? books.map((book) => {
+                    {currentBooks.length > 0 ? currentBooks.map((book) => {
                       const status = book.status ?? 'published';
                       return (
                       <TableRow key={book.id}>
@@ -556,6 +567,36 @@ export default function LibraryBooksPage() {
                     )}
                   </TableBody>
                 </Table>
+                {totalPages > 1 && (
+                  <Pagination className="mt-6">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); if(currentPage > 1) setCurrentPage(currentPage - 1); }}
+                          aria-disabled={currentPage === 1}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <PaginationItem key={page}>
+                          <PaginationLink href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(page); }} isActive={currentPage === page}>
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      ))}
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => { e.preventDefault(); if(currentPage < totalPages) setCurrentPage(currentPage + 1); }}
+                           aria-disabled={currentPage === totalPages}
+                           className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+                </>
               )}
           </CardContent>
         </Card>

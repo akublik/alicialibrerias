@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus, QrCode } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit, setDoc, increment } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -58,13 +59,22 @@ export default function LibraryDetailsPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteDocId, setFavoriteDocId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   // State for event registration dialog
   const [selectedEvent, setSelectedEvent] = useState<LibraryEvent | null>(null);
   const [registrationName, setRegistrationName] = useState('');
   const [registrationWhatsapp, setRegistrationWhatsapp] = useState('');
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
+
+  const { currentBooks, totalPages } = useMemo(() => {
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentBooks = books.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
+    return { currentBooks, totalPages };
+  }, [books, currentPage]);
 
   useEffect(() => {
     if (!libraryId || !db) {
@@ -403,12 +413,31 @@ export default function LibraryDetailsPage() {
                   <CardTitle className="font-headline text-xl">Libros Disponibles en {name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {books.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                      {books.map((book) => (
-                        <BookCard key={book.id} book={book} />
-                      ))}
-                    </div>
+                  {currentBooks.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {currentBooks.map((book) => (
+                          <BookCard key={book.id} book={book} />
+                        ))}
+                      </div>
+                       {totalPages > 1 && (
+                        <Pagination className="mt-8">
+                          <PaginationContent>
+                            <PaginationItem>
+                              <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                              <PaginationItem key={page}>
+                                <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>{page}</PaginationLink>
+                              </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                              <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} />
+                            </PaginationItem>
+                          </PaginationContent>
+                        </Pagination>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center py-8">
                        <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />

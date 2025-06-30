@@ -3,7 +3,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { Author, Book } from '@/types';
 import { db } from '@/lib/firebase';
@@ -11,6 +11,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { Loader2, ArrowLeft, BookOpen, User } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BookCard } from '@/components/BookCard';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 export default function AuthorDetailsPage() {
   const params = useParams();
@@ -20,6 +21,8 @@ export default function AuthorDetailsPage() {
   const [author, setAuthor] = useState<Author | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
     if (!authorId || !db) {
@@ -73,6 +76,14 @@ export default function AuthorDetailsPage() {
     fetchAuthorData();
   }, [authorId, router]);
   
+  const { currentBooks, totalPages } = useMemo(() => {
+    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+    const currentBooks = books.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
+    return { currentBooks, totalPages };
+  }, [books, currentPage]);
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
@@ -135,12 +146,31 @@ export default function AuthorDetailsPage() {
                     <CardTitle className="font-headline text-2xl flex items-center gap-3"><BookOpen className="h-6 w-6 text-primary" />Libros de {author.name}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {books.length > 0 ? (
+                    {currentBooks.length > 0 ? (
+                      <>
                         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {books.map(book => (
+                            {currentBooks.map(book => (
                                 <BookCard key={book.id} book={book} />
                             ))}
                         </div>
+                        {totalPages > 1 && (
+                          <Pagination className="mt-8">
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} />
+                              </PaginationItem>
+                              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                <PaginationItem key={page}>
+                                  <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>{page}</PaginationLink>
+                                </PaginationItem>
+                              ))}
+                              <PaginationItem>
+                                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        )}
+                      </>
                     ) : (
                         <p className="text-muted-foreground">No hay libros de este autor en nuestro catálogo por el momento.</p>
                     )}
