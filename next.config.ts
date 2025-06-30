@@ -35,6 +35,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'http',
+        hostname: 'canal.bibliomanager.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
