@@ -17,7 +17,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, getDocs, limit, query, where, addDoc, serverTimestamp, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, where, addDoc, serverTimestamp, onSnapshot, orderBy, documentId } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -106,49 +106,91 @@ export default function BookDetailsPage() {
     const fetchBookData = async () => {
       setIsLoading(true);
       try {
+        // --- 1. Fetch Main Book and All Libraries in Parallel ---
         const bookRef = doc(db, "books", bookId);
-        const bookSnap = await getDoc(bookRef);
+        const [bookSnap, librariesSnapshot] = await Promise.all([
+            getDoc(bookRef),
+            getDocs(collection(db, "libraries")),
+        ]);
+        
+        const librariesMap = new Map<string, { name: string, location: string }>();
+        librariesSnapshot.forEach(doc => {
+            const data = doc.data();
+            librariesMap.set(doc.id, { name: data.name, location: data.location });
+        });
 
-        if (bookSnap.exists()) {
-          let foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
-
-          let libraryName, libraryLocation;
-          if (foundBook.libraryId) {
-            const libraryRef = doc(db, "libraries", foundBook.libraryId);
-            const librarySnap = await getDoc(libraryRef);
-            if (librarySnap.exists()) {
-              const libraryData = librarySnap.data();
-              libraryName = libraryData.name;
-              libraryLocation = libraryData.location;
-              foundBook.libraryName = libraryName;
-              foundBook.libraryLocation = libraryLocation;
-            }
-          }
-
-          setBook(foundBook);
-          
-          if (foundBook.libraryId) {
-             const booksRef = collection(db, "books");
-             const q = query(
-                booksRef, 
-                where("libraryId", "==", foundBook.libraryId), 
-                where("__name__", "!=", bookId), 
-                limit(3)
-            );
-             const relatedSnaps = await getDocs(q);
-             const fetchedRelatedBooks = relatedSnaps.docs.map(doc => ({
-                 id: doc.id,
-                 ...doc.data(),
-                 libraryName,
-                 libraryLocation,
-             } as Book));
-             setRelatedBooks(fetchedRelatedBooks);
-          }
-        } else {
+        if (!bookSnap.exists()) {
           console.error("No such document!");
+          setIsLoading(false);
+          return;
         }
+
+        // --- 2. Augment Main Book Data ---
+        let foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
+        if (foundBook.libraryId && librariesMap.has(foundBook.libraryId)) {
+          const libInfo = librariesMap.get(foundBook.libraryId)!;
+          foundBook.libraryName = libInfo.name;
+          foundBook.libraryLocation = libInfo.location;
+        }
+        setBook(foundBook);
+
+        // --- 3. Fetch Related Books ---
+        const booksRef = collection(db, "books");
+        const relatedBooksPromises = [];
+
+        // Query by categories (higher priority)
+        if (foundBook.categories && foundBook.categories.length > 0) {
+            const categoriesToQuery = foundBook.categories.slice(0, 10);
+            relatedBooksPromises.push(
+                getDocs(query(
+                    booksRef,
+                    where("categories", "array-contains-any", categoriesToQuery),
+                    where(documentId(), "!=", bookId),
+                    limit(6)
+                ))
+            );
+        }
+        
+        // Query by authors (secondary priority)
+        if (foundBook.authors && foundBook.authors.length > 0) {
+            const authorsToQuery = foundBook.authors.slice(0, 10);
+            relatedBooksPromises.push(
+                getDocs(query(
+                    booksRef,
+                    where("authors", "array-contains-any", authorsToQuery),
+                    where(documentId(), "!=", bookId),
+                    limit(6)
+                ))
+            );
+        }
+
+        const relatedSnapshots = await Promise.all(relatedBooksPromises);
+        const relatedBooksMap = new Map<string, Book>();
+
+        const augmentAndAddBook = (doc: any) => {
+            if (!relatedBooksMap.has(doc.id)) {
+                let relatedBook = { id: doc.id, ...doc.data() } as Book;
+                if (relatedBook.libraryId && librariesMap.has(relatedBook.libraryId)) {
+                    const libInfo = librariesMap.get(relatedBook.libraryId)!;
+                    relatedBook.libraryName = libInfo.name;
+                    relatedBook.libraryLocation = libInfo.location;
+                }
+                relatedBooksMap.set(doc.id, relatedBook);
+            }
+        };
+
+        relatedSnapshots.forEach(snapshot => {
+            snapshot.docs.forEach(doc => augmentAndAddBook(doc));
+        });
+
+        // Ensure current book is not in the list
+        relatedBooksMap.delete(bookId);
+
+        // Take the first 3 unique related books for display
+        setRelatedBooks(Array.from(relatedBooksMap.values()).slice(0, 3));
+
       } catch (error) {
-        console.error("Error fetching book:", error);
+        console.error("Error fetching book and related data:", error);
       } finally {
         setIsLoading(false);
       }
