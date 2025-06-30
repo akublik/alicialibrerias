@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Separator } from '@/components/ui/separator';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -69,6 +70,10 @@ export default function LibraryDetailsPage() {
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
+
+  const featuredBooks = useMemo(() => {
+    return books.filter(book => book.isFeatured).slice(0, 8);
+  }, [books]);
 
   const filteredBooks = useMemo(() => {
     if (!searchTerm) {
@@ -427,20 +432,30 @@ export default function LibraryDetailsPage() {
 
             <TabsContent value="catalog">
               <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">Libros Disponibles en {name}</CardTitle>
-                </CardHeader>
                 <CardContent className="pt-6">
-                    <div className="mb-6 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                        <Input
-                            type="text"
-                            placeholder="Buscar en el catálogo por título, autor o categoría..."
-                            className="pl-10 h-11"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                  {featuredBooks.length > 0 && (
+                    <div className="mb-10">
+                      <h3 className="font-headline text-2xl font-semibold text-foreground mb-6 text-center md:text-left">Libros Destacados</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {featuredBooks.map((book) => (
+                          <BookCard key={book.id} book={book} />
+                        ))}
+                      </div>
+                      <Separator className="my-8" />
                     </div>
+                  )}
+
+                  <CardTitle className="font-headline text-xl mb-6">Catálogo Completo</CardTitle>
+                  <div className="mb-6 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                          type="text"
+                          placeholder="Buscar en el catálogo por título, autor o categoría..."
+                          className="pl-10 h-11"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                      />
+                  </div>
                   {currentBooks.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
