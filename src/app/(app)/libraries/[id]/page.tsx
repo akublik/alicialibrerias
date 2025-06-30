@@ -68,13 +68,31 @@ export default function LibraryDetailsPage() {
   const [registrationWhatsapp, setRegistrationWhatsapp] = useState('');
   const [isSubmittingRegistration, setIsSubmittingRegistration] = useState(false);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredBooks = useMemo(() => {
+    if (!searchTerm) {
+        return books;
+    }
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return books.filter(book => 
+        book.title.toLowerCase().includes(lowercasedTerm) ||
+        book.authors.some(author => author.toLowerCase().includes(lowercasedTerm)) ||
+        book.categories?.some(category => category.toLowerCase().includes(lowercasedTerm))
+    );
+  }, [books, searchTerm]);
+  
   const { currentBooks, totalPages } = useMemo(() => {
     const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
     const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-    const currentBooks = books.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
+    const currentBooks = filteredBooks.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
     return { currentBooks, totalPages };
-  }, [books, currentPage]);
+  }, [filteredBooks, currentPage]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     if (!libraryId || !db) {
@@ -412,7 +430,17 @@ export default function LibraryDetailsPage() {
                 <CardHeader>
                   <CardTitle className="font-headline text-xl">Libros Disponibles en {name}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
+                    <div className="mb-6 relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Buscar en el catálogo por título, autor o categoría..."
+                            className="pl-10 h-11"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                   {currentBooks.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -441,7 +469,10 @@ export default function LibraryDetailsPage() {
                   ) : (
                     <div className="text-center py-8">
                        <Search className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                       <p className="text-muted-foreground">Esta librería aún no ha publicado libros.</p>
+                       <h3 className="text-xl font-semibold">No se encontraron libros</h3>
+                       <p className="text-muted-foreground">
+                         {searchTerm ? `No hay libros que coincidan con "${searchTerm}".` : "Esta librería aún no ha publicado libros."}
+                       </p>
                     </div>
                   )}
                 </CardContent>
