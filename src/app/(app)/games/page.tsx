@@ -42,8 +42,8 @@ export default function GamesPage() {
     resolver: zodResolver(gameFormSchema),
     defaultValues: {
       gameType: "Trivia",
-      theme: "",
-      complexity: undefined,
+      theme: "Literatura Universal",
+      complexity: "easy",
     },
   });
 
@@ -324,7 +324,7 @@ export default function GamesPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Complejidad</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="text-base md:text-sm">
                             <SelectValue placeholder="Selecciona un nivel de complejidad" />
