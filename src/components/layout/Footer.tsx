@@ -15,6 +15,9 @@ export function Footer() {
             <p className="text-muted-foreground text-sm">
               Conectando lectores con librerías independientes en Ecuador y Latinoamérica.
             </p>
+            <p className="text-muted-foreground text-sm mt-2">
+              Tel: +593 0992650852
+            </p>
           </div>
           <div>
             <h3 className="font-headline text-lg font-semibold text-foreground mb-3">Enlaces Rápidos</h3>
