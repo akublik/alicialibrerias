@@ -65,7 +65,7 @@ export default function MyLibraryPage() {
           Mi Biblioteca Digital
         </h1>
         <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          Tus libros, listos para leer en cualquier momento y lugar.
+          Tus libros, listos para leer y conversar con la ayuda de AlicIA tu asistente inteligente experta en literatura.
         </p>
          <div className="mt-8 max-w-lg mx-auto">
             <div className="relative">
