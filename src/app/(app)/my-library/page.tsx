@@ -19,21 +19,17 @@ export default function MyLibraryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
-    if (!authStatus) {
-      router.push("/login?redirect=/my-library");
-      return;
-    }
-
+    setIsAuthenticated(authStatus);
+    
     if (!db) {
       setIsLoading(false);
       return;
     }
     
-    // For now, we show all digital books.
-    // In a real scenario, you'd fetch user-specific purchases.
     const booksQuery = query(collection(db, "digital_books"));
     
     const unsubscribe = onSnapshot(booksQuery, (snapshot) => {
@@ -47,7 +43,7 @@ export default function MyLibraryPage() {
     });
 
     return () => unsubscribe();
-  }, [router, toast]);
+  }, [toast]);
 
   const filteredBooks = useMemo(() => {
     if (!searchTerm) return myBooks;
@@ -87,31 +83,33 @@ export default function MyLibraryPage() {
         </div>
       ) : filteredBooks.length > 0 ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-          {filteredBooks.map((book) => (
-            <Link key={book.id} href={`/reader/${book.id}`} passHref>
-                <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl group cursor-pointer flex flex-col h-full">
-                    <CardHeader className="p-0">
-                        <div className="aspect-[2/3] relative">
-                            <Image
-                                src={book.coverImageUrl}
-                                alt={`Portada de ${book.title}`}
-                                layout="fill"
-                                objectFit="cover"
-                                className="transition-transform duration-300 group-hover:scale-105"
-                            />
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-3 flex flex-col flex-grow">
-                        <CardTitle className="text-base font-semibold leading-tight line-clamp-2 group-hover:text-primary">
-                            {book.title}
-                        </CardTitle>
-                        <CardDescription className="text-xs mt-1 line-clamp-1">
-                            {book.author}
-                        </CardDescription>
-                    </CardContent>
-                </Card>
-            </Link>
-          ))}
+          {filteredBooks.map((book) => {
+            const bookLink = isAuthenticated ? `/reader/${book.id}` : `/register?redirect=/my-library`;
+            return (
+                <Link key={book.id} href={bookLink} passHref>
+                    <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl group cursor-pointer flex flex-col h-full">
+                        <CardHeader className="p-0">
+                            <div className="aspect-[2/3] relative">
+                                <Image
+                                    src={book.coverImageUrl}
+                                    alt={`Portada de ${book.title}`}
+                                    layout="fill"
+                                    objectFit="cover"
+                                    className="transition-transform duration-300 group-hover:scale-105"
+                                />
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-3 flex flex-col flex-grow">
+                            <CardTitle className="text-base font-semibold leading-tight line-clamp-2 group-hover:text-primary">
+                                {book.title}
+                            </CardTitle>
+                            <CardDescription className="text-xs mt-1 line-clamp-1">
+                                {book.author}
+                            </CardDescription>
+                        </CardContent>
+                    </Card>
+                </Link>
+          )})}
         </div>
       ) : (
         <div className="text-center py-20">
