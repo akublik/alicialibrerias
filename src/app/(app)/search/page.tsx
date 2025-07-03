@@ -5,14 +5,14 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { BookCard } from '@/components/BookCard';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import type { Book } from '@/types';
 import { Loader2, SearchX } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 function SearchResults() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const queryParam = searchParams.get('q') || '';
   
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,7 +33,9 @@ function SearchResults() {
             librariesMap.set(doc.id, { name: data.name, location: data.location });
         });
 
-        const booksSnapshot = await getDocs(collection(db, "books"));
+        const booksQuery = query(collection(db, "books"), orderBy("createdAt", "desc"));
+        const booksSnapshot = await getDocs(booksQuery);
+
         const booksData = booksSnapshot.docs.map(doc => {
             const book = { id: doc.id, ...doc.data() } as Book;
             if (book.libraryId && librariesMap.has(book.libraryId)) {
@@ -53,14 +55,14 @@ function SearchResults() {
   }, []);
 
   const filteredBooks = useMemo(() => {
-    if (!query) return [];
-    const lowercasedQuery = query.toLowerCase();
+    if (!queryParam) return allBooks;
+    const lowercasedQuery = queryParam.toLowerCase();
     return allBooks.filter(book =>
       (book.title?.toLowerCase().includes(lowercasedQuery)) ||
       (book.authors?.some(author => author.toLowerCase().includes(lowercasedQuery))) ||
       (book.isbn?.toLowerCase().includes(lowercasedQuery))
     );
-  }, [allBooks, query]);
+  }, [allBooks, queryParam]);
 
   const { currentBooks, totalPages } = useMemo(() => {
     const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
@@ -72,9 +74,9 @@ function SearchResults() {
 
   useEffect(() => {
     const logSearch = async () => {
-      if (!query || isLoading) return;
+      if (!queryParam || isLoading) return;
 
-      const loggedKey = `search-logged-${query.toLowerCase()}`;
+      const loggedKey = `search-logged-${queryParam.toLowerCase()}`;
       if (sessionStorage.getItem(loggedKey)) {
         return;
       }
@@ -88,7 +90,7 @@ function SearchResults() {
               timestamp: any;
               userId?: string;
           } = {
-              query: query.toLowerCase(),
+              query: queryParam.toLowerCase(),
               resultsCount: filteredBooks.length,
               timestamp: serverTimestamp(),
           };
@@ -111,18 +113,22 @@ function SearchResults() {
     if (!isLoading) {
       logSearch();
     }
-  }, [query, filteredBooks, isLoading]);
+  }, [queryParam, filteredBooks, isLoading]);
 
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
       <header className="mb-8">
         <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">
-          Resultados de Búsqueda
+          {queryParam ? 'Resultados de Búsqueda' : 'Catálogo Completo'}
         </h1>
-        {query && (
+        {queryParam ? (
           <p className="text-lg text-foreground/80 mt-2">
-            Mostrando {filteredBooks.length} resultados para: <span className="font-semibold text-foreground">"{query}"</span>
+            Mostrando {filteredBooks.length} resultados para: <span className="font-semibold text-foreground">"{queryParam}"</span>
+          </p>
+        ) : (
+          <p className="text-lg text-foreground/80 mt-2">
+            Explora todos los libros disponibles en nuestra red de librerías.
           </p>
         )}
       </header>
@@ -161,7 +167,12 @@ function SearchResults() {
         <div className="text-center py-24">
           <SearchX className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
           <h3 className="font-headline text-2xl font-semibold text-foreground">No se encontraron libros</h3>
-          <p className="text-muted-foreground">Intenta con otros términos de búsqueda.</p>
+          <p className="text-muted-foreground">
+             {queryParam
+              ? `No hay libros que coincidan con "${queryParam}". Intenta con otros términos.`
+              : "Parece que no hay libros en el catálogo en este momento."
+            }
+          </p>
         </div>
       )}
     </div>

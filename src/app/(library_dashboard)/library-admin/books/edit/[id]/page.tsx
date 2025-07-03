@@ -24,7 +24,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
 import { db, storage } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import type { Book } from "@/types";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
@@ -309,6 +309,7 @@ export default function EditBookPage() {
           libraryId: book.libraryId,
           libraryName: libraryData.name,
           libraryLocation: libraryData.location,
+          updatedAt: serverTimestamp(),
       };
 
       await updateDoc(doc(db, "books", bookId), updatedData);

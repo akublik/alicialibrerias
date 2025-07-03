@@ -22,6 +22,8 @@ export interface Book {
   format?: 'Físico' | 'Digital';
   epubFileUrl?: string;
   pdfFileUrl?: string;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface DigitalBook {

@@ -24,7 +24,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { db, storage } from "@/lib/firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 import { Switch } from "@/components/ui/switch";
@@ -268,6 +268,8 @@ export default function NewBookPage() {
             coverType: values.coverType || null,
             publisher: values.publisher || null,
             condition: values.condition || 'Nuevo',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
         };
 
         await addDoc(collection(db, "books"), newBookData);
