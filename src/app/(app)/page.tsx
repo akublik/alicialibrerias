@@ -220,7 +220,7 @@ export default function HomePage() {
 
       {/* Secondary Banner Carousel */}
       {homepageContent?.secondaryBannerSlides && homepageContent.secondaryBannerSlides.length > 0 && (
-          <section className="pt-16 pb-12 bg-background">
+          <section className="pt-8 pb-4 bg-background">
               <div className="container mx-auto px-4">
                   <Carousel
                       plugins={[autoplay.current]}
@@ -269,7 +269,7 @@ export default function HomePage() {
 
 
       {/* 2. Libros Destacados */}
-      <section className="pt-16 pb-12 bg-background">
+      <section className="pt-8 pb-4 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Libros Destacados</h2>
           {isLoading ? (
@@ -296,7 +296,7 @@ export default function HomePage() {
       </section>
 
       {/* 3. Libros Nacionales */}
-      <section className="py-12 bg-primary/5">
+      <section className="py-8 bg-primary/5">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">{nationalSectionTitle}</h2>
           {isLoading ? (
@@ -316,7 +316,7 @@ export default function HomePage() {
       </section>
       
       {/* 5. Explicación de la plataforma */}
-      <section className="py-12 bg-muted/30">
+      <section className="py-8 bg-muted/30">
         <div className="container mx-auto px-4">
           <h2 className="font-headline text-3xl font-semibold text-center mb-4 text-foreground">¿Qué es Alicia Libros?</h2>
           <p className="text-center text-lg text-foreground/70 mb-12 max-w-3xl mx-auto">
