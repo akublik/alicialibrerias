@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { BookCard } from '@/components/BookCard';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, serverTimestamp, query } from 'firebase/firestore';
 import type { Book } from '@/types';
 import { Loader2, SearchX } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
@@ -33,7 +33,7 @@ function SearchResults() {
             librariesMap.set(doc.id, { name: data.name, location: data.location });
         });
 
-        const booksQuery = query(collection(db, "books"), orderBy("createdAt", "desc"));
+        const booksQuery = query(collection(db, "books"));
         const booksSnapshot = await getDocs(booksQuery);
 
         const booksData = booksSnapshot.docs.map(doc => {
@@ -44,6 +44,14 @@ function SearchResults() {
             }
             return book;
         });
+
+        // Sort on the client side by creation date, newest first
+        booksData.sort((a, b) => {
+          const dateA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+          const dateB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+          return dateB - dateA;
+        });
+
         setAllBooks(booksData);
       } catch (error) {
         console.error("Error fetching books for search:", error);
