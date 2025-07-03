@@ -1,23 +1,37 @@
 // src/app/(app)/search/page.tsx
 "use client";
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useMemo, Suspense } from 'react';
 import { BookCard } from '@/components/BookCard';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query } from 'firebase/firestore';
 import type { Book } from '@/types';
-import { Loader2, SearchX } from 'lucide-react';
+import { Loader2, SearchX, Search } from 'lucide-react';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 function SearchResults() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const queryParam = searchParams.get('q') || '';
   
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 12;
+
+  const [searchTerm, setSearchTerm] = useState(queryParam);
+
+  useEffect(() => {
+    setSearchTerm(queryParam);
+  }, [queryParam]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+  };
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -79,6 +93,10 @@ function SearchResults() {
     const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
     return { currentBooks, totalPages };
   }, [filteredBooks, currentPage]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [queryParam]);
 
   useEffect(() => {
     const logSearch = async () => {
@@ -126,7 +144,7 @@ function SearchResults() {
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-      <header className="mb-8">
+      <header className="mb-8 text-center">
         <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">
           {queryParam ? 'Resultados de Búsqueda' : 'Catálogo Completo'}
         </h1>
@@ -136,10 +154,26 @@ function SearchResults() {
           </p>
         ) : (
           <p className="text-lg text-foreground/80 mt-2">
-            Explora todos los libros disponibles en nuestra red de librerías.
+            Explora los {allBooks.length} libros disponibles en nuestra red de librerías.
           </p>
         )}
       </header>
+
+      <div className="mb-12">
+        <form onSubmit={handleSearch} className="flex max-w-2xl mx-auto gap-2">
+            <Input 
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Busca de nuevo por título, autor o ISBN..."
+                className="h-12 text-lg flex-grow"
+                aria-label="Campo de búsqueda"
+            />
+            <Button type="submit" size="lg" className="h-12 text-base">
+                <Search className="h-5 w-5" />
+            </Button>
+        </form>
+      </div>
 
       {isLoading ? (
         <div className="text-center py-24">
