@@ -24,13 +24,21 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const storedCart = localStorage.getItem(CART_STORAGE_KEY);
-    if (storedCart) {
-      setCartItems(JSON.parse(storedCart));
+    try {
+      const storedCart = localStorage.getItem(CART_STORAGE_KEY);
+      if (storedCart) {
+        setCartItems(JSON.parse(storedCart));
+      }
+    } catch (error) {
+        console.error("Could not parse cart from localStorage", error);
+        // If parsing fails, clear the corrupted cart data to prevent future errors
+        localStorage.removeItem(CART_STORAGE_KEY);
     }
   }, []);
 
   useEffect(() => {
+    // This effect now runs only when cartItems has been initialized from storage
+    // and then subsequently changed by user actions.
     if (cartItems.length > 0 || localStorage.getItem(CART_STORAGE_KEY)) {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
     }
