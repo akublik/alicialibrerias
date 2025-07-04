@@ -67,14 +67,13 @@ export default function BookDetailsPage() {
   }, [reviews]);
   
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setCurrentUrl(window.location.href);
-      const authStatus = localStorage.getItem("isAuthenticated") === "true";
-      setIsAuthenticated(authStatus);
-      if (authStatus) {
-        const userDataString = localStorage.getItem("aliciaLibros_user");
-        if(userDataString) setUser(JSON.parse(userDataString));
-      }
+    // This logic must be in useEffect to avoid hydration errors
+    setCurrentUrl(window.location.href);
+    const authStatus = localStorage.getItem("isAuthenticated") === "true";
+    setIsAuthenticated(authStatus);
+    if (authStatus) {
+      const userDataString = localStorage.getItem("aliciaLibros_user");
+      if(userDataString) setUser(JSON.parse(userDataString));
     }
   }, []);
 
@@ -319,26 +318,28 @@ export default function BookDetailsPage() {
                 {isWished ? 'En mi lista' : 'Guardar para después'}
             </Button>
             
-            <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground sr-only sm:not-sr-only">Compartir</h3>
-                <div className="flex space-x-2">
-                    <Button asChild variant="outline" size="icon" aria-label="Compartir en Facebook">
-                        <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener noreferrer">
-                            <Facebook className="h-5 w-5" />
-                        </a>
-                    </Button>
-                    <Button asChild variant="outline" size="icon" aria-label="Compartir en X">
-                        <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${shareText}`} target="_blank" rel="noopener noreferrer">
-                            <Twitter className="h-5 w-5" />
-                        </a>
-                    </Button>
-                    <Button asChild variant="outline" size="icon" aria-label="Compartir en WhatsApp">
-                        <a href={`https://api.whatsapp.com/send?text=${shareText}%20${encodedUrl}`} target="_blank" rel="noopener noreferrer">
-                            <MessageSquare className="h-5 w-5" />
-                        </a>
-                    </Button>
-                </div>
-            </div>
+            {currentUrl && (
+              <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-foreground sr-only sm:not-sr-only">Compartir</h3>
+                  <div className="flex space-x-2">
+                      <Button asChild variant="outline" size="icon" aria-label="Compartir en Facebook">
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener noreferrer">
+                              <Facebook className="h-5 w-5" />
+                          </a>
+                      </Button>
+                      <Button asChild variant="outline" size="icon" aria-label="Compartir en X">
+                          <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${shareText}`} target="_blank" rel="noopener noreferrer">
+                              <Twitter className="h-5 w-5" />
+                          </a>
+                      </Button>
+                      <Button asChild variant="outline" size="icon" aria-label="Compartir en WhatsApp">
+                          <a href={`https://api.whatsapp.com/send?text=${shareText}%20${encodedUrl}`} target="_blank" rel="noopener noreferrer">
+                              <MessageSquare className="h-5 w-5" />
+                          </a>
+                      </Button>
+                  </div>
+              </div>
+            )}
           </div>
 
           {book.description && (
