@@ -121,8 +121,19 @@ export default function DashboardPage() {
     setIsAuthenticated(true);
 
     const userDataString = localStorage.getItem("aliciaLibros_user");
-    if (userDataString) {
-      try {
+    if (!userDataString) {
+      handleLogout();
+      return;
+    }
+    
+    if (!db) {
+        console.error("Firebase DB is not available.");
+        toast({title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive"});
+        handleLogout();
+        return;
+    }
+
+    try {
         const initialUserData: User = JSON.parse(userDataString);
 
         if (initialUserData.role === 'library') {
@@ -134,8 +145,8 @@ export default function DashboardPage() {
             return;
         }
 
-        if (!db || !initialUserData.id) {
-          console.error("DB connection or user ID missing.");
+        if (!initialUserData.id) {
+          console.error("User ID missing.");
           handleLogout();
           return;
         }
@@ -238,12 +249,9 @@ export default function DashboardPage() {
           unsubscribes.forEach(unsub => unsub());
         };
 
-      } catch (e) {
+    } catch (e) {
         console.error("Error setting up dashboard:", e);
         handleLogout();
-      }
-    } else {
-      handleLogout();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
