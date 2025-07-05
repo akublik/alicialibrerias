@@ -26,12 +26,13 @@ const GameTextSchema = z.object({
 });
 
 // Schema for quiz-based games
-const QuizQuestionSchema = z.object({
+export const QuizQuestionSchema = z.object({
     question: z.string().describe("El texto de la pregunta de trivia."),
     options: z.array(z.string()).length(4).describe("Un array de 4 posibles respuestas (opciones)."),
     correctAnswer: z.string().describe("La respuesta correcta de entre las opciones."),
     rationale: z.string().optional().describe("Una breve explicación de por qué la respuesta es correcta."),
 });
+export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 
 const QuizGameSchema = z.object({
     type: z.enum(['quiz']).describe("El tipo de juego, para juegos de trivia o cuestionarios."),
