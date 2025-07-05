@@ -146,7 +146,7 @@ export default function DashboardPage() {
         const userRef = doc(db, "users", initialUserData.id);
         const userUnsub = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
-            const liveUserData = docSnap.data() as User;
+            const liveUserData = docSnap.data();
             let joinDateStr = "Miembro reciente";
             if (liveUserData.createdAt && (liveUserData.createdAt as any).seconds) {
               const joinDate = new Date((liveUserData.createdAt as any).seconds * 1000);
@@ -154,8 +154,8 @@ export default function DashboardPage() {
               joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
             }
             const fullUserData: UserData = {
+              ...(liveUserData as Omit<User, 'id'>),
               id: docSnap.id,
-              ...liveUserData,
               joinDate: joinDateStr,
               avatarUrl: liveUserData.avatarUrl || `https://placehold.co/150x150.png?text=${liveUserData.name.charAt(0)}`,
               dataAiHint: liveUserData.dataAiHint || "user avatar",
