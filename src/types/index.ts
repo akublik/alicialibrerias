@@ -1,3 +1,4 @@
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -66,7 +67,7 @@ export interface User {
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
   isActive?: boolean;
-  birthdate?: string; // Storing as ISO string
+  birthdate?: string | null; // Storing as ISO string
   favoriteCategories?: string[];
   favoriteTags?: string[];
   avatarUrl?: string;
