@@ -56,7 +56,7 @@ const generateBookReviewFlow = ai.defineFlow(
     inputSchema: GenerateBookReviewInputSchema,
     outputSchema: GenerateBookReviewOutputSchema,
   },
-  async input => {
+  async (input: GenerateBookReviewInput) => {
     const {output} = await prompt(input);
     return output!;
   }

@@ -76,7 +76,7 @@ const textToSpeechFlow = ai.defineFlow(
     inputSchema: TextToSpeechInputSchema,
     outputSchema: TextToSpeechOutputSchema,
   },
-  async ({ text, voice }) => {
+  async ({ text, voice }: TextToSpeechInput) => {
     // The Gemini TTS model has an 8192 token limit.
     // Truncate the input to a safe character limit to avoid errors.
     const CHARACTER_LIMIT = 15000; 

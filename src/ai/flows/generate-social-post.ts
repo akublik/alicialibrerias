@@ -58,7 +58,7 @@ const generateSocialPostFlow = ai.defineFlow(
     inputSchema: GenerateSocialPostInputSchema,
     outputSchema: GenerateSocialPostOutputSchema,
   },
-  async input => {
+  async (input: GenerateSocialPostInput) => {
     const {output} = await prompt(input);
     return output!;
   }

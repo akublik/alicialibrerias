@@ -39,7 +39,7 @@ const generateAutomaticTagsFlow = ai.defineFlow(
     inputSchema: GenerateAutomaticTagsInputSchema,
     outputSchema: GenerateAutomaticTagsOutputSchema,
   },
-  async input => {
+  async (input: GenerateAutomaticTagsInput) => {
     const {output} = await prompt(input);
     return output!;
   }

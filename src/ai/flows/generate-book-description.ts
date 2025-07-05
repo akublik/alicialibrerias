@@ -52,7 +52,7 @@ const generateBookDescriptionFlow = ai.defineFlow(
     inputSchema: GenerateBookDescriptionInputSchema,
     outputSchema: GenerateBookDescriptionOutputSchema,
   },
-  async input => {
+  async (input: GenerateBookDescriptionInput) => {
     const {output} = await prompt(input);
     return output!;
   }

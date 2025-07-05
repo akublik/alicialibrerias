@@ -77,7 +77,7 @@ const literaryGamesAIFlow = ai.defineFlow(
     inputSchema: LiteraryGamesAIInputSchema,
     outputSchema: LiteraryGamesAIOutputSchema,
   },
-  async input => {
+  async (input: LiteraryGamesAIInput) => {
     const {output} = await prompt(input);
     return output!;
   }
