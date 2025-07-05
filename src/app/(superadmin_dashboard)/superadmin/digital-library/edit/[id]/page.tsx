@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/digital-library/edit/[id]/page.tsx
 "use client";
 
@@ -231,9 +232,7 @@ export default function EditDigitalBookPage() {
               <div className="space-y-4 rounded-lg border p-4">
                 <h4 className="text-sm font-medium leading-none">Portada del Libro</h4>
                 <div className="flex gap-4 items-start">
-                    {(coverPreview || currentCoverUrl) && (
-                        <Image src={coverPreview || currentCoverUrl} alt="Vista previa de la portada" width={100} height={150} className="rounded-md border object-cover aspect-[2/3] bg-muted" />
-                    )}
+                    <Image src={coverPreview || currentCoverUrl || 'https://placehold.co/100x150.png'} alt="Vista previa de la portada" width={100} height={150} className="rounded-md border object-cover aspect-[2/3] bg-muted" />
                     <div className="flex-grow space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="cover-file">Reemplazar Portada</Label>
