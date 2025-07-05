@@ -1,4 +1,3 @@
-
 // src/components/auth_library/LibraryRegisterForm.tsx
 "use client";
 
@@ -80,6 +79,12 @@ export function LibraryRegisterForm() {
 
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
+
+    if (!db) {
+      toast({ title: "Error de conexión", description: "La base de datos no está disponible.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
     
     try {
       const usersRef = collection(db, "users");

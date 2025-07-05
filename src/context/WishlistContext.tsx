@@ -38,23 +38,25 @@ export const WishlistProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (user && db) {
-      setIsLoading(true);
-      const q = query(collection(db, "wishlist"), where("userId", "==", user.id));
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserWishlistItem));
-        setWishlistItems(items);
-        setIsLoading(false);
-      }, (error) => {
-        console.error("Error fetching wishlist:", error);
-        setIsLoading(false);
-      });
-      return () => unsubscribe();
-    } else {
+    if (!user || !db) {
       // If no user or db, clear wishlist and stop loading.
       setWishlistItems([]);
       setIsLoading(false);
+      return;
     }
+    
+    setIsLoading(true);
+    const q = query(collection(db, "wishlist"), where("userId", "==", user.id));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserWishlistItem));
+      setWishlistItems(items);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching wishlist:", error);
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+
   }, [user]);
 
   const isInWishlist = useCallback((bookId: string) => {

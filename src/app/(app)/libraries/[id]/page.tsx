@@ -100,76 +100,76 @@ export default function LibraryDetailsPage() {
   }, [searchTerm]);
 
   useEffect(() => {
-    if (!libraryId || !db) {
-      setIsLoading(false);
-      return;
-    };
-
-    // Get user from localStorage
-    const userDataString = localStorage.getItem("aliciaLibros_user");
-    if (userDataString) {
-        setUser(JSON.parse(userDataString));
-    }
-    
     const fetchLibraryData = async () => {
-        setIsLoading(true);
-        try {
-            // Fetch library details
-            const libraryRef = doc(db, "libraries", libraryId);
-            const librarySnap = await getDoc(libraryRef);
+      if (!libraryId || !db) {
+        setIsLoading(false);
+        return;
+      };
 
-            if (librarySnap.exists()) {
-                const foundLibrary = { id: librarySnap.id, ...librarySnap.data() } as Library;
-                setLibrary(foundLibrary);
-                
-                // Log visit
-                logVisit(libraryId);
+      // Get user from localStorage
+      const userDataString = localStorage.getItem("aliciaLibros_user");
+      if (userDataString) {
+          setUser(JSON.parse(userDataString));
+      }
+      
+      setIsLoading(true);
+      try {
+          // Fetch library details
+          const libraryRef = doc(db, "libraries", libraryId);
+          const librarySnap = await getDoc(libraryRef);
 
-                // Fetch books for this library
-                const booksRef = collection(db, "books");
-                const qBooks = query(booksRef, where("libraryId", "==", libraryId));
-                const booksSnapshot = await getDocs(qBooks);
-                const libraryBooks = booksSnapshot.docs.map(doc => ({ 
-                    id: doc.id,
-                    ...doc.data(),
-                    libraryName: foundLibrary.name,
-                    libraryLocation: foundLibrary.location,
-                } as Book));
-                setBooks(libraryBooks);
-                
-                // Fetch events for this library
-                const eventsRef = collection(db, "events");
-                const qEvents = query(eventsRef, where("libraryId", "==", libraryId));
-                const eventsSnapshot = await getDocs(qEvents);
-                const libraryEvents = eventsSnapshot.docs.map(doc => ({ 
-                  id: doc.id, 
+          if (librarySnap.exists()) {
+              const foundLibrary = { id: librarySnap.id, ...librarySnap.data() } as Library;
+              setLibrary(foundLibrary);
+              
+              // Log visit
+              logVisit(libraryId);
+
+              // Fetch books for this library
+              const booksRef = collection(db, "books");
+              const qBooks = query(booksRef, where("libraryId", "==", libraryId));
+              const booksSnapshot = await getDocs(qBooks);
+              const libraryBooks = booksSnapshot.docs.map(doc => ({ 
+                  id: doc.id,
                   ...doc.data(),
-                  date: doc.data().date?.toDate ? doc.data().date.toDate().toISOString() : doc.data().date,
-                } as LibraryEvent));
-                // Sort events by date, future events first
-                libraryEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                setEvents(libraryEvents);
+                  libraryName: foundLibrary.name,
+                  libraryLocation: foundLibrary.location,
+              } as Book));
+              setBooks(libraryBooks);
+              
+              // Fetch events for this library
+              const eventsRef = collection(db, "events");
+              const qEvents = query(eventsRef, where("libraryId", "==", libraryId));
+              const eventsSnapshot = await getDocs(qEvents);
+              const libraryEvents = eventsSnapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                date: doc.data().date?.toDate ? doc.data().date.toDate().toISOString() : doc.data().date,
+              } as LibraryEvent));
+              // Sort events by date, future events first
+              libraryEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+              setEvents(libraryEvents);
 
-                // Check favorite status from Firestore if user is logged in
-                const currentUserData = localStorage.getItem("aliciaLibros_user");
-                if (currentUserData) {
-                    const currentUser = JSON.parse(currentUserData);
-                    const favRef = collection(db, 'userFavorites');
-                    const qFav = query(favRef, where('userId', '==', currentUser.id), where('libraryId', '==', libraryId), limit(1));
-                    const favSnapshot = await getDocs(qFav);
-                    if (!favSnapshot.empty) {
-                        setIsFavorite(true);
-                        setFavoriteDocId(favSnapshot.docs[0].id);
-                    }
-                }
-            } else {
-                console.error("No such library document!");
-            }
-        } catch (error) {
-            console.error("Error fetching library data:", error);
-        } finally {
-            setIsLoading(false);
-        }
+              // Check favorite status from Firestore if user is logged in
+              const currentUserData = localStorage.getItem("aliciaLibros_user");
+              if (currentUserData) {
+                  const currentUser = JSON.parse(currentUserData);
+                  const favRef = collection(db, 'userFavorites');
+                  const qFav = query(favRef, where('userId', '==', currentUser.id), where('libraryId', '==', libraryId), limit(1));
+                  const favSnapshot = await getDocs(qFav);
+                  if (!favSnapshot.empty) {
+                      setIsFavorite(true);
+                      setFavoriteDocId(favSnapshot.docs[0].id);
+                  }
+              }
+          } else {
+              console.error("No such library document!");
+          }
+      } catch (error) {
+          console.error("Error fetching library data:", error);
+      } finally {
+          setIsLoading(false);
+      }
     };
     
     fetchLibraryData();

@@ -100,15 +100,13 @@ function SearchResults() {
 
   useEffect(() => {
     const logSearch = async () => {
-      if (!queryParam || isLoading) return;
+      if (!queryParam || isLoading || !db) return;
 
       const loggedKey = `search-logged-${queryParam.toLowerCase()}`;
       if (sessionStorage.getItem(loggedKey)) {
         return;
       }
       
-      if (!db) return;
-
       try {
           const searchLogData: {
               query: string;

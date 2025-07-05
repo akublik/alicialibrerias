@@ -25,12 +25,11 @@ export default function AuthorDetailsPage() {
   const ITEMS_PER_PAGE = 12;
 
   useEffect(() => {
-    if (!authorId || !db) {
-      setIsLoading(false);
-      return;
-    }
-
     const fetchAuthorData = async () => {
+      if (!authorId || !db) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const authorRef = doc(db, "authors", authorId);

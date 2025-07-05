@@ -43,13 +43,13 @@ export default function ReaderPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!bookId || !db) {
-      setError("Error de configuración de la aplicación.");
-      setIsLoading(false);
-      return;
-    }
-
     const fetchBookAndData = async () => {
+      if (!bookId || !db) {
+        setError("Error de configuración de la aplicación.");
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       setEpubData(null);

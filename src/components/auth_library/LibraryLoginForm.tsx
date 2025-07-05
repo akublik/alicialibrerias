@@ -54,6 +54,12 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
+    if (!db) {
+        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+    
     try {
       // 1. Query the 'users' collection without role first.
       const usersRef = collection(db, "users");

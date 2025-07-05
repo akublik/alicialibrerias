@@ -100,9 +100,8 @@ export default function BookDetailsPage() {
   }, [bookId]);
 
   useEffect(() => {
-    if (!bookId || !db) return;
-
     const fetchBookData = async () => {
+      if (!bookId || !db) return;
       setIsLoading(true);
       try {
         // --- 1. Fetch Main Book and All Libraries in Parallel ---

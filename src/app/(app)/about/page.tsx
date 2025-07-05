@@ -27,6 +27,7 @@ export default function AboutPage() {
   useEffect(() => {
     const fetchContent = async () => {
       if (!db) {
+        console.error("Firestore DB is not available.");
         setIsLoading(false);
         return;
       }
