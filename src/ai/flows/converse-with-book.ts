@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview AI agent that converses as "AlicIA" about a book.
@@ -7,7 +8,12 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { type ChatMessage } from './shopping-assistant';
+
+// Define ChatMessage type locally to resolve the import error.
+export type ChatMessage = {
+    role: 'user' | 'assistant';
+    content: string;
+};
 
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
