@@ -96,9 +96,10 @@ export const placeholderReviews: Review[] = [
     userId: 'user123',
     userName: 'Ana Pérez',
     bookId: '1',
+    bookTitle: 'Cien Años de Soledad',
     rating: 5,
     comment: '¡Una obra maestra! Me transportó a Macondo desde la primera página. Totalmente recomendado.',
-    date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
+    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
     avatarUrl: 'https://placehold.co/100x100.png',
     dataAiHint: 'woman reading'
   },
@@ -107,9 +108,10 @@ export const placeholderReviews: Review[] = [
     userId: 'user456',
     userName: 'Carlos López',
     bookId: '1',
+    bookTitle: 'Cien Años de Soledad',
     rating: 4,
     comment: 'Un clásico que hay que leer. La complejidad de los personajes es asombrosa.',
-    date: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
+    createdAt: new Date(Date.now() - 86400000 * 5).toISOString(), // 5 days ago
     avatarUrl: 'https://placehold.co/100x100.png',
     dataAiHint: 'man glasses'
   },
@@ -118,9 +120,10 @@ export const placeholderReviews: Review[] = [
     userId: 'user789',
     userName: 'Sofía Gómez',
     bookId: '2',
+    bookTitle: 'La Casa de los Espíritus',
     rating: 5,
     comment: 'Isabel Allende nunca decepciona. Una historia conmovedora y poderosa.',
-    date: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
+    createdAt: new Date(Date.now() - 86400000 * 1).toISOString(), // 1 day ago
     avatarUrl: 'https://placehold.co/100x100.png',
     dataAiHint: 'person smiling'
   },
