@@ -12,41 +12,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp | null = null;
-let db: Firestore | null = null;
-let storage: FirebaseStorage | null = null;
-
 // This function checks if all required config keys are present and valid
 function isFirebaseConfigComplete(config: typeof firebaseConfig): boolean {
     return Object.values(config).every(value => typeof value === 'string' && value.length > 0);
 }
 
-if (isFirebaseConfigComplete(firebaseConfig)) {
-    if (!getApps().length) {
-      try {
-        app = initializeApp(firebaseConfig);
-      } catch(e) {
-        console.error("Firebase initialization error:", e);
-        // app remains null
-      }
-    } else {
-      app = getApp();
-    }
+let app: FirebaseApp;
+let db: Firestore;
+let storage: FirebaseStorage;
 
-    if (app) {
-        db = getFirestore(app);
-        storage = getStorage(app);
-    }
-} else {
-    // This warning will be visible in the server logs
-    console.warn(`
+if (!isFirebaseConfigComplete(firebaseConfig)) {
+    // This will cause a loud error during build if env vars are missing, which is what we want.
+    // The build should not proceed without a valid config.
+    console.error(`
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! ATENCIÓN: CONFIGURACIÓN DE FIREBASE INCOMPLETA O INVÁLIDA !!!
     
     Faltan una o más variables de entorno NEXT_PUBLIC_FIREBASE_* en tu archivo .env
-    o los valores proporcionados son incorrectos.
-    
-    La aplicación no podrá conectarse a Firebase hasta que esto se corrija.
+    o los valores proporcionados son incorrectos. La compilación se detendrá.
     
     Valores actuales (revisa si hay 'undefined' o están vacíos):
     - apiKey: ${firebaseConfig.apiKey}
@@ -56,8 +39,21 @@ if (isFirebaseConfigComplete(firebaseConfig)) {
     - messagingSenderId: ${firebaseConfig.messagingSenderId}
     - appId: ${firebaseConfig.appId}
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  `);
+    `);
+    // Throwing an error here is intentional to stop the build process.
+    throw new Error("Firebase config is incomplete. Check your NEXT_PUBLIC_FIREBASE_* environment variables.");
 }
 
+// If the config is valid, we can proceed with initialization.
+// This guarantees that 'app', 'db', and 'storage' will be assigned.
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
+db = getFirestore(app);
+storage = getStorage(app);
+
+// Now db and storage are guaranteed to be initialized and are not nullable.
 export { db, storage };

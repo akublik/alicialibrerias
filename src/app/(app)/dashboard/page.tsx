@@ -270,7 +270,7 @@ export default function DashboardPage() {
   }, [user, isEditDialogOpen, form]);
   
   async function onProfileSubmit(values: ProfileFormValues) {
-    if (!user || !db) return;
+    if (!user) return;
     setIsSubmitting(true);
 
     const parseDateString = (dateStr: string): Date | null => {
@@ -367,7 +367,7 @@ export default function DashboardPage() {
   };
 
   async function onBookRequestSubmit(values: RequestFormValues) {
-    if (!user || !db) return;
+    if (!user) return;
     setIsRequesting(true);
     try {
         await addDoc(collection(db, "bookRequests"), {

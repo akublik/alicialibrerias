@@ -26,7 +26,12 @@ export default function AuthorDetailsPage() {
 
   useEffect(() => {
     const fetchAuthorData = async () => {
-      if (!authorId || !db) {
+      if (!authorId) {
+        setIsLoading(false);
+        return;
+      }
+      if (!db) {
+        console.error("Firestore is not available");
         setIsLoading(false);
         return;
       }
