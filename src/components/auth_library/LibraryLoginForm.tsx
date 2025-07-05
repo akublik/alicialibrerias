@@ -142,9 +142,9 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
             return;
           }
 
-          const libraryData = libraryDocSnap.data() as Library;
+          const libraryDataForStorage = { id: libraryDocSnap.id, ...libraryDocSnap.data() } as Library;
 
-          if (libraryData.isActive === false) {
+          if (libraryDataForStorage.isActive === false) {
             toast({
               title: "Librería Desactivada",
               description: "Esta librería ha sido desactivada por un administrador.",
@@ -156,11 +156,11 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
           
           localStorage.setItem("isLibraryAdminAuthenticated", "true");
           localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
-          localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({ id: libraryDocSnap.id, ...libraryData }));
+          localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
           
           toast({
             title: "Inicio de Sesión Exitoso",
-            description: `Bienvenido al panel de ${libraryData.name}.`,
+            description: `Bienvenido al panel de ${libraryDataForStorage.name}.`,
           });
           router.push("/library-admin/dashboard");
       }
