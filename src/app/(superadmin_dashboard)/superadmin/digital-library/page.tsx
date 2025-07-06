@@ -108,25 +108,12 @@ export default function ManageDigitalLibraryPage() {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setUploadProgress(progress);
       },
-      (error: any) => {
+      (error) => {
         console.error("Upload failed:", error);
-        let description = `Ocurrió un error inesperado. Código: ${error.code || 'N/A'}.`;
-        
-        // Check for specific Firebase Storage error codes
-        if (error.code === 'storage/unauthorized') {
-          description = "Error de permisos (storage/unauthorized). Las reglas de seguridad de tu Firebase Storage no permiten esta subida. Asegúrate de que los usuarios autenticados pueden escribir en 'digital-book-zips/'.";
-        } else if (error.code === 'storage/unauthenticated') {
-          description = "Error de autenticación (storage/unauthenticated). Parece que no estás autenticado correctamente para realizar esta acción.";
-        } else {
-            // This is the most likely case for a CORS error
-            description = "La subida falló, probablemente por un problema de configuración CORS en tu bucket de Firebase Storage. He creado un archivo 'cors-storage.json' en tu proyecto. Por favor, sigue las instrucciones que te di para aplicarlo y solucionar este problema.";
-        }
-
         toast({
           title: "Error al Subir el ZIP",
-          description: description,
+          description: "No se pudo subir el archivo ZIP. Revisa la consola.",
           variant: "destructive",
-          duration: 15000
         });
         setIsUploadingZip(false);
       },
