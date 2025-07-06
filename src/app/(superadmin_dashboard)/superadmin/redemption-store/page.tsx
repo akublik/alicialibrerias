@@ -70,7 +70,7 @@ export default function ManageRedemptionStorePage() {
           <div>
             <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary flex items-center">
               <Gift className="mr-3 h-8 w-8"/>
-              Tienda de Redención
+              Tienda de Canje
             </h1>
             <p className="text-lg text-foreground/80">
               Gestiona los artículos que los lectores pueden canjear con sus puntos.

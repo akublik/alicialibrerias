@@ -75,7 +75,7 @@ export default function SuperAdminDashboardLayout({
     { title: "Gestionar Autores", href: "/superadmin/authors", icon: PenSquare },
     { title: "Biblioteca Digital", href: "/superadmin/digital-library", icon: BookHeart },
     { title: "Gestionar Cuentos", href: "/superadmin/stories", icon: FileText },
-    { title: "Tienda de Redención", href: "/superadmin/redemption-store", icon: Gift },
+    { title: "Tienda de Canje", href: "/superadmin/redemption-store", icon: Gift },
     { title: "Solicitudes de Libros", href: "/superadmin/requests", icon: MailQuestion },
     { title: "Analíticas Búsqueda", href: "/superadmin/analytics", icon: LineChart },
     { title: "Contenido Homepage", href: "/superadmin/content", icon: FilePenLine },
