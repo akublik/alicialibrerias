@@ -1,4 +1,5 @@
-// src/app/(superadmin_dashboard)/superadmin/digital-library/page.tsx
+
+      // src/app/(superadmin_dashboard)/superadmin/digital-library/page.tsx
 
 "use client";
 
@@ -109,11 +110,24 @@ export default function ManageDigitalLibraryPage() {
       },
       (error: any) => {
         console.error("Upload failed:", error);
-        let description = "No se pudo subir el archivo ZIP. Revisa la consola para más detalles.";
+        let description = `Ocurrió un error inesperado. Código: ${error.code || 'N/A'}.`;
+        
+        // Check for specific Firebase Storage error codes
         if (error.code === 'storage/unauthorized') {
-          description = "Error de permisos. Asegúrate de que las reglas de seguridad de Firebase Storage permitan subir archivos a la ruta 'digital-book-zips/'.";
+          description = "Error de permisos (storage/unauthorized). Las reglas de seguridad de tu Firebase Storage no permiten esta subida. Asegúrate de que los usuarios autenticados pueden escribir en 'digital-book-zips/'.";
+        } else if (error.code === 'storage/unauthenticated') {
+          description = "Error de autenticación (storage/unauthenticated). Parece que no estás autenticado correctamente para realizar esta acción.";
+        } else {
+            // This is the most likely case for a CORS error
+            description = "La subida falló, probablemente por un problema de configuración CORS en tu bucket de Firebase Storage. He creado un archivo 'cors-storage.json' en tu proyecto. Por favor, sigue las instrucciones que te di para aplicarlo y solucionar este problema.";
         }
-        toast({ title: "Error al subir", description: description, variant: "destructive", duration: 10000 });
+
+        toast({
+          title: "Error al Subir el ZIP",
+          description: description,
+          variant: "destructive",
+          duration: 15000
+        });
         setIsUploadingZip(false);
       },
       () => {
@@ -292,3 +306,5 @@ export default function ManageDigitalLibraryPage() {
     </>
   );
 }
+
+    
