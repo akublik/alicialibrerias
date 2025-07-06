@@ -23,16 +23,13 @@ export default function LoyaltyProgramPage() {
             return;
         }
 
-        const now = new Date();
         const promotionsRef = collection(db, "promotions");
-        // The query is now simpler, without ordering.
-        const q = query(
-            promotionsRef, 
-            where("isActive", "==", true),
-            where("endDate", ">=", now)
-        );
+        // Query only for promotions marked as active. All date filtering will be done client-side.
+        // This is more robust as it doesn't require a specific composite index in Firestore.
+        const q = query(promotionsRef, where("isActive", "==", true));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
+            const now = new Date();
             const activePromotions = snapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
@@ -41,7 +38,11 @@ export default function LoyaltyProgramPage() {
                     startDate: data.startDate?.toDate(),
                     endDate: data.endDate?.toDate(),
                 } as Promotion;
-            }).filter(promo => new Date(promo.startDate) <= now);
+            }).filter(promo => {
+                // A promotion is currently active if 'now' is between its start and end date.
+                if (!promo.startDate || !promo.endDate) return false;
+                return promo.startDate <= now && promo.endDate >= now;
+            });
             
             // Sorting is now done on the client side
             activePromotions.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
