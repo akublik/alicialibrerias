@@ -1,3 +1,4 @@
+
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -190,6 +191,8 @@ export default function CheckoutPage() {
        return;
     }
 
+    let toastPointsDescription = `Los puntos se han añadido a tu cuenta.`;
+
     try {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
@@ -209,15 +212,16 @@ export default function CheckoutPage() {
             
             let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
             let transactionDescription = `Puntos por compra`;
-            let toastDescription = `Los puntos se han añadido a tu cuenta.`;
-
+            
             if (currentUserData.birthdate) {
               const today = new Date();
+              // The birthdate is stored as 'YYYY-MM-DD'. `new Date()` will interpret this as UTC midnight.
+              // To avoid timezone issues, we will compare month and day in UTC.
               const birthdate = new Date(currentUserData.birthdate);
-              if (today.getMonth() === birthdate.getMonth() && today.getDate() === birthdate.getDate() + 1) {
+              if (today.getUTCMonth() === birthdate.getUTCMonth() && today.getUTCDate() === birthdate.getUTCDate()) {
                   pointsToAward *= 2; 
                   transactionDescription += " (¡Bono de cumpleaños!)";
-                  toastDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
+                  toastPointsDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
               }
             }
 
@@ -280,7 +284,7 @@ export default function CheckoutPage() {
       if (pointsToEarn > 0) {
         toast({
           title: `¡Ganaste ${pointsToEarn} puntos!`,
-          description: toastDescription,
+          description: toastPointsDescription,
         });
       }
       
