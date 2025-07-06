@@ -38,10 +38,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { DigitalBook } from "@/types";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Progress } from "@/components/ui/progress";
 
 export default function ManageDigitalLibraryPage() {
   const [digitalBooks, setDigitalBooks] = useState<DigitalBook[]>([]);
@@ -51,6 +53,8 @@ export default function ManageDigitalLibraryPage() {
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [zipFile, setZipFile] = useState<File | null>(null);
+  const [isUploadingZip, setIsUploadingZip] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (!db) {
@@ -81,21 +85,49 @@ export default function ManageDigitalLibraryPage() {
     }
   };
 
-  const handleImportZip = () => {
+  const handleImportZip = async () => {
     if (!zipFile) {
       toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
       return;
     }
+    if (!storage) {
+      toast({ title: "Error de configuración", description: "Firebase Storage no está disponible.", variant: "destructive" });
+      return;
+    }
 
-    toast({
-      title: "Funcionalidad en Desarrollo",
-      description: "La importación desde ZIP está preparada. El siguiente paso requiere lógica de servidor (Cloud Function) para procesar el archivo.",
-      duration: 8000
-    });
-    
-    setZipFile(null);
-    setIsImportDialogOpen(false);
+    setIsUploadingZip(true);
+    setUploadProgress(0);
+
+    const storageRef = ref(storage, `digital-book-zips/${Date.now()}-${zipFile.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, zipFile);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        toast({ title: "Error al subir", description: "No se pudo subir el archivo ZIP. Revisa la consola.", variant: "destructive" });
+        setIsUploadingZip(false);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          console.log('File available at', downloadURL);
+          toast({
+            title: "Archivo Subido con Éxito",
+            description: "El archivo ZIP ha sido enviado. Ahora se necesita un proceso de servidor (Cloud Function) para extraer y publicar el libro.",
+            duration: 10000,
+          });
+          setIsUploadingZip(false);
+          setIsImportDialogOpen(false);
+          setZipFile(null);
+        });
+      }
+    );
   };
+
 
   return (
     <>
@@ -124,19 +156,27 @@ export default function ManageDigitalLibraryPage() {
                     Sube un archivo .zip que contenga el archivo EPUB y la imagen de portada. El sistema los procesará automáticamente.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="py-4">
-                  <Input 
-                    id="zip-file" 
-                    type="file" 
-                    accept=".zip,application/zip,application/x-zip-compressed"
-                    onChange={(e) => setZipFile(e.target.files?.[0] || null)} 
-                  />
-                  {zipFile && <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {zipFile.name}</p>}
-                </div>
+                 <div className="py-4 space-y-4">
+                    <Input 
+                      id="zip-file" 
+                      type="file" 
+                      accept=".zip,application/zip,application/x-zip-compressed"
+                      onChange={(e) => setZipFile(e.target.files?.[0] || null)} 
+                      disabled={isUploadingZip}
+                    />
+                    {zipFile && !isUploadingZip && <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {zipFile.name}</p>}
+                    {isUploadingZip && (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">Subiendo "{zipFile?.name}"...</p>
+                        <Progress value={uploadProgress} className="w-full" />
+                      </div>
+                    )}
+                  </div>
                 <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
-                  <Button onClick={handleImportZip} disabled={!zipFile}>
-                    Importar Libro
+                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)} disabled={isUploadingZip}>Cancelar</Button>
+                  <Button onClick={handleImportZip} disabled={!zipFile || isUploadingZip}>
+                    {isUploadingZip ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
+                    {isUploadingZip ? 'Subiendo...' : 'Subir y Procesar'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
