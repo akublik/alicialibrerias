@@ -64,9 +64,19 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
+    // Removed orderBy from the query to prevent needing a composite index. Sorting is now done on the client.
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const history = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() || new Date() } as PointsTransaction));
+      const history = snapshot.docs.map(doc => ({ 
+        id: doc.id,
+        ...doc.data(), 
+        createdAt: doc.data().createdAt?.toDate() || new Date() 
+      } as PointsTransaction));
+      
+      // Sort the history by date on the client side
+      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
@@ -133,9 +143,11 @@ export default function ManageUsersPage() {
           });
           toast({ title: "Puntos Ajustados", description: `Se han ${amount > 0 ? 'añadido' : 'restado'} ${Math.abs(amount)} puntos a ${selectedUser.name}.` });
           event.currentTarget.reset();
+          // Close dialog on success
+          setIsPointsDialogOpen(false); 
 
       } catch (error: any) {
-          toast({ title: "Error en el ajuste", description: error.message, variant: "destructive" });
+          toast({ title: "Error en el ajuste", description: error.message || "No se pudo completar la transacción.", variant: "destructive" });
       }
   };
 
@@ -267,7 +279,7 @@ export default function ManageUsersPage() {
                 <Card>
                     <CardHeader><CardTitle>Historial de Puntos</CardTitle></CardHeader>
                     <CardContent className="h-[300px] overflow-y-auto">
-                        {isLoadingHistory ? <Loader2 className="mx-auto h-6 w-6 animate-spin"/> : (
+                        {isLoadingHistory ? <div className="flex justify-center items-center h-full"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
                            <Table>
                                 <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader>
                                 <TableBody>
@@ -279,7 +291,7 @@ export default function ManageUsersPage() {
                                                 {t.points > 0 ? `+${t.points}` : t.points}
                                             </TableCell>
                                         </TableRow>
-                                    )) : <TableRow><TableCell colSpan={3} className="text-center">No hay historial.</TableCell></TableRow>}
+                                    )) : <TableRow><TableCell colSpan={3} className="text-center py-4">No hay historial.</TableCell></TableRow>}
                                 </TableBody>
                            </Table>
                         )}
