@@ -107,9 +107,13 @@ export default function ManageDigitalLibraryPage() {
         const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
         setUploadProgress(progress);
       },
-      (error) => {
+      (error: any) => {
         console.error("Upload failed:", error);
-        toast({ title: "Error al subir", description: "No se pudo subir el archivo ZIP. Revisa la consola.", variant: "destructive" });
+        let description = "No se pudo subir el archivo ZIP. Revisa la consola para más detalles.";
+        if (error.code === 'storage/unauthorized') {
+          description = "Error de permisos. Asegúrate de que las reglas de seguridad de Firebase Storage permitan subir archivos a la ruta 'digital-book-zips/'.";
+        }
+        toast({ title: "Error al subir", description: description, variant: "destructive", duration: 10000 });
         setIsUploadingZip(false);
       },
       () => {
