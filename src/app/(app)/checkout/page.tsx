@@ -28,9 +28,10 @@ import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText, Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction, query, where, getDocs } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
-import type { User } from "@/types";
+import type { User, Promotion } from "@/types";
+import { format } from "date-fns";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
@@ -137,7 +138,7 @@ export default function CheckoutPage() {
 
   const discountAmount = pointsToApply / 100;
   const finalTotal = totalPrice + currentShippingCost - discountAmount;
-  const pointsToEarn = Math.floor(totalPrice - discountAmount);
+  const basePointsToEarn = Math.floor(totalPrice - discountAmount);
   
   const handlePointsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       let value = parseInt(e.target.value, 10);
@@ -192,6 +193,18 @@ export default function CheckoutPage() {
     }
 
     try {
+        // Fetch active promotions before starting the transaction
+        const promotionsRef = collection(db, "promotions");
+        const now = new Date();
+        const promotionsQuery = query(promotionsRef, 
+            where("isActive", "==", true),
+            where("startDate", "<=", now)
+        );
+        const promotionsSnapshot = await getDocs(promotionsQuery);
+        const activePromotions = promotionsSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
+            .filter(p => new Date(p.endDate.toDate()) >= now);
+
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
             const userSnap = await transaction.get(userRef);
@@ -205,26 +218,67 @@ export default function CheckoutPage() {
             if (currentPoints < pointsToApply) {
                  throw new Error("No tienes suficientes puntos para realizar este canje.");
             }
-
-            const pointsAfterRedemption = currentPoints - pointsToApply;
             
-            let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
+            // --- Points Calculation ---
             let transactionDescription = `Puntos por compra`;
+            let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
+            let birthdayMultiplier = 1;
             
+            // Birthday bonus logic
             if (currentUserData.birthdate) {
               const today = new Date();
-              // The birthdate is stored as 'YYYY-MM-DD'. `new Date()` will interpret this as UTC midnight.
-              // To avoid timezone issues, we will compare month and day in UTC.
               const birthdate = new Date(currentUserData.birthdate);
               if (today.getUTCMonth() === birthdate.getUTCMonth() && today.getUTCDate() === birthdate.getUTCDate()) {
-                  pointsToAward *= 2; 
-                  transactionDescription += " (¡Bono de cumpleaños!)";
+                  birthdayMultiplier = 2;
               }
             }
 
-            const finalPoints = pointsAfterRedemption + pointsToAward;
-            transaction.update(userRef, { loyaltyPoints: finalPoints });
+            // Promotions logic
+            let promoMultiplier = 1;
+            let promoBonusPoints = 0;
+            const appliedPromoNames: string[] = [];
 
+            for (const item of cartItems) {
+                for (const promo of activePromotions) {
+                    let isApplicable = false;
+                    if (promo.targetType === 'global') isApplicable = true;
+                    if (promo.targetType === 'book' && promo.targetValue === item.id) isApplicable = true;
+                    if (promo.targetType === 'category' && item.categories?.includes(promo.targetValue!)) isApplicable = true;
+                    if (promo.targetType === 'author' && item.authors?.includes(promo.targetValue!)) isApplicable = true;
+                    
+                    if (isApplicable) {
+                        if (promo.type === 'multiplier' && promo.value > promoMultiplier) {
+                            promoMultiplier = promo.value;
+                        }
+                        if (promo.type === 'bonus') {
+                            promoBonusPoints += promo.value;
+                        }
+                        if (!appliedPromoNames.includes(promo.name)) {
+                            appliedPromoNames.push(promo.name);
+                        }
+                    }
+                }
+            }
+
+            // Apply promotions and birthday bonus
+            pointsToAward = Math.floor(pointsToAward * promoMultiplier) + promoBonusPoints;
+            if(birthdayMultiplier > 1) {
+                pointsToAward *= birthdayMultiplier;
+            }
+
+            // Build transaction description string
+            if (appliedPromoNames.length > 0) {
+              transactionDescription += ` (Promos: ${appliedPromoNames.join(', ')})`;
+            }
+            if(birthdayMultiplier > 1) {
+              transactionDescription += " (¡Bono de cumpleaños!)";
+            }
+
+            const pointsAfterRedemption = currentPoints - pointsToApply;
+            const finalPoints = pointsAfterRedemption + pointsToAward;
+            
+            // --- All DB Writes Happen Here ---
+            transaction.update(userRef, { loyaltyPoints: finalPoints });
             const newOrderRef = doc(collection(db, "orders"));
             const newOrderData = {
                 libraryId,
@@ -238,6 +292,8 @@ export default function CheckoutPage() {
                     price: item.price,
                     quantity: item.quantity,
                     imageUrl: item.imageUrl,
+                    categories: item.categories || [],
+                    authors: item.authors || [],
                 })),
                 totalPrice: finalTotal,
                 status: 'pending' as const,
@@ -280,13 +336,15 @@ export default function CheckoutPage() {
         description: "Gracias por tu compra. Hemos recibido tu pedido.",
       });
       
-      let toastPointsDescription = `Los puntos se han añadido a tu cuenta.`;
-      if (pointsToEarn > 0) {
+      let toastPointsDescription = `Se han añadido a tu cuenta.`;
+      if (basePointsToEarn > 0) {
         if (transactionDescription.includes('cumpleaños')) {
-            toastPointsDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
+            toastPointsDescription = `¡Feliz cumpleaños! Tus puntos de promoción se han añadido.`;
+        } else if (transactionDescription.includes('Promos')) {
+            toastPointsDescription = 'Tus puntos de promoción se han añadido a tu cuenta.'
         }
         toast({
-          title: `¡Ganaste ${pointsToEarn} puntos!`,
+          title: `¡Ganaste puntos!`,
           description: toastPointsDescription,
         });
       }
@@ -549,7 +607,7 @@ export default function CheckoutPage() {
                 </div>
                 <Separator/>
                  <div className="flex items-center justify-center text-sm text-accent p-3 bg-accent/10 rounded-md">
-                    <Gift className="mr-2 h-5 w-5"/> ¡Acumularás <span className="font-bold mx-1">{pointsToEarn}</span> puntos con esta compra!
+                    <Gift className="mr-2 h-5 w-5"/> ¡Acumularás <span className="font-bold mx-1">{basePointsToEarn}</span> puntos con esta compra!
                 </div>
               </CardContent>
               <CardFooter>

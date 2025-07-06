@@ -100,6 +100,8 @@ export interface OrderItem {
   price: number;
   quantity: number;
   imageUrl?: string;
+  categories?: string[];
+  authors?: string[];
 }
 
 export interface Order {
@@ -273,4 +275,18 @@ export interface PointsTransaction {
   description: string;
   points: number;
   createdAt: any;
+}
+
+export interface Promotion {
+  id: string;
+  name: string;
+  description: string;
+  type: 'multiplier' | 'bonus';
+  value: number;
+  targetType: 'global' | 'category' | 'author' | 'book';
+  targetValue?: string;
+  startDate: any; // Firestore Timestamp
+  endDate: any; // Firestore Timestamp
+  isActive: boolean;
+  createdAt: any; // Firestore Timestamp
 }
