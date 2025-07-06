@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Users, Gift, MoreHorizontal, Edit, AlertCircle, PlusCircle, MinusCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, orderBy, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { User, PointsTransaction } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
