@@ -92,7 +92,7 @@ export default function LoyaltyProgramPage() {
                         Programa de Puntos Alicia Libros
                     </h1>
                     <p className="text-lg md:text-xl text-white/90 mb-6 max-w-3xl mx-auto">
-                        Es el programa que recompensa tu fidelidad regalándote puntos por cada dólar de compras que realices, que luego puedes canjear por increíbles premios y descuentos.
+                        Es el programa que recompensa tu fidelidad regalándote puntos por cada dólar de compras que realices en nuestros establecimientos afiliados, que luego puedes canjear por increíbles premios.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
                          <a href="#promotions">
