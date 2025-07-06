@@ -14,7 +14,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, limit, doc, getDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, limit, doc, getDoc, runTransaction } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 // Removed bookClubs and placeholderBooks from here
@@ -82,7 +82,7 @@ export default function CommunityPage() {
   }, [toast]);
 
   const handlePublishReview = async () => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       toast({ title: "Debes iniciar sesión para publicar una reseña.", variant: "destructive" });
       return;
     }
@@ -103,27 +103,45 @@ export default function CommunityPage() {
 
     setIsSubmittingReview(true);
     try {
-      const userDataString = localStorage.getItem("aliciaLibros_user");
-      if (!userDataString) throw new Error("No se encontró información de usuario.");
-      const basicUserInfo = JSON.parse(userDataString);
-
-      const userRef = doc(db, "users", basicUserInfo.id);
-      const userSnap = await getDoc(userRef);
-      if (!userSnap.exists()) throw new Error("No se pudo verificar el usuario.");
-      
-      const liveUser: User = { id: userSnap.id, ...userSnap.data() } as User;
-
+      // Add the review
       await addDoc(collection(db, "reviews"), {
         bookTitle: newReviewBookTitle,
-        userId: liveUser.id,
-        userName: liveUser.name,
-        avatarUrl: liveUser.avatarUrl || `https://placehold.co/100x100.png?text=${liveUser.name.charAt(0)}`,
-        dataAiHint: liveUser.dataAiHint || 'user avatar',
+        userId: user.id,
+        userName: user.name,
+        avatarUrl: user.avatarUrl || `https://placehold.co/100x100.png?text=${user.name.charAt(0)}`,
+        dataAiHint: user.dataAiHint || 'user avatar',
         rating: newReviewRating,
         comment: newReviewText,
         createdAt: serverTimestamp()
       });
       toast({ title: "¡Reseña Publicada!", description: "Gracias por tu opinión." });
+
+      // Check for first review bonus
+      const userRef = doc(db, "users", user.id);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && !userSnap.data().hasWrittenFirstReview) {
+          const bonusPoints = 50;
+          await runTransaction(db, async (transaction) => {
+              const freshUserSnap = await transaction.get(userRef);
+              if (!freshUserSnap.exists() || freshUserSnap.data().hasWrittenFirstReview) return;
+
+              const currentPoints = freshUserSnap.data().loyaltyPoints || 0;
+              transaction.update(userRef, { 
+                  loyaltyPoints: currentPoints + bonusPoints,
+                  hasWrittenFirstReview: true
+              });
+
+              const pointsTransactionRef = doc(collection(db, "pointsTransactions"));
+              transaction.set(pointsTransactionRef, {
+                  userId: user.id,
+                  description: "Bono por primera reseña",
+                  points: bonusPoints,
+                  createdAt: serverTimestamp()
+              });
+          });
+          toast({ title: `¡Ganaste ${bonusPoints} puntos!`, description: "Gracias por tu primera reseña. Has recibido un bono de puntos." });
+      }
+
       setNewReviewBookTitle("");
       setNewReviewText("");
       setNewReviewRating(0);
@@ -171,7 +189,7 @@ export default function CommunityPage() {
             <Card className="mb-8 shadow-md">
               <CardHeader>
                 <CardTitle className="font-headline text-xl">Escribe tu Reseña</CardTitle>
-                <CardDescription>Comparte tu opinión sobre tu última lectura.</CardDescription>
+                <CardDescription>Comparte tu opinión sobre tu última lectura y gana puntos por tu primera reseña.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Input 

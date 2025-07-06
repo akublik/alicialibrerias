@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ShoppingCart, Loader2, PackageOpen, ArrowLeft, FilterX } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, increment } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { Order } from "@/types";
+import type { Order, User } from "@/types";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -61,11 +61,9 @@ export default function LibraryOrdersPage() {
         libraryOrders.push({ 
           id: doc.id,
           ...data,
-          // Ensure createdAt is a serializable object, not a Firestore Timestamp
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString(),
          } as Order);
       });
-      // Sort orders on the client-side
       libraryOrders.sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
       setOrders(libraryOrders);
       setIsLoading(false);
@@ -82,12 +80,53 @@ export default function LibraryOrdersPage() {
     return orders.filter(order => order.items.some(item => item.bookId === bookIdFilter));
   }, [orders, bookIdFilter]);
 
-  const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
+  const handleUpdateStatus = async (order: Order, newStatus: Order['status']) => {
     if (!db) return;
-    setIsUpdatingStatus(orderId);
-    const orderRef = doc(db, "orders", orderId);
+    setIsUpdatingStatus(order.id);
+    
     try {
-      await updateDoc(orderRef, { status: newStatus });
+        await runTransaction(db, async (transaction) => {
+            const orderRef = doc(db, "orders", order.id);
+            transaction.update(orderRef, { status: newStatus });
+
+            // If the order is cancelled, reverse the points transaction.
+            if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+                const userRef = doc(db, "users", order.buyerId);
+                const userSnap = await transaction.get(userRef);
+                if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
+
+                const userData = userSnap.data() as User;
+                const pointsUsed = order.pointsUsed || 0;
+                const earnedPoints = Math.floor(order.totalPrice - (order.discountAmount || 0));
+                const currentPoints = userData.loyaltyPoints || 0;
+                
+                // Reverse the points: add back used points, subtract earned points
+                const finalPoints = currentPoints + pointsUsed - earnedPoints;
+
+                transaction.update(userRef, { loyaltyPoints: finalPoints });
+
+                // Log the reversal transaction for clarity
+                 if (earnedPoints > 0) {
+                    transaction.set(doc(collection(db, "pointsTransactions")), {
+                        userId: order.buyerId,
+                        orderId: order.id,
+                        description: `Puntos deducidos por pedido cancelado #${order.id.slice(0, 7)}`,
+                        points: -earnedPoints,
+                        createdAt: serverTimestamp()
+                    });
+                }
+                if (pointsUsed > 0) {
+                     transaction.set(doc(collection(db, "pointsTransactions")), {
+                        userId: order.buyerId,
+                        orderId: order.id,
+                        description: `Puntos devueltos por pedido cancelado #${order.id.slice(0, 7)}`,
+                        points: pointsUsed,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            }
+        });
+
       toast({
         title: "Estado Actualizado",
         description: `El estado del pedido se ha cambiado a "${statusTranslations[newStatus]}".`,
@@ -196,7 +235,7 @@ export default function LibraryOrdersPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
                             {statusOptions.map(status => (
-                              <DropdownMenuItem key={status} onSelect={() => handleUpdateStatus(order.id, status)} className="capitalize">
+                              <DropdownMenuItem key={status} onSelect={() => handleUpdateStatus(order, status)} className="capitalize">
                                 {statusTranslations[status]}
                               </DropdownMenuItem>
                             ))}

@@ -74,6 +74,7 @@ export interface User {
   avatarUrl?: string;
   dataAiHint?: string;
   loyaltyPoints?: number;
+  hasWrittenFirstReview?: boolean;
 }
 
 export interface Review {
