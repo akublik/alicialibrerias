@@ -24,8 +24,6 @@ export default function LoyaltyProgramPage() {
         }
 
         const promotionsRef = collection(db, "promotions");
-        // Query only for promotions marked as active. All date filtering will be done client-side.
-        // This is more robust as it doesn't require a specific composite index in Firestore.
         const q = query(promotionsRef, where("isActive", "==", true));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -39,12 +37,10 @@ export default function LoyaltyProgramPage() {
                     endDate: data.endDate?.toDate(),
                 } as Promotion;
             }).filter(promo => {
-                // A promotion is currently active if 'now' is between its start and end date.
                 if (!promo.startDate || !promo.endDate) return false;
                 return promo.startDate <= now && promo.endDate >= now;
             });
             
-            // Sorting is now done on the client side
             activePromotions.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
             
             setPromotions(activePromotions);
@@ -77,13 +73,25 @@ export default function LoyaltyProgramPage() {
 
     return (
         <div className="animate-fadeIn">
-            <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-                <div className="container mx-auto px-4 text-center">
-                    <Star className="mx-auto h-16 w-16 text-primary mb-6" />
-                    <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
+            <section className="relative py-16 md:py-28 text-white">
+                 <div className="absolute inset-0">
+                    <Image
+                        src="https://firebasestorage.googleapis.com/v0/b/alicia-lee.appspot.com/o/images%2Fpeople-in-bookstore.jpg?alt=media&token=e93e2440-b6c8-4770-966c-54a86617079a"
+                        alt="Gente en una librería"
+                        layout="fill"
+                        objectFit="cover"
+                        className="opacity-40"
+                        data-ai-hint="people bookstore"
+                        priority
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent"></div>
+                 </div>
+                <div className="container mx-auto px-4 text-center relative z-10">
+                    <Star className="mx-auto h-12 w-12 text-amber-300 mb-4" />
+                    <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4">
                         Programa de Puntos Alicia Libros
                     </h1>
-                    <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
+                    <p className="text-lg md:text-xl text-white/90 mb-6 max-w-3xl mx-auto">
                         Es el programa que recompensa tu fidelidad regalándote puntos por cada dólar de compras que realices, que luego puedes canjear por increíbles premios y descuentos.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -94,7 +102,7 @@ export default function LoyaltyProgramPage() {
                             </Button>
                         </a>
                         <Link href="/redemption-store">
-                            <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+                            <Button size="lg" variant="secondary" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
                                 Ir a la Tienda de Canje
                                 <ArrowRight className="ml-2 h-5 w-5" />
                             </Button>
@@ -103,10 +111,10 @@ export default function LoyaltyProgramPage() {
                 </div>
             </section>
 
-            <section className="py-16 bg-background">
+            <section className="py-12 bg-background">
                 <div className="container mx-auto px-4">
-                    <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">¿Cómo Funciona?</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">¿Cómo Funciona?</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {steps.map((step, index) => (
                             <Card key={index} className="text-center shadow-md hover:shadow-xl transition-shadow">
                                 <CardHeader>
@@ -124,9 +132,9 @@ export default function LoyaltyProgramPage() {
                 </div>
             </section>
 
-            <section id="promotions" className="py-16 bg-muted/30 scroll-mt-20">
+            <section id="promotions" className="py-12 bg-muted/30 scroll-mt-20">
                 <div className="container mx-auto px-4">
-                    <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Promociones Activas</h2>
+                    <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">Promociones Activas</h2>
                     {isLoading ? (
                         <div className="flex justify-center items-center py-10">
                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
