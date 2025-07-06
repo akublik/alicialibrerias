@@ -1,6 +1,4 @@
-
-      // src/app/(superadmin_dashboard)/superadmin/digital-library/page.tsx
-
+// src/app/(superadmin_dashboard)/superadmin/digital-library/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit, Upload } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,33 +27,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { DigitalBook } from "@/types";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { Progress } from "@/components/ui/progress";
 
 export default function ManageDigitalLibraryPage() {
   const [digitalBooks, setDigitalBooks] = useState<DigitalBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [bookToDelete, setBookToDelete] = useState<DigitalBook | null>(null);
   const { toast } = useToast();
-
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [zipFile, setZipFile] = useState<File | null>(null);
-  const [isUploadingZip, setIsUploadingZip] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   useEffect(() => {
     if (!db) {
@@ -86,54 +67,6 @@ export default function ManageDigitalLibraryPage() {
     }
   };
 
-  const handleImportZip = async () => {
-    if (!zipFile) {
-      toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
-      return;
-    }
-    if (!storage) {
-      toast({ title: "Error de configuración", description: "Firebase Storage no está disponible.", variant: "destructive" });
-      return;
-    }
-
-    setIsUploadingZip(true);
-    setUploadProgress(0);
-
-    const storageRef = ref(storage, `digital-book-zips/${Date.now()}-${zipFile.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, zipFile);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        toast({
-          title: "Error al Subir el ZIP",
-          description: "No se pudo subir el archivo ZIP. Revisa la consola.",
-          variant: "destructive",
-        });
-        setIsUploadingZip(false);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          console.log('File available at', downloadURL);
-          toast({
-            title: "Archivo Subido con Éxito",
-            description: "El archivo ZIP ha sido enviado. Ahora se necesita un proceso de servidor (Cloud Function) para extraer y publicar el libro.",
-            duration: 10000,
-          });
-          setIsUploadingZip(false);
-          setIsImportDialogOpen(false);
-          setZipFile(null);
-        });
-      }
-    );
-  };
-
-
   return (
     <>
       <div className="container mx-auto px-4 py-8 animate-fadeIn">
@@ -148,44 +81,6 @@ export default function ManageDigitalLibraryPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Upload className="mr-2 h-4 w-4" /> Importar desde ZIP
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Importar Libro Digital desde .ZIP</DialogTitle>
-                  <DialogDescription>
-                    Sube un archivo .zip que contenga el archivo EPUB y la imagen de portada. El sistema los procesará automáticamente.
-                  </DialogDescription>
-                </DialogHeader>
-                 <div className="py-4 space-y-4">
-                    <Input 
-                      id="zip-file" 
-                      type="file" 
-                      accept=".zip,application/zip,application/x-zip-compressed"
-                      onChange={(e) => setZipFile(e.target.files?.[0] || null)} 
-                      disabled={isUploadingZip}
-                    />
-                    {zipFile && !isUploadingZip && <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {zipFile.name}</p>}
-                    {isUploadingZip && (
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Subiendo "{zipFile?.name}"...</p>
-                        <Progress value={uploadProgress} className="w-full" />
-                      </div>
-                    )}
-                  </div>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)} disabled={isUploadingZip}>Cancelar</Button>
-                  <Button onClick={handleImportZip} disabled={!zipFile || isUploadingZip}>
-                    {isUploadingZip ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
-                    {isUploadingZip ? 'Subiendo...' : 'Subir y Procesar'}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
             <Link href="/superadmin/digital-library/new">
               <Button>
                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -293,5 +188,3 @@ export default function ManageDigitalLibraryPage() {
     </>
   );
 }
-
-    
