@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as PageCardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -116,7 +117,7 @@ export default function EditRedemptionItemPage() {
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Información del Artículo</CardTitle>
-          <CardDescription>Actualiza la información del artículo.</CardDescription>
+          <PageCardDescription>Actualiza la información del artículo.</PageCardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
