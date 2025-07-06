@@ -2,7 +2,7 @@
 // src/app/(superadmin_dashboard)/superadmin/users/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ export default function ManageUsersPage() {
   const [isPointsDialogOpen, setIsPointsDialogOpen] = useState(false);
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const pointAdjustmentFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const userDataString = localStorage.getItem("aliciaLibros_user");
@@ -64,7 +65,6 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    // Removed orderBy from the query to prevent needing a composite index. Sorting is now done on the client.
     const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -74,7 +74,6 @@ export default function ManageUsersPage() {
         createdAt: doc.data().createdAt?.toDate() || new Date() 
       } as PointsTransaction));
       
-      // Sort the history by date on the client side
       history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setPointsHistory(history);
@@ -142,8 +141,7 @@ export default function ManageUsersPage() {
               });
           });
           toast({ title: "Puntos Ajustados", description: `Se han ${amount > 0 ? 'añadido' : 'restado'} ${Math.abs(amount)} puntos a ${selectedUser.name}.` });
-          event.currentTarget.reset();
-          // Close dialog on success
+          pointAdjustmentFormRef.current?.reset();
           setIsPointsDialogOpen(false); 
 
       } catch (error: any) {
@@ -258,7 +256,7 @@ export default function ManageUsersPage() {
               <Card>
                 <CardHeader><CardTitle>Ajuste Manual de Puntos</CardTitle></CardHeader>
                 <CardContent>
-                    <form onSubmit={handlePointAdjustment} className="space-y-4">
+                    <form ref={pointAdjustmentFormRef} onSubmit={handlePointAdjustment} className="space-y-4">
                         <div className="flex items-center gap-2">
                             <p>Saldo actual: <strong className="text-primary">{selectedUser?.loyaltyPoints || 0}</strong></p>
                         </div>
@@ -285,7 +283,7 @@ export default function ManageUsersPage() {
                                 <TableBody>
                                     {pointsHistory.length > 0 ? pointsHistory.map(t => (
                                         <TableRow key={t.id}>
-                                            <TableCell className="text-xs">{format(t.createdAt, 'dd/MM/yy', { locale: es })}</TableCell>
+                                            <TableCell className="text-xs">{format(new Date(t.createdAt), 'dd/MM/yy', { locale: es })}</TableCell>
                                             <TableCell className="text-xs">{t.description}</TableCell>
                                             <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                                                 {t.points > 0 ? `+${t.points}` : t.points}
