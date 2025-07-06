@@ -211,12 +211,13 @@ export default function DashboardPage() {
 
 
         const ordersRef = collection(db, "orders");
-        const q = query(ordersRef, where("buyerId", "==", initialUserData.id), orderBy("createdAt", "desc"));
+        const q = query(ordersRef, where("buyerId", "==", initialUserData.id));
         const ordersUnsub = onSnapshot(q, (snapshot) => {
           const userOrders = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
           } as Order));
+          userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
@@ -246,12 +247,13 @@ export default function DashboardPage() {
         
         // Listener for points history
         const pointsRef = collection(db, "pointsTransactions");
-        const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"), limit(50));
+        const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), limit(50));
         const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
             const history = snapshot.docs.map(doc => ({
                 id: doc.id, ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
             } as PointsTransaction));
+            history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setPointsHistory(history);
         });
         unsubscribes.push(pointsUnsub);
@@ -793,4 +795,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
