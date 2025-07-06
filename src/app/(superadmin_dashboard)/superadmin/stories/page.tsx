@@ -27,6 +27,8 @@ export default function ManageStoriesPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
 
   useEffect(() => {
     if (!db) {
@@ -50,14 +52,14 @@ export default function ManageStoriesPage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleDeleteStory = async (storyId: string, storyTitle: string) => {
-    if (!db) return;
+  const handleDeleteStory = async () => {
+    if (!storyToAction || !db) return;
     
     try {
-      await deleteDoc(doc(db, "stories", storyId));
+      await deleteDoc(doc(db, "stories", storyToAction.id));
       toast({
         title: "Cuento Eliminado",
-        description: `El cuento "${storyTitle}" ha sido eliminado.`,
+        description: `El cuento "${storyToAction.title}" ha sido eliminado.`,
         variant: 'destructive',
       });
     } catch (error: any) {
@@ -66,6 +68,9 @@ export default function ManageStoriesPage() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+        setIsDeleteDialogOpen(false);
+        setStoryToAction(null);
     }
   };
 
@@ -243,34 +248,22 @@ export default function ManageStoriesPage() {
                       <TableCell>{story.country}</TableCell>
                       <TableCell>{story.years}</TableCell>
                       <TableCell className="text-right">
-                         <AlertDialog>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Menú</span></Button></DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                <DropdownMenuItem asChild><Link href={`/superadmin/stories/edit/${story.id}`}><Edit className="mr-2 h-4 w-4" /> Editar</Link></DropdownMenuItem>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onSelect={(e) => e.preventDefault()}>
-                                      <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás seguro de eliminar este cuento?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                    Esta acción es irreversible. Se eliminará "{story.title}" de la base de datos.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteStory(story.id, story.title)} className="bg-destructive hover:bg-destructive/90">
-                                    Sí, eliminar
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Menú</span></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                            <DropdownMenuItem asChild><Link href={`/superadmin/stories/edit/${story.id}`}><Edit className="mr-2 h-4 w-4" /> Editar</Link></DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                              onSelect={() => {
+                                setStoryToAction(story);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   )) : (
@@ -290,6 +283,23 @@ export default function ManageStoriesPage() {
           </CardContent>
         </Card>
       </div>
+
+       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Estás seguro de eliminar este cuento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible. Se eliminará "{storyToAction?.title}" de la base de datos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setStoryToAction(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteStory} className="bg-destructive hover:bg-destructive/90">
+              Sí, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
