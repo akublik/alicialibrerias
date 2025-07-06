@@ -2,23 +2,47 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, BookCopy, ShoppingCart, Store, User, CalendarDays, LineChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, BookCopy, ShoppingCart, Store, User, CalendarDays, LineChart, Loader2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import type { User as AppUser } from "@/types";
 
-// Custom hook to check library admin auth status on the client-side
-const useLibraryAuthStatus = () => {
-  // Initialize with undefined to signify "not yet checked"
-  const [isAuthenticated, setIsAuthenticated] = React.useState<boolean | undefined>(undefined);
+const useLibraryAuth = () => {
+  const [authStatus, setAuthStatus] = React.useState<'loading' | 'authorized' | 'unauthorized'>('loading');
 
   React.useEffect(() => {
-    // This effect runs only on the client after hydration
-    const authStatus = localStorage.getItem("isLibraryAdminAuthenticated") === "true";
-    setIsAuthenticated(authStatus);
-  }, []); // Empty dependency array means it runs once on mount
+    if (!auth) {
+      setAuthStatus('unauthorized');
+      return;
+    }
 
-  return isAuthenticated;
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        const userData = userDocSnap.data() as AppUser;
+        const userRole = userData?.role || (userData as any)?.rol;
+        
+        if (userDocSnap.exists() && userRole === 'library') {
+          setAuthStatus('authorized');
+          localStorage.setItem("isLibraryAdminAuthenticated", "true");
+        } else {
+          setAuthStatus('unauthorized');
+        }
+      } else {
+        setAuthStatus('unauthorized');
+        localStorage.removeItem("isLibraryAdminAuthenticated");
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  return authStatus;
 };
 
 export default function LibraryDashboardLayout({
@@ -26,47 +50,41 @@ export default function LibraryDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isLibraryAdminAuthenticated = useLibraryAuthStatus();
+  const authStatus = useLibraryAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  // This useEffect will handle the redirect if not authenticated,
-  // after isLibraryAdminAuthenticated has been determined on the client.
   React.useEffect(() => {
-    // Only redirect if isLibraryAdminAuthenticated is explicitly false (not undefined)
-    if (isLibraryAdminAuthenticated === false) {
+    if (authStatus === 'unauthorized') {
       router.push("/library-login");
     }
-  }, [isLibraryAdminAuthenticated, router]);
+  }, [authStatus, router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLibraryAdminAuthenticated");
-    // The redirect will be handled by the useEffect above once isLibraryAdminAuthenticated updates or
-    // simply by navigating away, the layout will re-evaluate.
-    router.push("/library-login");
+    if (auth) {
+      auth.signOut();
+    }
+    // The onAuthStateChanged listener will handle the redirect.
   };
 
-  // If auth status is not yet determined (still undefined), render a loading state.
-  // This ensures server and initial client render match.
-  if (isLibraryAdminAuthenticated === undefined) {
+  if (authStatus === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Verificando acceso...</p> {/* Or a more sophisticated loader/spinner */}
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Verificando acceso...</p>
       </div>
     );
   }
 
-  // If determined to be not authenticated, the useEffect above will initiate a redirect.
-  // Render a message while redirecting.
-  if (!isLibraryAdminAuthenticated) {
+  if (authStatus !== 'authorized') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Acceso no autorizado. Redirigiendo al inicio de sesión...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Acceso no autorizado. Redirigiendo...</p>
       </div>
     );
   }
   
-  // If authenticated, render the actual dashboard layout
   const sidebarNavItems = [
     { title: "Dashboard", href: "/library-admin/dashboard", icon: LayoutDashboard },
     { title: "Mis Libros", href: "/library-admin/books", icon: BookCopy },

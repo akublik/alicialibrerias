@@ -9,6 +9,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { useCart } from "@/context/CartContext"; 
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import type { User } from "@/types";
 
 const useAuth = () => {
   const [authInfo, setAuthInfo] = React.useState<{
@@ -20,31 +24,47 @@ const useAuth = () => {
   });
 
   React.useEffect(() => {
-    // This effect runs only on the client after hydration
-    const authStatus = localStorage.getItem("isAuthenticated") === "true";
-    const userDataString = localStorage.getItem("aliciaLibros_user");
-    let role: 'reader' | 'library' | 'superadmin' | null = null;
-    
-    if (authStatus && userDataString) {
-      try {
-        const user = JSON.parse(userDataString);
-        // This check prevents a crash if localStorage contains "null" or invalid data
-        if (user) { 
-          const parsedRole = user.role || user.rol;
-          if (['reader', 'library', 'superadmin'].includes(parsedRole)) {
-              role = parsedRole;
+    if (!auth) return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in. Fetch role from Firestore.
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        try {
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const userData = userDocSnap.data() as User;
+            const userRole = userData.role || (userData as any).rol || null;
+            setAuthInfo({ isAuthenticated: true, userRole: userRole });
+            
+            localStorage.setItem("isAuthenticated", "true");
+            localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: firebaseUser.uid, ...userData }));
+          } else {
+            // Auth record exists but no DB record. Treat as not logged in.
+            setAuthInfo({ isAuthenticated: false, userRole: null });
+            localStorage.removeItem("isAuthenticated");
+            localStorage.removeItem("aliciaLibros_user");
           }
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+            setAuthInfo({ isAuthenticated: false, userRole: null });
         }
-      } catch (e) {
-        console.error("Error parsing user data from localStorage", e);
+      } else {
+        // User is signed out.
+        setAuthInfo({ isAuthenticated: false, userRole: null });
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("aliciaLibros_user");
+        localStorage.removeItem("isLibraryAdminAuthenticated");
+        localStorage.removeItem("aliciaLibros_registeredLibrary");
       }
-    }
-    setAuthInfo({ isAuthenticated: authStatus, userRole: role });
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
   
   return authInfo;
 };
-
 
 export function Navbar() {
   const { isAuthenticated, userRole } = useAuth();
@@ -65,7 +85,6 @@ export function Navbar() {
   ];
 
   const visibleNavItems = navItems.filter(item => item.roles.includes(userRole));
-
 
   const getDashboardLink = () => {
     if (userRole === 'library') return '/library-admin/dashboard';

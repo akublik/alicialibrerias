@@ -20,9 +20,10 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/types";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -48,70 +49,60 @@ export function LoginForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
-    if (!db) {
-        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+    if (!auth || !db) {
+        toast({ title: "Error de configuración", description: "La autenticación no está disponible.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", values.email), where("password", "==", values.password));
-      const querySnapshot = await getDocs(q);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const firebaseUser = userCredential.user;
 
-      if (querySnapshot.empty) {
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await auth.signOut();
+        toast({ title: "Error de Cuenta", description: "No se encontró un registro de datos para este usuario.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+      
+      const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
+      const userRole = userData.role || (userData as any).rol;
+
+      if (userRole !== 'reader') {
+        await auth.signOut();
         toast({
-          title: "Error de Inicio de Sesión",
-          description: "Email o contraseña incorrectos.",
+          title: "Acceso Incorrecto",
+          description: "Esta es una cuenta de administrador. Por favor, usa el portal de acceso para librerías o superadministradores.",
           variant: "destructive",
         });
-      } else {
-        const userDoc = querySnapshot.docs[0];
-        const userData = { id: userDoc.id, ...userDoc.data() } as any; // Use any to check 'role' and 'rol'
-
-        // Accommodate for 'rol' typo
-        const userRole = userData.role || userData.rol;
-        
-        if (userRole !== 'reader') {
-           toast({
-              title: "Acceso Incorrecto",
-              description: "Esta es una cuenta de administrador. Por favor, usa el portal de acceso para librerías o superadministradores.",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-        }
-
-        const finalUserData = { ...userData, role: userRole };
-        delete finalUserData.rol; // Clean up the object to be consistent
-
-        if (finalUserData.isActive === false) {
-          toast({
-            title: "Cuenta Desactivada",
-            description: "Tu cuenta ha sido desactivada. Por favor, contacta con el soporte.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-        
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
-        
-        toast({
-          title: "Inicio de Sesión Exitoso",
-          description: `Bienvenido/a de nuevo, ${finalUserData.name}.`,
-        });
-
-        router.push(redirectUrl);
+        setIsLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error("Error al iniciar sesión:", error);
-      toast({
-        title: "Error de Inicio de Sesión",
-        description: "Hubo un problema al intentar iniciar sesión. Por favor, inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      
+      if (userData.isActive === false) {
+        await auth.signOut();
+        toast({ title: "Cuenta Desactivada", description: "Tu cuenta ha sido desactivada. Contacta con soporte.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+      
+      toast({ title: "Inicio de Sesión Exitoso", description: `Bienvenido/a de nuevo, ${userData.name}.` });
+      router.push(redirectUrl);
+
+    } catch (error: any) {
+      let description = "Hubo un problema al intentar iniciar sesión.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "Email o contraseña incorrectos.";
+      }
+      console.error("Firebase Auth Error:", error.code, error.message);
+      toast({ title: "Error de Inicio de Sesión", description, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

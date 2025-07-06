@@ -2,6 +2,7 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getAuth, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,6 +21,7 @@ function isFirebaseConfigComplete(config: typeof firebaseConfig): boolean {
 let app: FirebaseApp;
 let db: Firestore;
 let storage: FirebaseStorage;
+let auth: Auth;
 
 if (!isFirebaseConfigComplete(firebaseConfig)) {
     // This will cause a loud error during build if env vars are missing, which is what we want.
@@ -54,6 +56,7 @@ if (!getApps().length) {
 
 db = getFirestore(app);
 storage = getStorage(app);
+auth = getAuth(app);
 
 // Now db and storage are guaranteed to be initialized and are not nullable.
-export { db, storage };
+export { db, storage, auth };

@@ -19,6 +19,8 @@ import { MailQuestion, ArrowLeft, Loader2, Store } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -37,15 +39,26 @@ export function LibraryForgotPasswordForm() {
 
   async function onSubmit(values: z.infer<typeof forgotPasswordSchema>) {
     setIsLoading(true);
-    // Simulate API call for password reset email
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Library forgot password for email:", values.email);
-    toast({
-      title: "Instrucciones Enviadas",
-      description: "Si existe una cuenta de librería con ese email, recibirás instrucciones para restablecer la contraseña.",
-    });
-    form.reset();
-    setIsLoading(false);
+
+    if (!auth) {
+      toast({ title: "Error de configuración", description: "Esta función no está disponible.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      await sendPasswordResetEmail(auth, values.email);
+      toast({
+        title: "Instrucciones Enviadas",
+        description: "Si existe una cuenta de librería con ese email, recibirás instrucciones para restablecer la contraseña.",
+      });
+      form.reset();
+    } catch (error: any) {
+      console.error("Forgot Password Error:", error.code, error.message);
+      toast({ title: "Error", description: "No se pudieron enviar las instrucciones. Verifica el email e inténtalo de nuevo.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (

@@ -21,8 +21,9 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase"; 
+import { collection, addDoc, setDoc, serverTimestamp, doc } from "firebase/firestore";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const libraryRegisterFormSchema = z.object({
   adminName: z.string().min(2, { message: "El nombre del administrador debe tener al menos 2 caracteres." }),
@@ -80,27 +81,18 @@ export function LibraryRegisterForm() {
   async function onSubmit(values: LibraryRegisterFormValues) {
     setIsLoading(true);
 
-    if (!db) {
-      toast({ title: "Error de conexión", description: "La base de datos no está disponible.", variant: "destructive" });
+    if (!auth || !db) {
+      toast({ title: "Error de configuración", description: "El registro no está disponible.", variant: "destructive" });
       setIsLoading(false);
       return;
     }
     
+    let createdUserId: string | null = null;
+
     try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", values.adminEmail));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        toast({
-          title: "Error de Registro",
-          description: "Ya existe un usuario con este correo electrónico.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
-      
+      const userCredential = await createUserWithEmailAndPassword(auth, values.adminEmail, values.adminPassword);
+      createdUserId = userCredential.user.uid;
+
       const imageUrl = values.libraryImageUrl || `https://placehold.co/400x300.png?text=${encodeURIComponent(values.libraryName)}`;
       const dataAiHint = "library exterior";
 
@@ -116,6 +108,7 @@ export function LibraryRegisterForm() {
         instagram: values.instagram || "",
         facebook: values.facebook || "",
         tiktok: values.tiktok || "",
+        isActive: false, // Libraries start as inactive, pending approval
         createdAt: serverTimestamp(),
       };
       const libraryDocRef = await addDoc(collection(db, "libraries"), newLibraryData);
@@ -123,44 +116,28 @@ export function LibraryRegisterForm() {
       const newUserData = {
         name: values.adminName,
         email: values.adminEmail,
-        password: values.adminPassword,
         role: "library" as const,
         libraryId: libraryDocRef.id,
         createdAt: serverTimestamp(),
+        isActive: true, // The admin user is active by default
       };
-      const userDocRef = await addDoc(collection(db, "users"), newUserData);
-
-      localStorage.setItem("isLibraryAdminAuthenticated", "true");
-      localStorage.setItem("aliciaLibros_user", JSON.stringify({
-          id: userDocRef.id,
-          name: newUserData.name,
-          email: newUserData.email,
-          role: 'library',
-          libraryId: newUserData.libraryId,
-      }));
-      localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({
-          id: libraryDocRef.id,
-          name: newLibraryData.name,
-          imageUrl: newLibraryData.imageUrl,
-          location: newLibraryData.location,
-          address: newLibraryData.address,
-          phone: newLibraryData.phone,
-          email: newLibraryData.email,
-          description: newLibraryData.description,
-          dataAiHint: newLibraryData.dataAiHint,
-      }));
+      await setDoc(doc(db, "users", createdUserId), newUserData);
 
       toast({
-        title: "¡Registro Exitoso!",
-        description: `Tu librería ${values.libraryName} ha sido registrada correctamente.`,
+        title: "¡Registro Enviado!",
+        description: `La solicitud para ${values.libraryName} ha sido enviada para aprobación.`,
       });
       
-      router.push("/library-admin/dashboard");
+      router.push("/library-login");
 
     } catch (error: any) {
+      let description = "No se pudo completar el registro.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Ya existe una cuenta con este correo electrónico.";
+      }
       toast({
         title: "Error de Registro",
-        description: `No se pudo completar el registro. Motivo: ${error.message}.`,
+        description: `${description} Motivo: ${error.message}.`,
         variant: "destructive",
         duration: 10000,
       });

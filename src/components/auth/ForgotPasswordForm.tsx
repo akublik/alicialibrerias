@@ -19,6 +19,8 @@ import { MailQuestion, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -37,16 +39,26 @@ export function ForgotPasswordForm() {
 
   async function onSubmit(values: z.infer<typeof forgotPasswordSchema>) {
     setIsLoading(true);
-    // In a real app, you would use Firebase Auth to send a password reset email.
-    // This is a simulation.
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Forgot password for email:", values.email);
-    toast({
-      title: "Instrucciones Enviadas",
-      description: "Si existe una cuenta con ese email, recibirás instrucciones para restablecer la contraseña.",
-    });
-    form.reset();
-    setIsLoading(false);
+    
+    if (!auth) {
+      toast({ title: "Error de configuración", description: "Esta función no está disponible.", variant: "destructive" });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, values.email);
+      toast({
+        title: "Instrucciones Enviadas",
+        description: "Si existe una cuenta con ese email, recibirás instrucciones para restablecer la contraseña.",
+      });
+      form.reset();
+    } catch (error: any) {
+        console.error("Forgot Password Error:", error.code, error.message);
+        toast({ title: "Error", description: "No se pudieron enviar las instrucciones. Verifica el email e inténtalo de nuevo.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (

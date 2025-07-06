@@ -20,8 +20,9 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { db } from "@/lib/firebase"; 
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase"; 
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const registerFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -65,41 +66,37 @@ export function RegisterForm() {
   async function onSubmit(values: RegisterFormValues) {
     setIsLoading(true);
     
-    if (!db) {
-        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+    if (!auth || !db) {
+        toast({ title: "Error de configuración", description: "El registro no está disponible.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
 
     try {
-      // Check if user already exists
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", values.email));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
-        toast({
-          title: "Error de Registro",
-          description: "Ya existe un usuario con este correo electrónico.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const firebaseUser = userCredential.user;
 
-      // Create the new user object with the correct role
       const newUser = {
         name: values.name,
         email: values.email,
-        password: values.password, // IMPORTANT: In a real app, this would be hashed on a server.
-        role: "reader", // Role for regular users is always 'reader'
+        role: "reader" as const,
         createdAt: serverTimestamp(),
+        isActive: true,
+        loyaltyPoints: 0,
+        hasWrittenFirstReview: false,
       };
 
-      const docRef = await addDoc(collection(db, "users"), newUser);
+      await setDoc(doc(db, "users", firebaseUser.uid), newUser);
+      
+      const userDataForStorage = {
+        id: firebaseUser.uid,
+        name: values.name,
+        email: values.email,
+        role: 'reader'
+      };
       
       localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: docRef.id, name: values.name, email: values.email, role: 'reader' }));
+      localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForStorage));
 
       toast({
         title: "¡Registro Exitoso!",
@@ -107,11 +104,15 @@ export function RegisterForm() {
       });
       router.push(redirectUrl);
 
-    } catch (error) {
-      console.error("Error al registrar el usuario:", error);
+    } catch (error: any) {
+      let description = "No se pudo completar el registro. Inténtalo de nuevo.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Ya existe una cuenta con este correo electrónico.";
+      }
+      console.error("Firebase Registration Error:", error.code, error.message);
       toast({
         title: "Error de Registro",
-        description: "No se pudo completar el registro. Por favor, inténtalo de nuevo.",
+        description: description,
         variant: "destructive",
       });
     } finally {

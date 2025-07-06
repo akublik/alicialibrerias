@@ -20,9 +20,10 @@ import Link from "next/link";
 import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs, getDoc, doc } from "firebase/firestore";
 import type { User, Library } from "@/types";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 const formSchema = z.object({
   email: z.string().email({ message: "Por favor ingresa un email válido." }),
@@ -54,38 +55,31 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     
-    if (!db) {
-        toast({ title: "Error de conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+    if (!auth || !db) {
+        toast({ title: "Error de configuración", description: "La autenticación no está disponible.", variant: "destructive" });
         setIsLoading(false);
         return;
     }
     
     try {
-      // 1. Query the 'users' collection without role first.
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, 
-        where("email", "==", values.email), 
-        where("password", "==", values.password)
-      );
-      const querySnapshot = await getDocs(q);
+      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const firebaseUser = userCredential.user;
 
-      if (querySnapshot.empty) {
-        toast({
-          title: "Error de Inicio de Sesión",
-          description: "Credenciales incorrectas o rol no autorizado para este acceso.",
-          variant: "destructive",
-        });
+      const userDocRef = doc(db, "users", firebaseUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (!userDocSnap.exists()) {
+        await auth.signOut();
+        toast({ title: "Error de Cuenta", description: "No se encontró un registro de datos para este usuario.", variant: "destructive" });
         setIsLoading(false);
         return;
       } 
       
-      const userDoc = querySnapshot.docs[0];
-      const userData = { id: userDoc.id, ...userDoc.data() } as any; // Use any to check both 'role' and 'rol'
-
-      // Accommodate for 'rol' typo
-      const userRole = userData.role || userData.rol;
+      const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
+      const userRole = userData.role || (userData as any).rol;
 
       if (userRole !== expectedRole) {
+        await auth.signOut();
         toast({
           title: "Acceso Incorrecto",
           description: `Esta cuenta no tiene el rol de '${expectedRole}'. Por favor, usa el portal de acceso correcto.`,
@@ -94,84 +88,65 @@ export function LibraryLoginForm({ title, description, icon, hideFooterLinks, ex
         setIsLoading(false);
         return;
       }
-
-      const finalUserData = { ...userData, role: userRole };
-      delete finalUserData.rol; // Clean up the object to be consistent
-
-
-      if (finalUserData.isActive === false) {
-         toast({
-          title: "Cuenta Desactivada",
-          description: "La cuenta de este administrador ha sido desactivada.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+      
+      if (userData.isActive === false) {
+         await auth.signOut();
+         toast({ title: "Cuenta Desactivada", description: "La cuenta de este administrador ha sido desactivada.", variant: "destructive" });
+         setIsLoading(false);
+         return;
       }
 
       // Handle login based on the now-verified role
-      if (finalUserData.role === 'superadmin') {
+      if (userData.role === 'superadmin') {
          localStorage.setItem("isAuthenticated", "true");
-         localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
-         toast({ title: "Acceso de Superadmin", description: `Bienvenido, ${finalUserData.name}.` });
+         localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+         toast({ title: "Acceso de Superadmin", description: `Bienvenido, ${userData.name}.` });
          router.push("/superadmin/dashboard");
          return;
       }
 
-      if (finalUserData.role === 'library') {
-          if (!finalUserData.libraryId) {
-             toast({
-              title: "Error de Cuenta",
-              description: "Esta cuenta de librería no está asociada a ningún registro de librería.",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
+      if (userData.role === 'library') {
+          if (!userData.libraryId) {
+             await auth.signOut();
+             toast({ title: "Error de Cuenta", description: "Esta cuenta de librería no está asociada a ningún registro de librería.", variant: "destructive" });
+             setIsLoading(false);
+             return;
           }
 
-          const libraryDocRef = doc(db, "libraries", finalUserData.libraryId);
+          const libraryDocRef = doc(db, "libraries", userData.libraryId);
           const libraryDocSnap = await getDoc(libraryDocRef);
 
           if (!libraryDocSnap.exists()) {
-             toast({
-              title: "Error de Datos",
-              description: `No se pudo encontrar la librería asociada (ID: ${finalUserData.libraryId}).`,
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
+             await auth.signOut();
+             toast({ title: "Error de Datos", description: `No se pudo encontrar la librería asociada (ID: ${userData.libraryId}).`, variant: "destructive" });
+             setIsLoading(false);
+             return;
           }
 
           const libraryDataForStorage = { id: libraryDocSnap.id, ...libraryDocSnap.data() } as Library;
 
           if (libraryDataForStorage.isActive === false) {
-            toast({
-              title: "Librería Desactivada",
-              description: "Esta librería ha sido desactivada por un administrador.",
-              variant: "destructive"
-            });
+            await auth.signOut();
+            toast({ title: "Librería Desactivada", description: "Esta librería ha sido desactivada por un administrador.", variant: "destructive" });
             setIsLoading(false);
             return;
           }
           
           localStorage.setItem("isLibraryAdminAuthenticated", "true");
-          localStorage.setItem("aliciaLibros_user", JSON.stringify(finalUserData));
+          localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
           localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify(libraryDataForStorage));
           
-          toast({
-            title: "Inicio de Sesión Exitoso",
-            description: `Bienvenido al panel de ${libraryDataForStorage.name}.`,
-          });
+          toast({ title: "Inicio de Sesión Exitoso", description: `Bienvenido al panel de ${libraryDataForStorage.name}.` });
           router.push("/library-admin/dashboard");
       }
 
-    } catch (error) {
-       console.error("Error al iniciar sesión de librería:", error);
-       toast({
-        title: "Error de Inicio de Sesión",
-        description: "Hubo un problema al intentar iniciar sesión. Revisa la consola para más detalles.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      let description = "Hubo un problema al intentar iniciar sesión.";
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        description = "Email o contraseña incorrectos.";
+      }
+      console.error("Firebase Auth Error:", error.code, error.message);
+      toast({ title: "Error de Inicio de Sesión", description, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
