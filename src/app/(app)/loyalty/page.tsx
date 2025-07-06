@@ -76,7 +76,7 @@ export default function LoyaltyProgramPage() {
             <section className="relative py-16 md:py-28 text-white">
                  <div className="absolute inset-0">
                     <Image
-                        src="https://firebasestorage.googleapis.com/v0/b/alicia-lee.appspot.com/o/images%2Fpeople-in-bookstore.jpg?alt=media&token=e93e2440-b6c8-4770-966c-54a86617079a"
+                        src="/images/loyalty-banner.jpg"
                         alt="Gente en una librería"
                         layout="fill"
                         objectFit="cover"
