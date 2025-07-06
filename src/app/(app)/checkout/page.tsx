@@ -27,7 +27,7 @@ import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
 
 const SHIPPING_COST_DELIVERY = 3.50;
@@ -203,11 +203,21 @@ export default function CheckoutPage() {
         taxId: values.needsInvoice ? values.taxId || '' : '',
       };
 
-      if (!db) {
-        throw new Error("La conexión con la base de datos no está disponible.");
+      await addDoc(collection(db, "orders"), newOrderData);
+
+      // Award loyalty points (1 point per dollar of product subtotal)
+      const pointsToAward = Math.floor(totalPrice);
+      if (pointsToAward > 0) {
+        const userRef = doc(db, "users", buyerId);
+        await updateDoc(userRef, {
+          loyaltyPoints: increment(pointsToAward)
+        });
+        toast({
+          title: `¡Ganaste ${pointsToAward} puntos!`,
+          description: "Los puntos se han añadido a tu cuenta.",
+        });
       }
 
-      await addDoc(collection(db, "orders"), newOrderData);
 
       toast({
         title: "¡Pedido Realizado con Éxito!",
