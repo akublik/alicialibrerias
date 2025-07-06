@@ -74,18 +74,12 @@ export default function LoyaltyProgramPage() {
     return (
         <div className="animate-fadeIn">
             <section className="relative py-16 md:py-28 text-white">
-                 <div className="absolute inset-0">
-                    <Image
-                        src="/images/loyalty-banner.jpg"
-                        alt="Gente en una librería"
-                        layout="fill"
-                        objectFit="cover"
-                        className="opacity-40"
-                        data-ai-hint="people bookstore"
-                        priority
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent"></div>
-                 </div>
+                 <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-40"
+                    style={{ backgroundImage: "url('/images/loyalty-banner.jpg')" }}
+                    data-ai-hint="people bookstore"
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent"></div>
                 <div className="container mx-auto px-4 text-center relative z-10">
                     <Star className="mx-auto h-12 w-12 text-amber-300 mb-4" />
                     <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4">
