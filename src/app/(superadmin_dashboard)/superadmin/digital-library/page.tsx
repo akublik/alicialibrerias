@@ -3,43 +3,23 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { PlusCircle, BookHeart, Loader2, AlertTriangle } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { DigitalBook } from "@/types";
 
 export default function ManageDigitalLibraryPage() {
   const [digitalBooks, setDigitalBooks] = useState<DigitalBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [bookToDelete, setBookToDelete] = useState<DigitalBook | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     if (!db) {
+      setError("La conexión con la base de datos no está disponible.");
       setIsLoading(false);
       return;
     }
@@ -47,28 +27,16 @@ export default function ManageDigitalLibraryPage() {
       const booksData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DigitalBook));
       setDigitalBooks(booksData);
       setIsLoading(false);
-    }, (error) => {
-      console.error("Error fetching digital books:", error);
-      toast({ title: "Error al cargar libros digitales", variant: "destructive" });
+    }, (err) => {
+      console.error("Error fetching digital books:", err);
+      toast({ title: "Error al cargar libros digitales", variant: "destructive", description: err.message });
+      setError(err.message);
       setIsLoading(false);
     });
     return () => unsubscribe();
   }, [toast]);
 
-  const handleDelete = async () => {
-    if (!bookToDelete) return;
-    try {
-      await deleteDoc(doc(db, "digital_books", bookToDelete.id));
-      toast({ title: "Libro digital eliminado", description: `"${bookToDelete.title}" fue eliminado.` });
-    } catch (error: any) {
-      toast({ title: "Error al eliminar", description: error.message, variant: "destructive" });
-    } finally {
-      setBookToDelete(null);
-    }
-  };
-
   return (
-    <>
       <div className="container mx-auto px-4 py-8 animate-fadeIn">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -93,98 +61,31 @@ export default function ManageDigitalLibraryPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Catálogo Digital</CardTitle>
-            <CardDescription>Mostrando {digitalBooks.length} libros en la biblioteca digital.</CardDescription>
+            <CardDescription>Estado de la carga de datos.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {isLoading && (
               <div className="flex justify-center items-center py-16">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                <p className="ml-4 text-muted-foreground">Cargando libros...</p>
               </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="hidden w-[100px] sm:table-cell">Portada</TableHead>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Autor</TableHead>
-                    <TableHead>Formato</TableHead>
-                    <TableHead>Categorías</TableHead>
-                    <TableHead><span className="sr-only">Acciones</span></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {digitalBooks.length > 0 ? digitalBooks.map((book) => (
-                    <TableRow key={book.id}>
-                      <TableCell className="hidden sm:table-cell">
-                        <Image
-                          alt={`Portada de ${book.title}`}
-                          className="aspect-[2/3] rounded-md object-cover"
-                          height="75"
-                          src={book.coverImageUrl}
-                          width="50"
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{book.title}</TableCell>
-                      <TableCell>{book.author}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{book.format || 'N/A'}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={book.categories?.join(', ')}>
-                        {book.categories?.join(', ') || 'N/A'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Menú</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/superadmin/digital-library/edit/${book.id}`}>
-                                    <Edit className="mr-2 h-4 w-4" /> Editar
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => setBookToDelete(book)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                        No hay libros en la biblioteca digital.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+            )}
+            {!isLoading && error && (
+                 <div className="text-center py-10 text-destructive bg-destructive/10 rounded-md">
+                    <AlertTriangle className="mx-auto h-8 w-8 mb-2"/>
+                    <p className="font-semibold">Ocurrió un error al cargar los datos:</p>
+                    <p className="font-mono text-sm mt-1">{error}</p>
+                 </div>
+            )}
+            {!isLoading && !error && (
+                 <div className="text-center py-10">
+                    <h3 className="text-2xl font-bold text-primary">Diagnóstico Completado</h3>
+                    <p className="text-lg mt-2">Se encontraron <span className="font-bold">{digitalBooks.length}</span> libros en la biblioteca digital.</p>
+                    {digitalBooks.length === 0 && <p className="text-muted-foreground mt-2">Puedes añadir un libro nuevo para empezar.</p>}
+                 </div>
             )}
           </CardContent>
         </Card>
       </div>
-
-      <AlertDialog open={!!bookToDelete} onOpenChange={(open) => !open && setBookToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro de eliminar este libro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción es irreversible. Se eliminará "{bookToDelete?.title}" de la biblioteca digital para todos los usuarios.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
-              Sí, eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
   );
 }
