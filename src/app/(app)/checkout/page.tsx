@@ -1,3 +1,4 @@
+
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -27,8 +28,9 @@ import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, increment } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
+import type { User } from "@/types";
 
 const SHIPPING_COST_DELIVERY = 3.50;
 
@@ -206,26 +208,44 @@ export default function CheckoutPage() {
       const newOrderRef = await addDoc(collection(db, "orders"), newOrderData);
       const newOrderId = newOrderRef.id;
 
-      // Award loyalty points (1 point per dollar of product subtotal)
-      const pointsToAward = Math.floor(totalPrice);
-      if (pointsToAward > 0) {
-        const userRef = doc(db, "users", buyerId);
-        await updateDoc(userRef, {
-          loyaltyPoints: increment(pointsToAward)
-        });
-        
-        await addDoc(collection(db, "pointsTransactions"), {
-            userId: buyerId,
-            orderId: newOrderId,
-            points: pointsToAward,
-            description: `Puntos por pedido #${newOrderId.slice(0, 7)}`,
-            createdAt: serverTimestamp()
-        });
+      // Award loyalty points logic
+      const userRef = doc(db, "users", buyerId);
+      const userSnap = await getDoc(userRef);
+      let pointsToAward = Math.floor(totalPrice);
+      let transactionDescription = `Puntos por pedido #${newOrderId.slice(0, 7)}`;
+      let toastDescription = `Los puntos se han añadido a tu cuenta.`;
 
-        toast({
-          title: `¡Ganaste ${pointsToAward} puntos!`,
-          description: "Los puntos se han añadido a tu cuenta.",
-        });
+      if (userSnap.exists()) {
+          const user = userSnap.data() as User;
+          const today = new Date();
+          if (user.birthdate) {
+              const birthdate = new Date(user.birthdate);
+              // Compare month and day (ignoring year and timezone issues)
+              if (today.getMonth() === birthdate.getMonth() && today.getDate() === birthdate.getDate() + 1) {
+                  pointsToAward *= 2; // Double points for birthday
+                  transactionDescription += " (¡Bono de cumpleaños!)";
+                  toastDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
+              }
+          }
+      }
+
+      if (pointsToAward > 0) {
+          await updateDoc(userRef, {
+              loyaltyPoints: increment(pointsToAward)
+          });
+          
+          await addDoc(collection(db, "pointsTransactions"), {
+              userId: buyerId,
+              orderId: newOrderId,
+              points: pointsToAward,
+              description: transactionDescription,
+              createdAt: serverTimestamp()
+          });
+
+          toast({
+            title: `¡Ganaste ${pointsToAward} puntos!`,
+            description: toastDescription,
+          });
       }
 
 
@@ -470,3 +490,4 @@ export default function CheckoutPage() {
     </div>
   );
 }
+

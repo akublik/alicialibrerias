@@ -1,3 +1,4 @@
+
 // src/app/(app)/dashboard/page.tsx
 "use client";
 
@@ -13,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import type { Book, Library, User, Order, BookRequest, PointsTransaction } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -32,17 +33,14 @@ import { Label } from '@/components/ui/label';
 import { getBookRecommendations, type BookRecommendationsOutput } from '@/ai/flows/book-recommendations';
 import { Separator } from '@/components/ui/separator';
 import { useWishlist } from '@/context/WishlistContext';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
   avatarUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  birthdate: z.string().optional().refine((val) => {
-    if (!val || val.trim() === "") return true; // optional field
-    const regex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[012])\/(19|20)\d\d$/;
-    return regex.test(val);
-  }, {
-    message: "Fecha inválida. Usa el formato DD/MM/AAAA.",
-  }),
+  birthdate: z.date().optional(),
   favoriteCategories: z.array(z.string()).optional(),
   favoriteTags: z.array(z.string()).optional(),
 });
@@ -128,7 +126,6 @@ export default function DashboardPage() {
     }
     
     if (!db) {
-        console.error("Firebase DB is not available.");
         toast({title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive"});
         handleLogout();
         return;
@@ -276,7 +273,7 @@ export default function DashboardPage() {
       form.reset({
         name: user.name || '',
         avatarUrl: user.avatarUrl && !user.avatarUrl.includes('placehold.co') ? user.avatarUrl : '',
-        birthdate: user.birthdate ? format(new Date(user.birthdate), 'dd/MM/yyyy') : '',
+        birthdate: user.birthdate ? new Date(user.birthdate) : undefined,
         favoriteCategories: user.favoriteCategories || [],
         favoriteTags: user.favoriteTags || [],
       });
@@ -286,32 +283,13 @@ export default function DashboardPage() {
   async function onProfileSubmit(values: ProfileFormValues) {
     if (!user) return;
     setIsSubmitting(true);
-
-    const parseDateString = (dateStr: string): Date | null => {
-        if (!dateStr) return null;
-        const parts = dateStr.split('/');
-        if (parts.length === 3) {
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10) - 1; // JS months are 0-11
-            const year = parseInt(parts[2], 10);
-            if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                const date = new Date(Date.UTC(year, month, day)); // Use UTC to avoid timezone issues
-                if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
-                    return date;
-                }
-            }
-        }
-        return null;
-    };
-
-    const birthdateAsDate = values.birthdate ? parseDateString(values.birthdate) : null;
     
     try {
         const userRef = doc(db, "users", user.id);
         const dataForFirestore: Partial<User> = {
             name: values.name,
             avatarUrl: values.avatarUrl,
-            birthdate: birthdateAsDate ? birthdateAsDate.toISOString().split('T')[0] : null,
+            birthdate: values.birthdate ? format(values.birthdate, 'yyyy-MM-dd') : null,
             favoriteCategories: values.favoriteCategories || [],
             favoriteTags: values.favoriteTags || [],
         };
@@ -469,12 +447,40 @@ export default function DashboardPage() {
                             control={form.control}
                             name="birthdate"
                             render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Fecha de Nacimiento</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="DD/MM/AAAA" {...field} value={field.value || ''}/>
-                                    </FormControl>
-                                    <FormMessage />
+                                <FormItem className="flex flex-col">
+                                  <FormLabel>Fecha de Nacimiento</FormLabel>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <FormControl>
+                                        <Button
+                                          variant={"outline"}
+                                          className={cn(
+                                            "w-full pl-3 text-left font-normal",
+                                            !field.value && "text-muted-foreground"
+                                          )}
+                                        >
+                                          {field.value ? (
+                                            format(field.value, "PPP", { locale: es })
+                                          ) : (
+                                            <span>Elige una fecha</span>
+                                          )}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                        </Button>
+                                      </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                        mode="single"
+                                        selected={field.value}
+                                        onSelect={field.onChange}
+                                        disabled={(date) =>
+                                          date > new Date() || date < new Date("1900-01-01")
+                                        }
+                                        initialFocus
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
+                                  <FormMessage />
                                 </FormItem>
                             )}
                         />
@@ -787,3 +793,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
