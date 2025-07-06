@@ -4,12 +4,12 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Gift, ShoppingBag, Coins, ArrowRight, Loader2, Star } from 'lucide-react';
+import { Gift, ShoppingBag, Coins, ArrowRight, Loader2, Star, ArrowDown } from 'lucide-react';
 import type { Promotion } from '@/types';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -25,11 +25,11 @@ export default function LoyaltyProgramPage() {
 
         const now = new Date();
         const promotionsRef = collection(db, "promotions");
+        // The query is now simpler, without ordering.
         const q = query(
             promotionsRef, 
             where("isActive", "==", true),
-            where("endDate", ">=", now),
-            orderBy("endDate", "asc")
+            where("endDate", ">=", now)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -41,7 +41,10 @@ export default function LoyaltyProgramPage() {
                     startDate: data.startDate?.toDate(),
                     endDate: data.endDate?.toDate(),
                 } as Promotion;
-            }).filter(promo => new Date(promo.startDate) <= now); // Final client-side check for start date
+            }).filter(promo => new Date(promo.startDate) <= now);
+            
+            // Sorting is now done on the client side
+            activePromotions.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
             
             setPromotions(activePromotions);
             setIsLoading(false);
@@ -82,12 +85,20 @@ export default function LoyaltyProgramPage() {
                     <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
                         Es el programa que recompensa tu fidelidad regalándote puntos por cada dólar de compras que realices, que luego puedes canjear por increíbles premios y descuentos.
                     </p>
-                    <Link href="/register">
-                        <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                            Únete Ahora y Empieza a Ganar
-                            <ArrowRight className="ml-2 h-5 w-5" />
-                        </Button>
-                    </Link>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                         <a href="#promotions">
+                            <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+                                Ver Promociones Activas
+                                <ArrowDown className="ml-2 h-5 w-5" />
+                            </Button>
+                        </a>
+                        <Link href="/redemption-store">
+                            <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+                                Ir a la Tienda de Canje
+                                <ArrowRight className="ml-2 h-5 w-5" />
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
             </section>
 
@@ -112,7 +123,7 @@ export default function LoyaltyProgramPage() {
                 </div>
             </section>
 
-            <section className="py-16 bg-muted/30">
+            <section id="promotions" className="py-16 bg-muted/30 scroll-mt-20">
                 <div className="container mx-auto px-4">
                     <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Promociones Activas</h2>
                     {isLoading ? (
@@ -122,7 +133,7 @@ export default function LoyaltyProgramPage() {
                     ) : promotions.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {promotions.map((promo) => (
-                                <Card key={promo.id} className="overflow-hidden flex flex-col group">
+                                <Card key={promo.id} className="overflow-hidden flex flex-col group shadow-md hover:shadow-xl transition-shadow">
                                     <CardHeader className="p-0 relative">
                                         <div className="relative w-full aspect-video">
                                             <Image 
@@ -133,7 +144,7 @@ export default function LoyaltyProgramPage() {
                                                 className="transition-transform duration-300 group-hover:scale-105"
                                                 data-ai-hint={promo.dataAiHint || 'promotion marketing'}
                                             />
-                                             <div className="absolute inset-0 bg-black/40"></div>
+                                             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                                         </div>
                                          <div className="absolute bottom-0 left-0 p-4">
                                             <CardTitle className="font-headline text-2xl text-white shadow-lg">{promo.name}</CardTitle>
@@ -142,7 +153,7 @@ export default function LoyaltyProgramPage() {
                                     <CardContent className="p-4 flex-grow">
                                         <p className="text-sm text-foreground/80">{promo.description}</p>
                                     </CardContent>
-                                    <CardFooter className="p-4 pt-0 text-xs text-muted-foreground font-medium">
+                                    <CardFooter className="p-4 pt-0 text-xs text-muted-foreground font-medium bg-muted/50">
                                         Válido desde {format(new Date(promo.startDate), 'dd MMM', { locale: es })} hasta {format(new Date(promo.endDate), 'dd MMM, yyyy', { locale: es })}
                                     </CardFooter>
                                 </Card>
