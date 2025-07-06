@@ -1,3 +1,4 @@
+
 // src/app/(superadmin_dashboard)/superadmin/redemption-store/new/page.tsx
 "use client";
 
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -15,7 +17,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as PageCardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -87,7 +89,7 @@ export default function NewRedemptionItemPage() {
       <Card className="max-w-2xl mx-auto shadow-lg">
         <CardHeader>
           <CardTitle>Información del Artículo</CardTitle>
-          <CardDescription>Rellena la información para crear un nuevo artículo.</CardDescription>
+          <PageCardDescription>Rellena la información para crear un nuevo artículo.</PageCardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
