@@ -191,8 +191,6 @@ export default function CheckoutPage() {
        return;
     }
 
-    let toastPointsDescription = `Los puntos se han añadido a tu cuenta.`;
-
     try {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
@@ -221,7 +219,6 @@ export default function CheckoutPage() {
               if (today.getUTCMonth() === birthdate.getUTCMonth() && today.getUTCDate() === birthdate.getUTCDate()) {
                   pointsToAward *= 2; 
                   transactionDescription += " (¡Bono de cumpleaños!)";
-                  toastPointsDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
               }
             }
 
@@ -253,6 +250,7 @@ export default function CheckoutPage() {
                 taxId: values.needsInvoice ? values.taxId || '' : '',
                 pointsUsed: pointsToApply,
                 discountAmount: finalDiscountAmount,
+                pointsEarned: pointsToAward,
             };
             transaction.set(newOrderRef, newOrderData);
 
@@ -281,7 +279,12 @@ export default function CheckoutPage() {
         title: "¡Pedido Realizado con Éxito!",
         description: "Gracias por tu compra. Hemos recibido tu pedido.",
       });
+      
+      let toastPointsDescription = `Los puntos se han añadido a tu cuenta.`;
       if (pointsToEarn > 0) {
+        if (transactionDescription.includes('cumpleaños')) {
+            toastPointsDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
+        }
         toast({
           title: `¡Ganaste ${pointsToEarn} puntos!`,
           description: toastPointsDescription,

@@ -121,6 +121,7 @@ export interface Order {
   taxId?: string;
   pointsUsed?: number;
   discountAmount?: number;
+  pointsEarned?: number;
 }
 
 export interface LibraryEvent {

@@ -87,26 +87,27 @@ export default function LibraryOrdersPage() {
     try {
         await runTransaction(db, async (transaction) => {
             const orderRef = doc(db, "orders", order.id);
-            transaction.update(orderRef, { status: newStatus });
 
-            // If the order is cancelled, reverse the points transaction.
+            // If cancelling, do all reads first
             if (newStatus === 'cancelled' && order.status !== 'cancelled') {
                 const userRef = doc(db, "users", order.buyerId);
-                const userSnap = await transaction.get(userRef);
+                const userSnap = await transaction.get(userRef); // READ FIRST
                 if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
 
+                // Now that all reads are done, we can do calculations and then writes.
                 const userData = userSnap.data() as User;
                 const pointsUsed = order.pointsUsed || 0;
-                const earnedPoints = Math.floor(order.totalPrice - (order.discountAmount || 0));
+                const earnedPoints = order.pointsEarned || 0;
                 const currentPoints = userData.loyaltyPoints || 0;
                 
                 // Reverse the points: add back used points, subtract earned points
                 const finalPoints = currentPoints + pointsUsed - earnedPoints;
-
+                
+                // All writes happen now
+                transaction.update(orderRef, { status: newStatus });
                 transaction.update(userRef, { loyaltyPoints: finalPoints });
 
-                // Log the reversal transaction for clarity
-                 if (earnedPoints > 0) {
+                if (earnedPoints > 0) {
                     transaction.set(doc(collection(db, "pointsTransactions")), {
                         userId: order.buyerId,
                         orderId: order.id,
@@ -124,6 +125,10 @@ export default function LibraryOrdersPage() {
                         createdAt: serverTimestamp()
                     });
                 }
+
+            } else {
+                // For any other status change, we just update the order.
+                transaction.update(orderRef, { status: newStatus });
             }
         });
 
