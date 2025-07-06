@@ -192,6 +192,8 @@ export default function CheckoutPage() {
        return;
     }
 
+    let transactionDescription = `Puntos por compra`;
+
     try {
         // Fetch active promotions before starting the transaction
         const promotionsRef = collection(db, "promotions");
@@ -220,7 +222,6 @@ export default function CheckoutPage() {
             }
             
             // --- Points Calculation ---
-            let transactionDescription = `Puntos por compra`;
             let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
             let birthdayMultiplier = 1;
             
