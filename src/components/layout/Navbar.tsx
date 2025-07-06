@@ -33,7 +33,7 @@ const useAuth = () => {
         try {
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            const userData = userDocSnap.data() as User;
+            const userData = userDocSnap.data();
             const userRole = userData.role || (userData as any).rol || null;
             setAuthInfo({ isAuthenticated: true, userRole: userRole });
             
