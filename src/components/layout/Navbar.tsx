@@ -23,11 +23,16 @@ const useAuth = () => {
     // This effect runs only on the client after hydration
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     const userDataString = localStorage.getItem("aliciaLibros_user");
-    let role = null;
+    let role: 'reader' | 'library' | 'superadmin' | null = null;
+    
     if (authStatus && userDataString) {
       try {
         const user = JSON.parse(userDataString);
-        role = user.role || user.rol; // Accommodate legacy 'rol' typo
+        const parsedRole = user.role || user.rol;
+        // Ensure the role is one of the expected values before setting it
+        if (['reader', 'library', 'superadmin'].includes(parsedRole)) {
+            role = parsedRole;
+        }
       } catch (e) {
         console.error("Error parsing user data from localStorage", e);
       }

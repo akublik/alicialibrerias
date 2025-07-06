@@ -5,17 +5,22 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, BookHeart, Loader2, AlertTriangle } from "lucide-react";
+import { PlusCircle, BookHeart, Loader2, AlertTriangle, Edit, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { DigitalBook } from "@/types";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import Image from "next/image";
 
 export default function ManageDigitalLibraryPage() {
   const [digitalBooks, setDigitalBooks] = useState<DigitalBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const [itemToDelete, setItemToDelete] = useState<DigitalBook | null>(null);
 
   useEffect(() => {
     if (!db) {
@@ -35,8 +40,28 @@ export default function ManageDigitalLibraryPage() {
     });
     return () => unsubscribe();
   }, [toast]);
+  
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+    try {
+        await deleteDoc(doc(db, "digital_books", itemToDelete.id));
+        toast({
+            title: "Libro Eliminado",
+            description: `Se ha eliminado "${itemToDelete.title}" de la biblioteca digital.`
+        });
+    } catch (error: any) {
+        toast({
+            title: "Error al eliminar",
+            description: error.message,
+            variant: "destructive"
+        });
+    } finally {
+        setItemToDelete(null);
+    }
+  };
 
   return (
+    <>
       <div className="container mx-auto px-4 py-8 animate-fadeIn">
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -61,13 +86,12 @@ export default function ManageDigitalLibraryPage() {
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Catálogo Digital</CardTitle>
-            <CardDescription>Estado de la carga de datos.</CardDescription>
+            <CardDescription>Mostrando {digitalBooks.length} libros en la biblioteca.</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading && (
               <div className="flex justify-center items-center py-16">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="ml-4 text-muted-foreground">Cargando libros...</p>
               </div>
             )}
             {!isLoading && error && (
@@ -78,14 +102,62 @@ export default function ManageDigitalLibraryPage() {
                  </div>
             )}
             {!isLoading && !error && (
-                 <div className="text-center py-10">
-                    <h3 className="text-2xl font-bold text-primary">Diagnóstico Completado</h3>
-                    <p className="text-lg mt-2">Se encontraron <span className="font-bold">{digitalBooks.length}</span> libros en la biblioteca digital.</p>
-                    {digitalBooks.length === 0 && <p className="text-muted-foreground mt-2">Puedes añadir un libro nuevo para empezar.</p>}
-                 </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[80px]">Portada</TableHead>
+                            <TableHead>Título</TableHead>
+                            <TableHead>Autor</TableHead>
+                            <TableHead>Formato</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {digitalBooks.length > 0 ? digitalBooks.map(book => (
+                            <TableRow key={book.id}>
+                                <TableCell>
+                                    <Image src={book.coverImageUrl} alt={`Portada de ${book.title}`} width={50} height={75} className="rounded-md object-cover aspect-[2/3]"/>
+                                </TableCell>
+                                <TableCell className="font-medium">{book.title}</TableCell>
+                                <TableCell>{book.author}</TableCell>
+                                <TableCell><Badge variant="outline">{book.format}</Badge></TableCell>
+                                <TableCell className="text-right">
+                                    <Button asChild variant="ghost" size="icon">
+                                        <Link href={`/superadmin/digital-library/edit/${book.id}`}><Edit className="h-4 w-4"/><span className="sr-only">Editar</span></Link>
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setItemToDelete(book)}>
+                                        <Trash2 className="h-4 w-4"/><span className="sr-only">Eliminar</span>
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={5} className="text-center py-10">No hay libros en la biblioteca digital.</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
             )}
           </CardContent>
         </Card>
       </div>
+
+       <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmas la eliminación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción es irreversible y eliminará el libro "{itemToDelete?.title}" permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+              Sí, eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
