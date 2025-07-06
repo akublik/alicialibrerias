@@ -87,27 +87,6 @@ export default function LibraryOrdersPage() {
     setIsUpdatingStatus(orderId);
     const orderRef = doc(db, "orders", orderId);
     try {
-      // Award points if the new status is 'delivered' and the previous status was not
-      const order = orders.find(o => o.id === orderId);
-      if (newStatus === 'delivered' && order && order.status !== 'delivered') {
-        if (order.buyerId) {
-            // Calculate points from subtotal of items
-            const pointsToAward = Math.floor(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0));
-            
-            if (pointsToAward > 0) {
-              const userRef = doc(db, "users", order.buyerId);
-              await updateDoc(userRef, {
-                loyaltyPoints: increment(pointsToAward)
-              });
-              toast({
-                title: "¡Puntos Asignados!",
-                description: `Se han añadido ${pointsToAward} puntos de lealtad al cliente.`,
-              });
-            }
-        }
-      }
-      
-      // Update order status
       await updateDoc(orderRef, { status: newStatus });
       toast({
         title: "Estado Actualizado",
