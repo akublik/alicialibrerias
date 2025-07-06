@@ -28,10 +28,12 @@ const useAuth = () => {
     if (authStatus && userDataString) {
       try {
         const user = JSON.parse(userDataString);
-        const parsedRole = user.role || user.rol;
-        // Ensure the role is one of the expected values before setting it
-        if (['reader', 'library', 'superadmin'].includes(parsedRole)) {
-            role = parsedRole;
+        // This check prevents a crash if localStorage contains "null" or invalid data
+        if (user) { 
+          const parsedRole = user.role || user.rol;
+          if (['reader', 'library', 'superadmin'].includes(parsedRole)) {
+              role = parsedRole;
+          }
         }
       } catch (e) {
         console.error("Error parsing user data from localStorage", e);
