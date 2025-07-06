@@ -281,6 +281,8 @@ export interface Promotion {
   id: string;
   name: string;
   description: string;
+  imageUrl?: string;
+  dataAiHint?: string;
   type: 'multiplier' | 'bonus';
   value: number;
   targetType: 'global' | 'category' | 'author' | 'book';

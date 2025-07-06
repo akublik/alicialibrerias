@@ -42,6 +42,7 @@ const promotionFormSchema = z.object({
   startDate: z.date({ required_error: "La fecha de inicio es requerida." }),
   endDate: z.date({ required_error: "La fecha de fin es requerida." }),
   isActive: z.boolean().default(true),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
 }).refine(data => data.endDate >= data.startDate, {
   message: "La fecha de fin debe ser posterior a la fecha de inicio.",
   path: ["endDate"],
@@ -72,6 +73,7 @@ export default function NewPromotionPage() {
       targetType: undefined,
       targetValue: "",
       isActive: true,
+      imageUrl: "",
     },
   });
 
@@ -85,8 +87,13 @@ export default function NewPromotionPage() {
     setIsSubmitting(true);
     
     try {
+      const imageUrl = values.imageUrl || `https://placehold.co/600x300.png?text=${encodeURIComponent(values.name)}`;
+      const dataAiHint = "promotion marketing";
+      
       await addDoc(collection(db, "promotions"), {
         ...values,
+        imageUrl,
+        dataAiHint,
         createdAt: serverTimestamp(),
       });
       toast({ title: "Promoción Creada", description: `La promoción "${values.name}" ha sido creada.` });
@@ -117,6 +124,7 @@ export default function NewPromotionPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} placeholder="Ej: Semana del Libro" /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Descripción (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Breve descripción de la promoción." /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de Imagen (Opcional)</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/promo.png" {...field} /></FormControl><FormMessage /></FormItem> )} />
               
               <div className="grid sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="type" render={({ field }) => ( <FormItem><FormLabel>Tipo de Promoción</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="multiplier">Multiplicador (ej. 2x)</SelectItem><SelectItem value="bonus">Bono (ej. +50 pts)</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />

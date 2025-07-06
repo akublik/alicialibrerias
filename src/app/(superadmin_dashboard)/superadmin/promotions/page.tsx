@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { Promotion } from "@/types";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import Image from "next/image";
 
 export default function ManagePromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -97,6 +98,7 @@ export default function ManagePromotionsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[80px]">Imagen</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Objetivo</TableHead>
@@ -108,6 +110,16 @@ export default function ManagePromotionsPage() {
                 <TableBody>
                   {promotions.length > 0 ? promotions.map((promo) => (
                     <TableRow key={promo.id}>
+                       <TableCell>
+                        <Image
+                          alt={promo.name}
+                          className="aspect-video rounded-md object-cover"
+                          height="40"
+                          src={promo.imageUrl || 'https://placehold.co/80x40.png'}
+                          width="80"
+                          data-ai-hint={promo.dataAiHint || 'promotion marketing'}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{promo.name}</TableCell>
                       <TableCell className="capitalize">
                         <Badge variant="secondary">
@@ -123,7 +135,7 @@ export default function ManagePromotionsPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button aria-haspopup="true" size="icon" variant="ghost"><MoreHorizontal className="h-4 w-4" /><span className="sr-only">Menú</span></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                             <DropdownMenuItem asChild><Link href={`/superadmin/promotions/edit/${promo.id}`}><Edit className="mr-2 h-4 w-4" /> Editar</Link></DropdownMenuItem>
@@ -134,7 +146,7 @@ export default function ManagePromotionsPage() {
                     </TableRow>
                   )) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Aún no has creado ninguna promoción.</TableCell>
+                      <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">Aún no has creado ninguna promoción.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
