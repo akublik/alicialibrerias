@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { RedemptionItem, User } from "@/types";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useRouter } from 'next/navigation';
+import { Badge } from "@/components/ui/badge";
 
 export default function RedemptionStorePage() {
   const [items, setItems] = useState<RedemptionItem[]>([]);
@@ -27,10 +28,8 @@ export default function RedemptionStorePage() {
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (userDataString) {
       setUser(JSON.parse(userDataString));
-    } else {
-      router.push('/login?redirect=/redemption-store');
     }
-  }, [router]);
+  }, []);
   
   useEffect(() => {
     if (!db) {
@@ -50,7 +49,15 @@ export default function RedemptionStorePage() {
     return () => unsubscribe();
   }, [toast]);
 
-  const handleRedeem = async () => {
+  const handleAttemptRedeem = (item: RedemptionItem) => {
+    if (!user) {
+        router.push('/login?redirect=/redemption-store');
+        return;
+    }
+    setItemToRedeem(item);
+  }
+
+  const handleConfirmRedeem = async () => {
     if (!itemToRedeem || !user || !db) return;
 
     setIsRedeeming(true);
@@ -160,7 +167,7 @@ export default function RedemptionStorePage() {
                     <Button 
                       className="w-full font-body"
                       disabled={!canAfford || isOutOfStock}
-                      onClick={() => setItemToRedeem(item)}
+                      onClick={() => handleAttemptRedeem(item)}
                     >
                       {isOutOfStock ? 'Agotado' : (canAfford ? 'Canjear Ahora' : 'Puntos Insuficientes')}
                     </Button>
@@ -190,7 +197,7 @@ export default function RedemptionStorePage() {
           </AlertDialogHeader>
            <AlertDialogFooter>
             <AlertDialogCancel disabled={isRedeeming}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRedeem} disabled={isRedeeming}>
+            <AlertDialogAction onClick={handleConfirmRedeem} disabled={isRedeeming}>
               {isRedeeming ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4"/>}
               Confirmar
             </AlertDialogAction>

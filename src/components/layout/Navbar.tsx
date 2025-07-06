@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart, PenSquare } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart, PenSquare, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
@@ -53,6 +53,7 @@ export function Navbar() {
     { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/games", label: "Juegos", icon: Gamepad2, roles: ['reader', 'library', 'superadmin', null] },
     { href: "/community", label: "Comunidad", icon: Users, roles: ['reader', 'library', 'superadmin', null] },
+    { href: "/redemption-store", label: "Tienda de Canje", icon: Gift, roles: ['reader', 'library', 'superadmin', null] },
   ];
 
   const visibleNavItems = navItems.filter(item => item.roles.includes(userRole));
