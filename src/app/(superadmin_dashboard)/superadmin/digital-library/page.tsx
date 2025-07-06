@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookHeart, Loader2, Trash2, Edit, Upload } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +48,9 @@ export default function ManageDigitalLibraryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [bookToDelete, setBookToDelete] = useState<DigitalBook | null>(null);
   const { toast } = useToast();
+
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [zipFile, setZipFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!db) {
@@ -68,6 +81,22 @@ export default function ManageDigitalLibraryPage() {
     }
   };
 
+  const handleImportZip = () => {
+    if (!zipFile) {
+      toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
+      return;
+    }
+
+    toast({
+      title: "Funcionalidad en Desarrollo",
+      description: "La importación desde ZIP está preparada. El siguiente paso requiere lógica de servidor (Cloud Function) para procesar el archivo.",
+      duration: 8000
+    });
+    
+    setZipFile(null);
+    setIsImportDialogOpen(false);
+  };
+
   return (
     <>
       <div className="container mx-auto px-4 py-8 animate-fadeIn">
@@ -81,12 +110,44 @@ export default function ManageDigitalLibraryPage() {
               Añade, edita o elimina los libros disponibles en formato digital.
             </p>
           </div>
-          <Link href="/superadmin/digital-library/new">
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Añadir Libro Digital
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Upload className="mr-2 h-4 w-4" /> Importar desde ZIP
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Importar Libro Digital desde .ZIP</DialogTitle>
+                  <DialogDescription>
+                    Sube un archivo .zip que contenga el archivo EPUB y la imagen de portada. El sistema los procesará automáticamente.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <Input 
+                    id="zip-file" 
+                    type="file" 
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    onChange={(e) => setZipFile(e.target.files?.[0] || null)} 
+                  />
+                  {zipFile && <p className="text-sm text-muted-foreground mt-2">Archivo seleccionado: {zipFile.name}</p>}
+                </div>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsImportDialogOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleImportZip} disabled={!zipFile}>
+                    Importar Libro
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Link href="/superadmin/digital-library/new">
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Añadir Libro Digital
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <Card className="shadow-lg">
