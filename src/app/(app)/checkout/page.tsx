@@ -1,4 +1,3 @@
-
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -25,10 +24,10 @@ import Image from "next/image";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText } from "lucide-react";
+import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText, Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
 import type { User } from "@/types";
 
@@ -64,12 +63,13 @@ export default function CheckoutPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>("delivery");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("cod");
   
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
+  const [pointsToApply, setPointsToApply] = useState(0);
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -93,7 +93,6 @@ export default function CheckoutPage() {
   // This effect runs to check auth status and pre-fill form data if available.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
-    setIsAuthenticated(authStatus);
 
     if (!authStatus) {
       router.replace('/pre-checkout');
@@ -113,11 +112,12 @@ export default function CheckoutPage() {
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (userDataString) {
         try {
-            const user = JSON.parse(userDataString);
+            const parsedUser = JSON.parse(userDataString);
+            setUser(parsedUser);
             form.reset({
                 ...form.getValues(),
-                buyerName: user.name || "",
-                buyerEmail: user.email || "",
+                buyerName: parsedUser.name || "",
+                buyerEmail: parsedUser.email || "",
             });
         } catch (e) {
             console.error("Error parsing user data from localStorage", e);
@@ -134,11 +134,29 @@ export default function CheckoutPage() {
     }
   }, [selectedShippingMethod]);
 
-  const loyaltyPoints = Math.floor(totalPrice);
-  const finalTotal = totalPrice + currentShippingCost;
+  const discountAmount = pointsToApply / 100;
+  const finalTotal = totalPrice + currentShippingCost - discountAmount;
+  const pointsToEarn = Math.floor(totalPrice - discountAmount);
+  
+  const handlePointsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let value = parseInt(e.target.value, 10);
+      if (isNaN(value)) value = 0;
+      if (value < 0) value = 0;
+      // Cannot use more points than available or more than the item total (100 points per dollar)
+      const maxApplicablePoints = Math.min(user?.loyaltyPoints || 0, Math.floor(totalPrice * 100));
+      if (value > maxApplicablePoints) {
+          value = maxApplicablePoints;
+      }
+      setPointsToApply(value);
+  };
+  
+  const applyMaxPoints = () => {
+      const maxApplicablePoints = Math.min(user?.loyaltyPoints || 0, Math.floor(totalPrice * 100));
+      setPointsToApply(maxApplicablePoints);
+  };
 
   async function onSubmit(values: CheckoutFormValues) {
-    if (!isAuthenticated) {
+    if (!user) {
         toast({ title: "Acción Requerida", description: "Por favor, inicia sesión para realizar tu pedido.", variant: "destructive" });
         return;
     }
@@ -165,15 +183,7 @@ export default function CheckoutPage() {
 
     setIsSubmitting(true);
     
-    const userDataString = localStorage.getItem("aliciaLibros_user");
-    if (!userDataString) {
-      toast({ title: "Inicia sesión", description: "Debes iniciar sesión para completar la compra.", variant: "destructive" });
-      setIsSubmitting(false);
-      return;
-    }
-    const { id: buyerId } = JSON.parse(userDataString);
     const libraryId = cartItems[0].libraryId;
-
     if (!libraryId) {
        toast({ title: "Error en el pedido", description: "No se pudo determinar la librería para este pedido.", variant: "destructive" });
        setIsSubmitting(false);
@@ -181,81 +191,102 @@ export default function CheckoutPage() {
     }
 
     try {
-      const newOrderData = {
-        libraryId,
-        buyerId,
-        buyerName: values.buyerName,
-        buyerEmail: values.buyerEmail,
-        buyerPhone: values.buyerPhone,
-        items: cartItems.map(item => ({
-          bookId: item.id,
-          title: item.title,
-          price: item.price,
-          quantity: item.quantity,
-          imageUrl: item.imageUrl,
-        })),
-        totalPrice: finalTotal,
-        status: 'pending' as const,
-        createdAt: serverTimestamp(),
-        shippingMethod: selectedShippingMethod,
-        paymentMethod: selectedPaymentMethod,
-        shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería',
-        orderNotes: values.orderNotes || '',
-        needsInvoice: values.needsInvoice || false,
-        taxId: values.needsInvoice ? values.taxId || '' : '',
-      };
+        await runTransaction(db, async (transaction) => {
+            const userRef = doc(db, "users", user.id);
+            const userSnap = await transaction.get(userRef);
 
-      const newOrderRef = await addDoc(collection(db, "orders"), newOrderData);
-      const newOrderId = newOrderRef.id;
+            if (!userSnap.exists()) throw new Error("El usuario no existe.");
+            
+            const currentUserData = userSnap.data() as User;
+            const currentPoints = currentUserData.loyaltyPoints || 0;
+            const finalDiscountAmount = pointsToApply / 100;
+            
+            if (currentPoints < pointsToApply) {
+                 throw new Error("No tienes suficientes puntos para realizar este canje.");
+            }
 
-      // Award loyalty points logic
-      const userRef = doc(db, "users", buyerId);
-      const userSnap = await getDoc(userRef);
-      let pointsToAward = Math.floor(totalPrice);
-      let transactionDescription = `Puntos por pedido #${newOrderId.slice(0, 7)}`;
-      let toastDescription = `Los puntos se han añadido a tu cuenta.`;
+            const pointsAfterRedemption = currentPoints - pointsToApply;
+            
+            let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
+            let transactionDescription = `Puntos por compra`;
+            let toastDescription = `Los puntos se han añadido a tu cuenta.`;
 
-      if (userSnap.exists()) {
-          const user = userSnap.data() as User;
-          const today = new Date();
-          if (user.birthdate) {
-              const birthdate = new Date(user.birthdate);
-              // Compare month and day (ignoring year and timezone issues)
+            if (currentUserData.birthdate) {
+              const today = new Date();
+              const birthdate = new Date(currentUserData.birthdate);
               if (today.getMonth() === birthdate.getMonth() && today.getDate() === birthdate.getDate() + 1) {
-                  pointsToAward *= 2; // Double points for birthday
+                  pointsToAward *= 2; 
                   transactionDescription += " (¡Bono de cumpleaños!)";
                   toastDescription = `¡Feliz cumpleaños! Has ganado el doble de puntos.`;
               }
-          }
-      }
+            }
 
-      if (pointsToAward > 0) {
-          await updateDoc(userRef, {
-              loyaltyPoints: increment(pointsToAward)
-          });
-          
-          await addDoc(collection(db, "pointsTransactions"), {
-              userId: buyerId,
-              orderId: newOrderId,
-              points: pointsToAward,
-              description: transactionDescription,
-              createdAt: serverTimestamp()
-          });
+            const finalPoints = pointsAfterRedemption + pointsToAward;
+            transaction.update(userRef, { loyaltyPoints: finalPoints });
 
-          toast({
-            title: `¡Ganaste ${pointsToAward} puntos!`,
-            description: toastDescription,
-          });
-      }
+            const newOrderRef = doc(collection(db, "orders"));
+            const newOrderData = {
+                libraryId,
+                buyerId: user.id,
+                buyerName: values.buyerName,
+                buyerEmail: values.buyerEmail,
+                buyerPhone: values.buyerPhone,
+                items: cartItems.map(item => ({
+                    bookId: item.id,
+                    title: item.title,
+                    price: item.price,
+                    quantity: item.quantity,
+                    imageUrl: item.imageUrl,
+                })),
+                totalPrice: finalTotal,
+                status: 'pending' as const,
+                createdAt: serverTimestamp(),
+                shippingMethod: selectedShippingMethod,
+                paymentMethod: selectedPaymentMethod,
+                shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería',
+                orderNotes: values.orderNotes || '',
+                needsInvoice: values.needsInvoice || false,
+                taxId: values.needsInvoice ? values.taxId || '' : '',
+                pointsUsed: pointsToApply,
+                discountAmount: finalDiscountAmount,
+            };
+            transaction.set(newOrderRef, newOrderData);
 
+            if (pointsToApply > 0) {
+                 transaction.set(doc(collection(db, "pointsTransactions")), {
+                    userId: user.id,
+                    orderId: newOrderRef.id,
+                    description: `Canje de puntos en pedido #${newOrderRef.id.slice(0, 7)}`,
+                    points: -pointsToApply,
+                    createdAt: serverTimestamp()
+                });
+            }
+
+            if (pointsToAward > 0) {
+                 transaction.set(doc(collection(db, "pointsTransactions")), {
+                    userId: user.id,
+                    orderId: newOrderRef.id,
+                    description: transactionDescription,
+                    points: pointsToAward,
+                    createdAt: serverTimestamp()
+                });
+            }
+        });
 
       toast({
         title: "¡Pedido Realizado con Éxito!",
-        description: "Gracias por tu compra. Hemos recibido tu pedido y lo estamos procesando.",
+        description: "Gracias por tu compra. Hemos recibido tu pedido.",
       });
+      if (pointsToEarn > 0) {
+        toast({
+          title: `¡Ganaste ${pointsToEarn} puntos!`,
+          description: toastDescription,
+        });
+      }
       
       clearCart();
       router.push("/dashboard");
+
     } catch (error: any) {
         toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive" });
     } finally {
@@ -263,7 +294,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
@@ -460,9 +491,46 @@ export default function CheckoutPage() {
                     <p className="text-sm font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 ))}
+                
+                 <Separator />
+
+                <Card>
+                    <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-base flex items-center gap-2">
+                           <Coins className="h-5 w-5 text-primary"/> Programa de Lealtad
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          Tienes <span className="font-bold">{user.loyaltyPoints || 0}</span> puntos. ¡Úsalos para obtener un descuento! (100 puntos = $1.00)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      {(user.loyaltyPoints || 0) > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <Input 
+                            type="number"
+                            value={pointsToApply}
+                            onChange={handlePointsChange}
+                            max={Math.min(user.loyaltyPoints || 0, Math.floor(totalPrice * 100))}
+                            min={0}
+                            className="h-9"
+                          />
+                          <Button type="button" variant="secondary" onClick={applyMaxPoints} className="h-9 text-xs">Máx</Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Sigue comprando para ganar más puntos.</p>
+                      )}
+                    </CardContent>
+                </Card>
+
                 <Separator />
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between"><span>Subtotal ({itemCount} artículos):</span> <span className="font-medium">${totalPrice.toFixed(2)}</span></div>
+                  {discountAmount > 0 && (
+                      <div className="flex justify-between text-destructive">
+                        <span>Descuento por puntos:</span> 
+                        <span className="font-medium">-${discountAmount.toFixed(2)}</span>
+                      </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Envío:</span>
                     <span className="font-medium">
@@ -474,7 +542,7 @@ export default function CheckoutPage() {
                 </div>
                 <Separator/>
                  <div className="flex items-center justify-center text-sm text-accent p-3 bg-accent/10 rounded-md">
-                    <Gift className="mr-2 h-5 w-5"/> ¡Acumularás <span className="font-bold mx-1">{loyaltyPoints}</span> puntos con esta compra!
+                    <Gift className="mr-2 h-5 w-5"/> ¡Acumularás <span className="font-bold mx-1">{pointsToEarn}</span> puntos con esta compra!
                 </div>
               </CardContent>
               <CardFooter>
@@ -490,4 +558,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-

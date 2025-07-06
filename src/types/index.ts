@@ -68,7 +68,7 @@ export interface User {
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
   isActive?: boolean;
-  birthdate?: string | null | undefined;
+  birthdate?: string | null;
   favoriteCategories?: string[];
   favoriteTags?: string[];
   avatarUrl?: string;
@@ -118,6 +118,8 @@ export interface Order {
   orderNotes?: string;
   needsInvoice?: boolean;
   taxId?: string;
+  pointsUsed?: number;
+  discountAmount?: number;
 }
 
 export interface LibraryEvent {
