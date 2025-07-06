@@ -203,7 +203,8 @@ export default function CheckoutPage() {
         taxId: values.needsInvoice ? values.taxId || '' : '',
       };
 
-      await addDoc(collection(db, "orders"), newOrderData);
+      const newOrderRef = await addDoc(collection(db, "orders"), newOrderData);
+      const newOrderId = newOrderRef.id;
 
       // Award loyalty points (1 point per dollar of product subtotal)
       const pointsToAward = Math.floor(totalPrice);
@@ -212,6 +213,15 @@ export default function CheckoutPage() {
         await updateDoc(userRef, {
           loyaltyPoints: increment(pointsToAward)
         });
+        
+        await addDoc(collection(db, "pointsTransactions"), {
+            userId: buyerId,
+            orderId: newOrderId,
+            points: pointsToAward,
+            description: `Puntos por pedido #${newOrderId.slice(0, 7)}`,
+            createdAt: serverTimestamp()
+        });
+
         toast({
           title: `¡Ganaste ${pointsToAward} puntos!`,
           description: "Los puntos se han añadido a tu cuenta.",

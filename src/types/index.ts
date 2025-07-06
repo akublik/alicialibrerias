@@ -1,4 +1,5 @@
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -67,7 +68,7 @@ export interface User {
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
   isActive?: boolean;
-  birthdate?: string | null;
+  birthdate?: string | null | undefined;
   favoriteCategories?: string[];
   favoriteTags?: string[];
   avatarUrl?: string;
@@ -259,4 +260,13 @@ export interface RedemptionItem {
   stock: number;
   isActive: boolean;
   createdAt: any; // Firestore Timestamp
+}
+
+export interface PointsTransaction {
+  id: string;
+  userId: string;
+  orderId?: string;
+  description: string;
+  points: number;
+  createdAt: any;
 }

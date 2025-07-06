@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { Book, Library, User, Order, BookRequest } from "@/types";
+import type { Book, Library, User, Order, BookRequest, PointsTransaction } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark } from "lucide-react";
 import Image from "next/image";
@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
-import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp, getDocs, documentId } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp, getDocs, documentId, orderBy, limit } from "firebase/firestore";
 import { format } from 'date-fns';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { bookCategories, bookTags } from '@/lib/options';
@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const [isRequesting, setIsRequesting] = useState(false);
   
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [preferences, setPreferences] = useState('');
@@ -164,6 +165,7 @@ export default function DashboardPage() {
               joinDateStr = format(joinDate, "MMMM yyyy", { locale: es });
               joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
             }
+            
             const fullUserData: UserData = {
               ...(liveUserData as Omit<User, 'id'>),
               id: docSnap.id,
@@ -212,12 +214,12 @@ export default function DashboardPage() {
 
 
         const ordersRef = collection(db, "orders");
-        const q = query(ordersRef, where("buyerId", "==", initialUserData.id));
+        const q = query(ordersRef, where("buyerId", "==", initialUserData.id), orderBy("createdAt", "desc"));
         const ordersUnsub = onSnapshot(q, (snapshot) => {
           const userOrders = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
-          } as Order)).sort((a, b) => new Date(b.createdAt as string).getTime() - new Date(a.createdAt as string).getTime());
+          } as Order));
           setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
@@ -244,6 +246,18 @@ export default function DashboardPage() {
             setIsLoadingFavorites(false);
         });
         unsubscribes.push(favsUnsub);
+        
+        // Listener for points history
+        const pointsRef = collection(db, "pointsTransactions");
+        const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"), limit(50));
+        const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
+            const history = snapshot.docs.map(doc => ({
+                id: doc.id, ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
+            } as PointsTransaction));
+            setPointsHistory(history);
+        });
+        unsubscribes.push(pointsUnsub);
 
         return () => {
           unsubscribes.forEach(unsub => unsub());
@@ -254,7 +268,7 @@ export default function DashboardPage() {
         handleLogout();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, []);
 
   // Effect to reset form when dialog opens
   useEffect(() => {
@@ -550,9 +564,12 @@ export default function DashboardPage() {
         {/* Tabs Section */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="purchases" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 mb-6 bg-muted/50 p-1 h-auto">
+            <TabsList className="grid w-full grid-cols-5 mb-6 bg-muted/50 p-1 h-auto">
               <TabsTrigger value="purchases" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
                 <ShoppingBag className="mr-2 h-5 w-5" /> Mis Compras
+              </TabsTrigger>
+               <TabsTrigger value="points-history" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
+                <Gift className="mr-2 h-5 w-5" /> Puntos
               </TabsTrigger>
               <TabsTrigger value="favorites" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
                 <Heart className="mr-2 h-5 w-5" /> Librerías Favoritas
@@ -599,6 +616,45 @@ export default function DashboardPage() {
                   ) : (
                     <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra.</p>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="points-history">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline text-xl">Historial de Puntos</CardTitle>
+                  <CardDescription>Aquí puedes ver todos los puntos que has ganado y gastado.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Puntos</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {pointsHistory.length > 0 ? (
+                        pointsHistory.map((transaction) => (
+                          <TableRow key={transaction.id}>
+                            <TableCell>{format(new Date(transaction.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
+                            <TableCell>{transaction.description}</TableCell>
+                            <TableCell className={`text-right font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                              {transaction.points > 0 ? `+${transaction.points}` : transaction.points}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                            Aún no tienes movimientos de puntos. ¡Realiza una compra para empezar a ganar!
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             </TabsContent>
