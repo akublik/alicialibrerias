@@ -38,10 +38,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
           },
         ],
         type: 'profile',
-        profile: {
-          firstName: author.name.split(' ')[0],
-          lastName: author.name.split(' ').slice(1).join(' '),
-        },
+        firstName: author.name.split(' ')[0],
+        lastName: author.name.split(' ').slice(1).join(' '),
       },
     };
   } catch (error) {
