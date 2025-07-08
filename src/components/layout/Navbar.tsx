@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart, PenSquare, Gift, Star } from "lucide-react";
+import { BookOpen, Home, Library, UserCircle, Users, LogIn, ShoppingCart, Menu, Sparkles, Gamepad2, Store, Info, BookHeart, PenSquare, Gift, Star, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,18 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import type { User } from "@/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const useAuth = () => {
   const [authInfo, setAuthInfo] = React.useState<{
@@ -28,19 +40,17 @@ const useAuth = () => {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        // User is signed in. Fetch role from Firestore.
         const userDocRef = doc(db, "users", firebaseUser.uid);
         try {
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            const userData = userDocSnap.data();
+            const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
             const userRole = userData.role || (userData as any).rol || null;
             setAuthInfo({ isAuthenticated: true, userRole: userRole });
             
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("aliciaLibros_user", JSON.stringify({ id: firebaseUser.uid, ...userData }));
+            localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
           } else {
-            // Auth record exists but no DB record. Treat as not logged in.
             setAuthInfo({ isAuthenticated: false, userRole: null });
             localStorage.removeItem("isAuthenticated");
             localStorage.removeItem("aliciaLibros_user");
@@ -50,7 +60,6 @@ const useAuth = () => {
             setAuthInfo({ isAuthenticated: false, userRole: null });
         }
       } else {
-        // User is signed out.
         setAuthInfo({ isAuthenticated: false, userRole: null });
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("aliciaLibros_user");
@@ -59,7 +68,6 @@ const useAuth = () => {
       }
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
   
@@ -70,21 +78,6 @@ export function Navbar() {
   const { isAuthenticated, userRole } = useAuth();
   const { itemCount } = useCart(); 
   const pathname = usePathname();
-
-  const navItems = [
-    { href: "/", label: "Inicio", icon: Home, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/libraries", label: "Librerías", icon: Library, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/authors", label: "Autores", icon: PenSquare, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/my-library", label: "Biblioteca", icon: BookHeart, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/about", label: "Nosotros", icon: Info, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/recommendations", label: "Recomendaciones IA", icon: Sparkles, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/games", label: "Juegos", icon: Gamepad2, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/community", label: "Comunidad", icon: Users, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/loyalty", label: "Programa de Puntos", icon: Star, roles: ['reader', 'library', 'superadmin', null] },
-    { href: "/redemption-store", label: "Tienda de Canje", icon: Gift, roles: ['reader', 'library', 'superadmin', null] },
-  ];
-
-  const visibleNavItems = navItems.filter(item => item.roles.includes(userRole));
 
   const getDashboardLink = () => {
     if (userRole === 'library') return '/library-admin/dashboard';
@@ -104,7 +97,6 @@ export function Navbar() {
                 </Link>
              )
         }
-        // This covers 'library' and 'superadmin'
         return (
             <Link href={getDashboardLink()}>
               <Button variant="outline" className="font-body">
@@ -115,7 +107,6 @@ export function Navbar() {
         )
     }
     
-    // Not authenticated
     return (
       <>
         <Link href="/library-login">
@@ -147,7 +138,6 @@ export function Navbar() {
              </Link>
           )
       }
-      // This covers 'library' and 'superadmin'
       return (
          <Link href={getDashboardLink()} className={cn(
             "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
@@ -159,7 +149,6 @@ export function Navbar() {
       )
     }
 
-    // Not authenticated
     return (
       <>
         <Link href="/library-login" className={cn(
@@ -189,18 +178,36 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {visibleNavItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={cn(
-                "transition-colors hover:text-primary",
-                pathname === item.href ? "text-primary font-semibold" : "text-foreground/70"
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          <Link href="/" className={cn("transition-colors hover:text-primary", pathname === "/" ? "text-primary font-semibold" : "text-foreground/70")}>Inicio</Link>
+          <Link href="/libraries" className={cn("transition-colors hover:text-primary", pathname === "/libraries" ? "text-primary font-semibold" : "text-foreground/70")}>Librerías</Link>
+          <Link href="/authors" className={cn("transition-colors hover:text-primary", pathname === "/authors" ? "text-primary font-semibold" : "text-foreground/70")}>Autores</Link>
+          <Link href="/my-library" className={cn("transition-colors hover:text-primary", pathname === "/my-library" ? "text-primary font-semibold" : "text-foreground/70")}>Biblioteca</Link>
+          <Link href="/about" className={cn("transition-colors hover:text-primary", pathname === "/about" ? "text-primary font-semibold" : "text-foreground/70")}>Nosotros</Link>
+          <Link href="/recommendations" className={cn("transition-colors hover:text-primary", pathname === "/recommendations" ? "text-primary font-semibold" : "text-foreground/70")}>Recomendaciones IA</Link>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className={cn("p-0 h-auto hover:bg-transparent transition-colors hover:text-primary focus-visible:ring-0", (pathname.startsWith('/community') || pathname.startsWith('/games')) ? "text-primary font-semibold" : "text-foreground/70")}>
+                Comunidad <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem asChild><Link href="/community">Comunidad Principal</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/games">Juegos Literarios</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+               <Button variant="ghost" className={cn("p-0 h-auto hover:bg-transparent transition-colors hover:text-primary focus-visible:ring-0", (pathname.startsWith('/loyalty') || pathname.startsWith('/redemption-store')) ? "text-primary font-semibold" : "text-foreground/70")}>
+                Programa de Puntos <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem asChild><Link href="/loyalty">Beneficios y Promociones</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/redemption-store">Tienda de Canje</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <div className="hidden md:flex items-center space-x-3">
@@ -235,20 +242,36 @@ export function Navbar() {
                   </Link>
                 </SheetTitle>
               </SheetHeader>
-              <nav className="flex flex-col space-y-4 mt-8">
-                {visibleNavItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
-                      pathname === item.href ? "bg-accent text-accent-foreground" : "text-foreground/80"
-                    )}
-                  >
-                    <item.icon className="h-5 w-5" />
-                    <span>{item.label}</span>
-                  </Link>
-                ))}
+              <nav className="flex flex-col space-y-2 mt-8">
+                 <Link href="/" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Home className="h-5 w-5" /><span>Inicio</span></Link>
+                 <Link href="/libraries" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/libraries" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Library className="h-5 w-5" /><span>Librerías</span></Link>
+                 <Link href="/authors" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/authors" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><PenSquare className="h-5 w-5" /><span>Autores</span></Link>
+                 <Link href="/my-library" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/my-library" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><BookHeart className="h-5 w-5" /><span>Biblioteca</span></Link>
+                 <Link href="/about" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
+                 <Link href="/recommendations" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
+                 
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="comunidad" className="border-b-0">
+                      <AccordionTrigger className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground no-underline", (pathname.startsWith('/community') || pathname.startsWith('/games')) ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:no-underline")}>
+                        <Users className="h-5 w-5" />
+                        <span>Comunidad</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="pl-8 pt-2 pb-0 flex flex-col space-y-2">
+                        <Link href="/community" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/community' ? 'font-semibold' : 'text-muted-foreground')}>Comunidad Principal</Link>
+                        <Link href="/games" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/games' ? 'font-semibold' : 'text-muted-foreground')}>Juegos Literarios</Link>
+                      </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="puntos" className="border-b-0">
+                      <AccordionTrigger className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground no-underline", (pathname.startsWith('/loyalty') || pathname.startsWith('/redemption-store')) ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:no-underline")}>
+                        <Star className="h-5 w-5" />
+                        <span>Programa de Puntos</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="pl-8 pt-2 pb-0 flex flex-col space-y-2">
+                        <Link href="/loyalty" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/loyalty' ? 'font-semibold' : 'text-muted-foreground')}>Beneficios y Promociones</Link>
+                        <Link href="/redemption-store" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/redemption-store' ? 'font-semibold' : 'text-muted-foreground')}>Tienda de Canje</Link>
+                      </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
               </nav>
               <div className="mt-auto pt-6 border-t flex flex-col space-y-2">
                 {renderMobileAuthButtons()}
