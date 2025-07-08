@@ -1,7 +1,6 @@
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { CartProvider } from "@/context/CartContext";
-import { WishlistProvider } from "@/context/WishlistContext";
+import { Providers } from "@/context/Providers";
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -23,12 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <WishlistProvider>
-          <CartProvider>
-            {children}
-            <Toaster />
-          </CartProvider>
-        </WishlistProvider>
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );
