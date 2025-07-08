@@ -1,3 +1,4 @@
+
 // src/app/(app)/books/[id]/page.tsx
 import type { Metadata } from 'next';
 import { doc, getDoc } from 'firebase/firestore';
@@ -38,10 +39,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
           },
         ],
         type: 'book',
-        book: {
-          authors: book.authors,
-          isbn: book.isbn,
-        },
+        authors: book.authors,
+        isbn: book.isbn,
       },
     };
   } catch (error) {
