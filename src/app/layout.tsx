@@ -19,8 +19,8 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        <title>Alicia Libros - Tu marketplace de librerías independientes</title>
-        <meta name="description" content="Descubre libros únicos y apoya a librerías independientes en Ecuador y Latinoamérica." />
+        <title>Alicia Libros - Tu marketplace de librerías</title>
+        <meta name="description" content="Descubre libros únicos y apoya a librerías en Latinoamérica." />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Belleza&display=swap" rel="stylesheet" />
