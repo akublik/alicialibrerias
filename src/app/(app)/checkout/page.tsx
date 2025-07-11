@@ -198,14 +198,18 @@ export default function CheckoutPage() {
         // Fetch active promotions before starting the transaction
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
-        const promotionsQuery = query(promotionsRef, 
-            where("isActive", "==", true),
-            where("startDate", "<=", now)
-        );
+        // Query only by isActive to avoid needing a composite index
+        const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
         const promotionsSnapshot = await getDocs(promotionsQuery);
+        
+        // Filter by date on the client side
         const activePromotions = promotionsSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
-            .filter(p => new Date(p.endDate.toDate()) >= now);
+            .filter(p => {
+                const startDate = p.startDate.toDate();
+                const endDate = p.endDate.toDate();
+                return startDate <= now && endDate >= now;
+            });
 
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
