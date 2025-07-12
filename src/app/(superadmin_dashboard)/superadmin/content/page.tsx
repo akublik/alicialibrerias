@@ -18,16 +18,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FilePenLine, Save, PlusCircle, Edit, Trash2 } from "lucide-react";
+import { Loader2, FilePenLine, Save, PlusCircle, Trash2 } from "lucide-react";
 import Image from 'next/image';
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
 import type { Book } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 
 // Schemas
 const secondaryBannerSlideSchema = z.object({
@@ -52,10 +55,17 @@ const contentDocRef = doc(db, "homepage_content", "sections");
 
 export default function ManageContentPage() {
     const [isLoading, setIsLoading] = useState(true);
-    const [isSavingHomepage, setIsSavingHomepage] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [allBooks, setAllBooks] = useState<Book[]>([]);
-    
     const { toast } = useToast();
+
+    // State for file uploads
+    const [mainBannerFile, setMainBannerFile] = useState<File | null>(null);
+    const [mainBannerPreview, setMainBannerPreview] = useState<string | null>(null);
+    const [secondaryBannerFiles, setSecondaryBannerFiles] = useState<(File | null)[]>([]);
+    const [secondaryBannerPreviews, setSecondaryBannerPreviews] = useState<(string | null)[]>([]);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploadStep, setUploadStep] = useState("");
 
     const homepageForm = useForm<HomepageContentFormValues>({
         resolver: zodResolver(homepageContentFormSchema),
@@ -96,6 +106,9 @@ export default function ManageContentPage() {
                         nationalSectionTitle: data.nationalSectionTitle || "Libros Ecuatorianos",
                         nationalBookIds: data.nationalBookIds || [],
                     });
+                     // Initialize previews
+                    setMainBannerPreview(data.bannerImageUrl || null);
+                    setSecondaryBannerPreviews((data.secondaryBannerSlides || []).map((slide: any) => slide.imageUrl || null));
                 }
 
                 // Fetch all books for multiselect
@@ -103,9 +116,7 @@ export default function ManageContentPage() {
                     setAllBooks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
                 });
 
-                return () => {
-                    booksUnsub();
-                };
+                return () => booksUnsub();
 
             } catch (error: any) {
                 toast({ title: "Error al cargar datos", description: error.message, variant: "destructive" });
@@ -120,32 +131,91 @@ export default function ManageContentPage() {
     const bookOptions = useMemo<MultiSelectOption[]>(() => {
         return allBooks.map(book => ({ value: book.id, label: book.title }));
     }, [allBooks]);
-    
-    const onHomepageSubmit = async (values: HomepageContentFormValues) => {
-        if (!db) {
-             toast({ title: "Error de conexión", variant: "destructive" });
-             return;
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (file: File | null) => void, previewSetter: (url: string | null) => void) => {
+        const file = e.target.files?.[0];
+        if (file && file.type.startsWith('image/')) {
+            setter(file);
+            const reader = new FileReader();
+            reader.onloadend = () => previewSetter(reader.result as string);
+            reader.readAsDataURL(file);
+        } else if (file) {
+            toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
         }
-        setIsSavingHomepage(true);
+    };
+    
+    const handleSecondaryFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+        const file = e.target.files?.[0];
+         if (file && file.type.startsWith('image/')) {
+            const newFiles = [...secondaryBannerFiles];
+            newFiles[index] = file;
+            setSecondaryBannerFiles(newFiles);
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const newPreviews = [...secondaryBannerPreviews];
+                newPreviews[index] = reader.result as string;
+                setSecondaryBannerPreviews(newPreviews);
+            }
+            reader.readAsDataURL(file);
+        } else if (file) {
+            toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
+        }
+    };
+
+
+    const uploadFile = (file: File, path: string): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        if (!storage) { reject(new Error("Firebase Storage no está configurado.")); return; }
+        const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        uploadTask.on('state_changed',
+          (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+          (error) => { console.error(`Error de subida en ${path}:`, error); reject(error); },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            } catch (error) { reject(error); }
+          }
+        );
+      });
+    };
+
+    const onHomepageSubmit = async (values: HomepageContentFormValues) => {
+        if (!db) { toast({ title: "Error de conexión", variant: "destructive" }); return; }
+        setIsSaving(true);
+        setUploadProgress(0);
 
         try {
-            const dataToSave = {
-                bannerTitle: values.bannerTitle,
-                bannerSubtitle: values.bannerSubtitle,
-                bannerImageUrl: values.bannerImageUrl,
-                featuredBookIds: values.featuredBookIds || [],
-                secondaryBannerSlides: values.secondaryBannerSlides || [],
-                nationalSectionTitle: values.nationalSectionTitle || "",
-                nationalBookIds: values.nationalBookIds || [],
-            };
-            
+            const dataToSave = { ...values };
+
+            // Upload Main Banner if new file is selected
+            if (mainBannerFile) {
+                setUploadStep("Subiendo banner principal...");
+                dataToSave.bannerImageUrl = await uploadFile(mainBannerFile, 'homepage_banners');
+            }
+
+            // Upload Secondary Banners
+            for (let i = 0; i < (dataToSave.secondaryBannerSlides?.length || 0); i++) {
+                const file = secondaryBannerFiles[i];
+                if (file) {
+                    setUploadStep(`Subiendo banner secundario ${i + 1}...`);
+                    if (dataToSave.secondaryBannerSlides) {
+                       dataToSave.secondaryBannerSlides[i].imageUrl = await uploadFile(file, 'homepage_banners');
+                    }
+                }
+            }
+
+            setUploadStep("Guardando información...");
             await setDoc(contentDocRef, dataToSave, { merge: true });
 
             toast({ title: "Contenido de Homepage Guardado" });
         } catch (error: any) {
             toast({ title: "Error al guardar", description: error.message, variant: "destructive", duration: 10000 });
         } finally {
-            setIsSavingHomepage(false);
+            setIsSaving(false);
+            setUploadStep("");
         }
     };
     
@@ -176,8 +246,19 @@ export default function ManageContentPage() {
                                 <CardContent className="space-y-4">
                                     <FormField control={homepageForm.control} name="bannerTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Banner</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                     <FormField control={homepageForm.control} name="bannerSubtitle" render={({ field }) => ( <FormItem><FormLabel>Subtítulo del Banner</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                    {homepageForm.watch('bannerImageUrl') && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={homepageForm.watch('bannerImageUrl')!} alt="Banner actual" layout="fill" objectFit="cover" /></div>}
-                                    <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen del Banner</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
+                                    
+                                    <Card>
+                                        <CardHeader className="p-4"><CardTitle className="text-base">Imagen de fondo</CardTitle></CardHeader>
+                                        <CardContent className="p-4 pt-0 space-y-4">
+                                            {mainBannerPreview && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={mainBannerPreview} alt="Vista previa" layout="fill" objectFit="cover" /></div>}
+                                             <FormField control={homepageForm.control} name="bannerImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de Imagen Actual</FormLabel><FormControl><Input type="url" placeholder="https://ejemplo.com/imagen.png" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
+                                             <div>
+                                                <Label htmlFor="main-banner-file">O sube un nuevo archivo para reemplazarla</Label>
+                                                <Input id="main-banner-file" type="file" accept="image/*" onChange={(e) => handleFileChange(e, setMainBannerFile, setMainBannerPreview)} disabled={isSaving} />
+                                             </div>
+                                        </CardContent>
+                                    </Card>
+
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -192,10 +273,21 @@ export default function ManageContentPage() {
                                     {secondaryBannerFields.map((field, index) => (
                                         <div key={field.id} className="p-4 border rounded-md relative space-y-3">
                                             <h4 className="font-medium">Diapositiva {index + 1}</h4>
-                                             <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen</FormLabel><FormControl><Input {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
                                              <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                              <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.subtitle`} render={({ field }) => ( <FormItem><FormLabel>Subtítulo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                                              <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.linkUrl`} render={({ field }) => ( <FormItem><FormLabel>Enlace (URL)</FormLabel><FormControl><Input {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
+
+                                             <Card>
+                                                <CardContent className="p-4 space-y-4">
+                                                     {secondaryBannerPreviews[index] && <div className="relative w-full aspect-video rounded-md overflow-hidden border"><Image src={secondaryBannerPreviews[index]!} alt={`Vista previa slide ${index + 1}`} layout="fill" objectFit="cover" /></div>}
+                                                     <FormField control={homepageForm.control} name={`secondaryBannerSlides.${index}.imageUrl`} render={({ field }) => ( <FormItem><FormLabel>URL de Imagen Actual</FormLabel><FormControl><Input {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem> )} />
+                                                     <div>
+                                                         <Label htmlFor={`secondary-banner-file-${index}`}>O sube un nuevo archivo</Label>
+                                                         <Input id={`secondary-banner-file-${index}`} type="file" accept="image/*" onChange={(e) => handleSecondaryFileChange(e, index)} disabled={isSaving}/>
+                                                     </div>
+                                                </CardContent>
+                                             </Card>
+
                                             <Button type="button" variant="destructive" size="sm" onClick={() => removeSecondaryBanner(index)} className="absolute top-2 right-2">
                                                 <Trash2 className="h-4 w-4"/>
                                             </Button>
@@ -249,7 +341,7 @@ export default function ManageContentPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Título de la Sección</FormLabel>
-                                                <FormControl><Input placeholder="Libros Ecuatorianos" {...field} /></FormControl>
+                                                <FormControl><Input placeholder="Libros Ecuatorianos" {...field} value={field.value ?? ""} /></FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -283,8 +375,15 @@ export default function ManageContentPage() {
 
                     <Separator className="my-6"/>
                     
-                    <Button type="submit" disabled={isSavingHomepage} size="lg">
-                        {isSavingHomepage ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                    {isSaving && (
+                      <div className="space-y-2">
+                        <Label>{uploadStep} {Math.round(uploadProgress)}%</Label>
+                        <Progress value={uploadProgress} />
+                      </div>
+                    )}
+                    
+                    <Button type="submit" disabled={isSaving} size="lg">
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
                         Guardar Contenido de Homepage
                     </Button>
                 </form>
