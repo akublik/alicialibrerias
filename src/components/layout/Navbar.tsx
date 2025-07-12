@@ -47,10 +47,16 @@ const useAuth = () => {
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data() as User;
             const userRole = userData.role || (userData as any).rol || null;
+            
+            const fullUserData = {
+              ...userData,
+              id: userDocSnap.id,
+            };
+
             setAuthInfo({ isAuthenticated: true, userRole: userRole });
             
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("aliciaLibros_user", JSON.stringify({id: userDocSnap.id, ...userData}));
+            localStorage.setItem("aliciaLibros_user", JSON.stringify(fullUserData));
           } else {
             setAuthInfo({ isAuthenticated: false, userRole: null });
             localStorage.removeItem("isAuthenticated");
