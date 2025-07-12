@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/content/page.tsx
 "use client";
 
@@ -22,13 +21,12 @@ import { Loader2, FilePenLine, Save, PlusCircle, Trash2 } from "lucide-react";
 import Image from 'next/image';
 import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, collection, onSnapshot } from "firebase/firestore";
 import type { Book } from "@/types";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
 import { Separator } from "@/components/ui/separator";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 
@@ -163,23 +161,26 @@ export default function ManageContentPage() {
         }
     };
 
+    const uploadFile = async (file: File, path: string): Promise<string> => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', path);
 
-    const uploadFile = (file: File, path: string): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        if (!storage) { reject(new Error("Firebase Storage no está configurado.")); return; }
-        const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        uploadTask.on('state_changed',
-          (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-          (error) => { console.error(`Error de subida en ${path}:`, error); reject(error); },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(downloadURL);
-            } catch (error) { reject(error); }
-          }
-        );
-      });
+        setUploadProgress(50); // Simulate progress
+
+        const response = await fetch('/api/upload-image', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to upload file');
+        }
+
+        const { downloadURL } = await response.json();
+        setUploadProgress(100);
+        return downloadURL;
     };
 
     const onHomepageSubmit = async (values: HomepageContentFormValues) => {
