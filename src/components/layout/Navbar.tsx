@@ -1,3 +1,4 @@
+
 // src/components/layout/Navbar.tsx
 "use client";
 
@@ -44,12 +45,12 @@ const useAuth = () => {
         try {
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
+            const userData = userDocSnap.data() as User;
             const userRole = userData.role || (userData as any).rol || null;
             setAuthInfo({ isAuthenticated: true, userRole: userRole });
             
             localStorage.setItem("isAuthenticated", "true");
-            localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
+            localStorage.setItem("aliciaLibros_user", JSON.stringify({id: userDocSnap.id, ...userData}));
           } else {
             setAuthInfo({ isAuthenticated: false, userRole: null });
             localStorage.removeItem("isAuthenticated");
@@ -78,6 +79,7 @@ export function Navbar() {
   const { isAuthenticated, userRole } = useAuth();
   const { itemCount } = useCart(); 
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const getDashboardLink = () => {
     if (userRole === 'library') return '/library-admin/dashboard';
@@ -125,11 +127,15 @@ export function Navbar() {
     );
   }
 
+  const handleMobileLinkClick = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   const renderMobileAuthButtons = () => {
     if (isAuthenticated) {
       if (userRole === 'reader') {
           return (
-             <Link href={getDashboardLink()} className={cn(
+             <Link href={getDashboardLink()} onClick={handleMobileLinkClick} className={cn(
                 "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
                  "text-foreground/80"
               )}>
@@ -139,7 +145,7 @@ export function Navbar() {
           )
       }
       return (
-         <Link href={getDashboardLink()} className={cn(
+         <Link href={getDashboardLink()} onClick={handleMobileLinkClick} className={cn(
             "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
              "text-foreground/80"
           )}>
@@ -151,14 +157,14 @@ export function Navbar() {
 
     return (
       <>
-        <Link href="/library-login" className={cn(
+        <Link href="/library-login" onClick={handleMobileLinkClick} className={cn(
             "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
             "text-foreground/80"
           )}>
           <Store className="h-5 w-5" />
           <span>Soy Librería</span>
         </Link>
-         <Link href="/login" className={cn(
+         <Link href="/login" onClick={handleMobileLinkClick} className={cn(
             "flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
              "text-foreground/80"
           )}>
@@ -226,7 +232,7 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         <div className="md:hidden">
-          <Sheet>
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <Menu className="h-6 w-6" />
@@ -236,19 +242,19 @@ export function Navbar() {
             <SheetContent side="right" className="w-[280px] bg-background p-6 flex flex-col">
               <SheetHeader className="text-left">
                 <SheetTitle asChild>
-                  <Link href="/" className="flex items-center space-x-2">
+                  <Link href="/" onClick={handleMobileLinkClick} className="flex items-center space-x-2">
                     <BookOpen className="h-8 w-8 text-primary" />
                     <span className="font-headline text-2xl font-bold text-primary">Alicia Libros</span>
                   </Link>
                 </SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col space-y-2 mt-8">
-                 <Link href="/" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Home className="h-5 w-5" /><span>Inicio</span></Link>
-                 <Link href="/libraries" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/libraries" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Library className="h-5 w-5" /><span>Librerías</span></Link>
-                 <Link href="/authors" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/authors" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><PenSquare className="h-5 w-5" /><span>Autores</span></Link>
-                 <Link href="/my-library" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/my-library" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><BookHeart className="h-5 w-5" /><span>Biblioteca</span></Link>
-                 <Link href="/about" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
-                 <Link href="/recommendations" className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
+                 <Link href="/" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Home className="h-5 w-5" /><span>Inicio</span></Link>
+                 <Link href="/libraries" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/libraries" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Library className="h-5 w-5" /><span>Librerías</span></Link>
+                 <Link href="/authors" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/authors" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><PenSquare className="h-5 w-5" /><span>Autores</span></Link>
+                 <Link href="/my-library" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/my-library" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><BookHeart className="h-5 w-5" /><span>Biblioteca</span></Link>
+                 <Link href="/about" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
+                 <Link href="/recommendations" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
                  
                  <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="comunidad" className="border-b-0">
@@ -257,8 +263,8 @@ export function Navbar() {
                         <span>Comunidad</span>
                       </AccordionTrigger>
                       <AccordionContent className="pl-8 pt-2 pb-0 flex flex-col space-y-2">
-                        <Link href="/community" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/community' ? 'font-semibold' : 'text-muted-foreground')}>Comunidad Principal</Link>
-                        <Link href="/games" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/games' ? 'font-semibold' : 'text-muted-foreground')}>Juegos Literarios</Link>
+                        <Link href="/community" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/community' ? 'font-semibold' : 'text-muted-foreground')}>Comunidad Principal</Link>
+                        <Link href="/games" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/games' ? 'font-semibold' : 'text-muted-foreground')}>Juegos Literarios</Link>
                       </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="puntos" className="border-b-0">
@@ -267,15 +273,15 @@ export function Navbar() {
                         <span>Programa de Puntos</span>
                       </AccordionTrigger>
                       <AccordionContent className="pl-8 pt-2 pb-0 flex flex-col space-y-2">
-                        <Link href="/loyalty" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/loyalty' ? 'font-semibold' : 'text-muted-foreground')}>Beneficios y Promociones</Link>
-                        <Link href="/redemption-store" className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/redemption-store' ? 'font-semibold' : 'text-muted-foreground')}>Tienda de Canje</Link>
+                        <Link href="/loyalty" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/loyalty' ? 'font-semibold' : 'text-muted-foreground')}>Beneficios y Promociones</Link>
+                        <Link href="/redemption-store" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/redemption-store' ? 'font-semibold' : 'text-muted-foreground')}>Tienda de Canje</Link>
                       </AccordionContent>
                     </AccordionItem>
                 </Accordion>
               </nav>
               <div className="mt-auto pt-6 border-t flex flex-col space-y-2">
                 {renderMobileAuthButtons()}
-                <Link href="/cart" passHref>
+                <Link href="/cart" onClick={handleMobileLinkClick} passHref>
                   <Button variant="ghost" className="w-full justify-start text-foreground/80 hover:bg-accent hover:text-accent-foreground relative px-3 py-2 h-auto text-base font-medium">
                     <ShoppingCart className="mr-3 h-5 w-5" />
                     <span>Carrito</span>
