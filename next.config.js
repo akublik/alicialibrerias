@@ -33,6 +33,12 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cardenasyabogados.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
