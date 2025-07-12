@@ -1,10 +1,36 @@
 // src/app/api/upload-image/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminStorage } from '@/lib/firebase-admin'; // Usar la configuración de admin
+import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getStorage } from 'firebase-admin/storage';
 import { v4 as uuidv4 } from 'uuid';
+
+// Esta función inicializa la app de admin BAJO DEMANDA.
+// Se ejecuta solo cuando la API es llamada, no durante la compilación.
+function initializeAdminApp() {
+  if (getApps().length > 0) {
+    return admin.app();
+  }
+
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) {
+    throw new Error('La variable de entorno FIREBASE_SERVICE_ACCOUNT_KEY no está definida.');
+  }
+
+  const serviceAccount = JSON.parse(serviceAccountKey);
+
+  return initializeApp({
+    credential: cert(serviceAccount),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  });
+}
+
 
 export async function POST(request: NextRequest) {
   try {
+    const adminApp = initializeAdminApp();
+    const bucket = getStorage(adminApp).bucket();
+    
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const path = formData.get('path') as string | null;
@@ -16,8 +42,6 @@ export async function POST(request: NextRequest) {
       return new NextResponse(JSON.stringify({ error: 'No path provided.' }), { status: 400 });
     }
     
-    const bucket = adminStorage.bucket();
-
     // Generate a unique filename
     const filename = `${path}/${uuidv4()}-${file.name}`;
     const fileRef = bucket.file(filename);
