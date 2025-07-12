@@ -1,7 +1,8 @@
 // src/app/api/upload-image/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { bucket } from '@/lib/firebase-admin'; // Usar la configuración de admin
+import { admin } from '@/lib/firebase-admin'; // Usar la configuración de admin
 import { v4 as uuidv4 } from 'uuid';
+import { getStorage } from 'firebase-admin/storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,6 +16,8 @@ export async function POST(request: NextRequest) {
     if (!path) {
       return new NextResponse(JSON.stringify({ error: 'No path provided.' }), { status: 400 });
     }
+    
+    const bucket = getStorage(admin.app()).bucket();
 
     // Generate a unique filename
     const filename = `${path}/${uuidv4()}-${file.name}`;
