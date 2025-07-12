@@ -1,22 +1,30 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
-import { getApps } from 'firebase-admin/app';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
+import { getStorage } from 'firebase-admin/storage';
 
-const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+// Esta función inicializa la app de admin BAJO DEMANDA.
+// Esto evita que se ejecute durante el `next build`, que es donde falla.
+function initializeAdminApp() {
+  if (getApps().length > 0) {
+    return admin.app();
+  }
 
-if (!serviceAccountKey) {
-  throw new Error('La variable de entorno FIREBASE_SERVICE_ACCOUNT_KEY no está definida. Sigue la guía de configuración del backend de Firebase.');
-}
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) {
+    throw new Error('La variable de entorno FIREBASE_SERVICE_ACCOUNT_KEY no está definida.');
+  }
 
-const serviceAccount = JSON.parse(serviceAccountKey);
+  const serviceAccount = JSON.parse(serviceAccountKey);
 
-// Inicializar Firebase Admin SDK solo si no se ha hecho antes
-if (!getApps().length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+  return initializeApp({
+    credential: cert(serviceAccount),
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 
-// Exportar 'admin' para otros posibles usos en el servidor
-export { admin };
+// Ahora, cuando llamemos a `admin`, nos aseguraremos de que la app esté inicializada.
+const adminApp = initializeAdminApp();
+const adminStorage = getStorage(adminApp);
+
+export { adminApp, adminStorage };
