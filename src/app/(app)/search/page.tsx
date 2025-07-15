@@ -7,10 +7,11 @@ import { BookCard } from '@/components/BookCard';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, addDoc, serverTimestamp, query } from 'firebase/firestore';
 import type { Book } from '@/types';
-import { Loader2, SearchX, Search } from 'lucide-react';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Loader2, SearchX, Search, ChevronsDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+
+const ITEMS_PER_LOAD = 20;
 
 function SearchResults() {
   const searchParams = useSearchParams();
@@ -19,8 +20,7 @@ function SearchResults() {
   
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 12;
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_LOAD);
 
   const [searchTerm, setSearchTerm] = useState(queryParam);
 
@@ -86,16 +86,12 @@ function SearchResults() {
     );
   }, [allBooks, queryParam]);
 
-  const { currentBooks, totalPages } = useMemo(() => {
-    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-    const currentBooks = filteredBooks.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
-    return { currentBooks, totalPages };
-  }, [filteredBooks, currentPage]);
+  const currentBooks = useMemo(() => {
+    return filteredBooks.slice(0, visibleCount);
+  }, [filteredBooks, visibleCount]);
   
   useEffect(() => {
-    setCurrentPage(1);
+    setVisibleCount(ITEMS_PER_LOAD);
   }, [queryParam]);
 
   useEffect(() => {
@@ -185,22 +181,13 @@ function SearchResults() {
               <BookCard key={book.id} book={book} />
             ))}
           </div>
-          {totalPages > 1 && (
-            <Pagination className="mt-12">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} />
-                </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <PaginationItem key={page}>
-                    <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>{page}</PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+          {visibleCount < filteredBooks.length && (
+            <div className="text-center mt-12">
+              <Button onClick={() => setVisibleCount(prev => prev + ITEMS_PER_LOAD)} size="lg">
+                <ChevronsDown className="mr-2 h-5 w-5" />
+                Ver más
+              </Button>
+            </div>
           )}
         </>
       ) : (

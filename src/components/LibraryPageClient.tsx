@@ -1,4 +1,3 @@
-
 // src/components/LibraryPageClient.tsx
 "use client";
 
@@ -8,7 +7,7 @@ import type { Library, Book, LibraryEvent, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus, QrCode } from 'lucide-react';
+import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, CalendarDays as CalendarDaysIcon, Loader2, CalendarPlus, UserPlus, QrCode, ChevronsDown } from 'lucide-react';
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
@@ -22,10 +21,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Separator } from '@/components/ui/separator';
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const ITEMS_PER_LOAD = 12;
 
 // SVG Icons for social media
 const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -61,8 +60,8 @@ export default function LibraryPageClient() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteDocId, setFavoriteDocId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 12;
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_LOAD);
+
 
   // State for event registration dialog
   const [selectedEvent, setSelectedEvent] = useState<LibraryEvent | null>(null);
@@ -88,16 +87,12 @@ export default function LibraryPageClient() {
     );
   }, [books, searchTerm]);
   
-  const { currentBooks, totalPages } = useMemo(() => {
-    const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
-    const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
-    const currentBooks = filteredBooks.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredBooks.length / ITEMS_PER_PAGE);
-    return { currentBooks, totalPages };
-  }, [filteredBooks, currentPage]);
+  const currentBooks = useMemo(() => {
+    return filteredBooks.slice(0, visibleCount);
+  }, [filteredBooks, visibleCount]);
   
   useEffect(() => {
-    setCurrentPage(1);
+    setVisibleCount(ITEMS_PER_LOAD);
   }, [searchTerm]);
 
   useEffect(() => {
@@ -464,22 +459,13 @@ export default function LibraryPageClient() {
                           <BookCard key={book.id} book={book} />
                         ))}
                       </div>
-                       {totalPages > 1 && (
-                        <Pagination className="mt-8">
-                          <PaginationContent>
-                            <PaginationItem>
-                              <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.max(1, p - 1)); }} />
-                            </PaginationItem>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                              <PaginationItem key={page}>
-                                <PaginationLink href="#" isActive={currentPage === page} onClick={(e) => { e.preventDefault(); setCurrentPage(page); }}>{page}</PaginationLink>
-                              </PaginationItem>
-                            ))}
-                            <PaginationItem>
-                              <PaginationNext href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(p => Math.min(totalPages, p + 1)); }} />
-                            </PaginationItem>
-                          </PaginationContent>
-                        </Pagination>
+                       {visibleCount < filteredBooks.length && (
+                        <div className="text-center mt-12">
+                          <Button onClick={() => setVisibleCount(prev => prev + ITEMS_PER_LOAD)} size="lg">
+                            <ChevronsDown className="mr-2 h-5 w-5" />
+                            Ver más
+                          </Button>
+                        </div>
                       )}
                     </>
                   ) : (
