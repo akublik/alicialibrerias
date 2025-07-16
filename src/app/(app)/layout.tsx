@@ -3,6 +3,7 @@
 
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
+import { PlatformAssistantTrigger } from '@/components/PlatformAssistantTrigger';
 
 export default function AppLayout({
   children,
@@ -15,6 +16,7 @@ export default function AppLayout({
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-grow">{children}</main>
+      <PlatformAssistantTrigger />
       <Footer />
     </div>
   );
