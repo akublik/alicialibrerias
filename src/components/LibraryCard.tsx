@@ -16,13 +16,13 @@ export function LibraryCard({ library }: LibraryCardProps) {
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl group flex flex-col h-full">
         <CardHeader className="p-0">
             {library.imageUrl && (
-                <Link href={`/libraries/${library.id}`} className="block relative h-40 overflow-hidden bg-muted flex justify-center items-center">
+                <Link href={`/libraries/${library.id}`} className="block relative h-40 overflow-hidden bg-card flex justify-center items-center p-4 shadow-inner">
                     <Image
                         src={library.imageUrl}
                         alt={`Logo de ${library.name}`}
                         width={200}
                         height={100}
-                        className="object-contain h-full w-auto p-4 transition-transform duration-300 group-hover:scale-105"
+                        className="object-contain h-full w-auto transition-transform duration-300 group-hover:scale-105"
                         data-ai-hint={library.dataAiHint || 'library logo'}
                     />
                 </Link>
