@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     console.error('Contact Form API Error:', error);
     let errorMessage = 'No se pudo enviar el mensaje.';
     // Attempt to provide a more specific error message if available
-    if (error.message.includes('FIREBASE_SERVICE_ACCOUNT_KEY')) {
+    if (error.message && error.message.includes('FIREBASE_SERVICE_ACCOUNT_KEY')) {
         errorMessage = "Error de configuración del servidor. Contacte al administrador.";
     }
     return new NextResponse(JSON.stringify({ error: errorMessage, details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
