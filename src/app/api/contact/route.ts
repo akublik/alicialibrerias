@@ -7,25 +7,26 @@ import { FieldValue } from 'firebase-admin/firestore';
 // Esta función inicializa la app de admin BAJO DEMANDA y de forma segura (singleton).
 // Se ejecuta solo cuando la API es llamada, no durante la compilación.
 function initializeAdminApp() {
-  // Si ya hay apps inicializadas, usamos la primera (evita re-inicialización).
   if (getApps().length > 0) {
     return getApps()[0];
   }
 
-  // Si no hay, procedemos a inicializarla.
-  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountKey) {
+  const serviceAccountKeyBase64 = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKeyBase64) {
     throw new Error('La variable de entorno FIREBASE_SERVICE_ACCOUNT_KEY no está definida.');
   }
 
   try {
-    const serviceAccount = JSON.parse(serviceAccountKey);
+    // Decodificar la clave Base64 a una cadena JSON
+    const serviceAccountJson = Buffer.from(serviceAccountKeyBase64, 'base64').toString('utf-8');
+    const serviceAccount = JSON.parse(serviceAccountJson);
+    
     return initializeApp({
       credential: cert(serviceAccount),
     });
   } catch (error: any) {
-    console.error("Error al parsear FIREBASE_SERVICE_ACCOUNT_KEY:", error.message);
-    throw new Error("El formato de FIREBASE_SERVICE_ACCOUNT_KEY es inválido. Asegúrate de que sea un string JSON válido sin saltos de línea.");
+    console.error("Error al procesar FIREBASE_SERVICE_ACCOUNT_KEY:", error.message);
+    throw new Error("El formato de FIREBASE_SERVICE_ACCOUNT_KEY es inválido o no es un Base64 correcto.");
   }
 }
 
@@ -38,7 +39,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Todos los campos son requeridos.' }, { status: 400 });
     }
     
-    // Inicializamos la app de Admin aquí, justo cuando la necesitamos.
     const adminApp = initializeAdminApp();
     const db = admin.firestore();
 
@@ -52,7 +52,6 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     };
     
-    // Escribimos en la colección 'notifications'. Firestore la creará si no existe.
     await db.collection('notifications').add(notificationData);
 
     return NextResponse.json({ success: true, message: 'Mensaje enviado con éxito.' });
