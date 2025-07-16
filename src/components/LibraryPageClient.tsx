@@ -1,3 +1,4 @@
+
 // src/components/LibraryPageClient.tsx
 "use client";
 
@@ -288,13 +289,17 @@ export default function LibraryPageClient() {
 
       <header className="mb-8 md:mb-12">
         <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden bg-card shadow-lg p-4 flex justify-center items-center">
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-30" 
+              style={{ backgroundImage: `url('https://alicialectura.com/assets/images/patterns/pattern-1.png')` }}
+            ></div>
            {imageUrl && (
               <Image
                 src={imageUrl}
                 alt={`Logo de ${name}`}
                 width={300}
                 height={150}
-                className="object-contain h-full w-auto"
+                className="object-contain h-full w-auto relative z-10"
                 priority
                 data-ai-hint={dataAiHint || 'library logo'}
               />
