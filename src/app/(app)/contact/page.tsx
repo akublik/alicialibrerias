@@ -43,16 +43,36 @@ export default function ContactPage() {
 
   async function onSubmit(values: z.infer<typeof contactFormSchema>) {
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Contact form submitted:", values);
-    toast({
-      title: "Mensaje Enviado",
-      description: "Gracias por contactarnos. Te responderemos pronto.",
-    });
-    form.reset();
-    setIsLoading(false);
-  }
+    try {
+        const mailtoLink = `mailto:info@estudionet.net?subject=${encodeURIComponent(
+            values.subject
+        )}&body=${encodeURIComponent(
+            `Nombre: ${values.name}\nEmail: ${values.email}\n\nMensaje:\n${values.message}`
+        )}`;
+        
+        // This will attempt to open the user's default email client
+        window.location.href = mailtoLink;
+
+        toast({
+            title: "Abriendo cliente de correo",
+            description: "Por favor, envía el email desde tu aplicación de correo electrónico.",
+        });
+        
+        // Reset the form after a short delay to allow the mail client to open
+        setTimeout(() => {
+           form.reset();
+           setIsLoading(false);
+        }, 1000);
+
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: "No se pudo abrir tu cliente de correo. Por favor, envía un email directamente a info@estudionet.net.",
+            variant: "destructive"
+        });
+        setIsLoading(false);
+    }
+}
 
   return (
     <div className="animate-fadeIn">
@@ -146,20 +166,6 @@ export default function ContactPage() {
               <div className="space-y-6">
                 <Card className="shadow-md">
                   <CardHeader className="flex flex-row items-center space-x-4 pb-2">
-                    <MapPin className="h-8 w-8 text-primary" />
-                    <div>
-                      <CardTitle className="font-headline text-xl">Nuestra Oficina</CardTitle>
-                      <CardDescription>Visítanos (con cita previa)</CardDescription>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-foreground/80">Av. Amazonas N34-451 y Juan Pablo Sanz</p>
-                    <p className="text-foreground/80">Edificio El Libertador, Piso 7, Oficina 702</p>
-                    <p className="text-foreground/80">Quito, Ecuador</p>
-                  </CardContent>
-                </Card>
-                <Card className="shadow-md">
-                  <CardHeader className="flex flex-row items-center space-x-4 pb-2">
                     <Phone className="h-8 w-8 text-primary" />
                     <div>
                       <CardTitle className="font-headline text-xl">Llámanos</CardTitle>
@@ -167,7 +173,7 @@ export default function ContactPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <a href="tel:+59322990000" className="text-primary hover:underline text-lg block">+593 (2) 299-0000</a>
+                    <a href="tel:+5930992650852" className="text-primary hover:underline text-lg block">+593 0992650852</a>
                     <p className="text-sm text-muted-foreground">9:00 AM - 5:00 PM (GMT-5)</p>
                   </CardContent>
                 </Card>
