@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const { name, email, subject, message } = await request.json();
 
     if (!name || !email || !subject || !message) {
-      return new NextResponse(JSON.stringify({ error: 'Todos los campos son requeridos.' }), { status: 400 });
+      return new NextResponse(JSON.stringify({ error: 'Todos los campos son requeridos.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     const notificationData = {
@@ -27,6 +27,11 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Contact Form API Error:', error);
-    return new NextResponse(JSON.stringify({ error: 'No se pudo enviar el mensaje.', details: error.message }), { status: 500 });
+    let errorMessage = 'No se pudo enviar el mensaje.';
+    // Attempt to provide a more specific error message if available
+    if (error.message.includes('FIREBASE_SERVICE_ACCOUNT_KEY')) {
+        errorMessage = "Error de configuración del servidor. Contacte al administrador.";
+    }
+    return new NextResponse(JSON.stringify({ error: errorMessage, details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
 }

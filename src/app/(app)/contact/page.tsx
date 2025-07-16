@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, MapPin, Phone, Send, Loader2 } from "lucide-react";
+import { Mail, Phone, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -50,9 +50,10 @@ export default function ContactPage() {
             body: JSON.stringify(values),
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "No se pudo enviar el mensaje.");
+            throw new Error(result.error || "No se pudo enviar el mensaje.");
         }
 
         toast({
@@ -196,4 +197,3 @@ export default function ContactPage() {
       </section>
     </div>
   );
-}

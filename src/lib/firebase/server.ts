@@ -2,11 +2,12 @@
 import admin from 'firebase-admin';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
 
-// Esta función inicializa la app de admin BAJO DEMANDA.
-// Se ejecuta solo cuando la API es llamada, no durante la compilación.
+let adminApp: admin.app.App;
+
+// Esta función inicializa la app de admin BAJO DEMANDA y de forma segura (singleton).
 function initializeAdminApp() {
   if (getApps().length > 0) {
-    return admin.app();
+    return getApps()[0];
   }
 
   const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
@@ -22,12 +23,20 @@ function initializeAdminApp() {
     });
   } catch (error: any) {
     console.error("Error al parsear FIREBASE_SERVICE_ACCOUNT_KEY:", error.message);
-    throw new Error("El formato de FIREBASE_SERVICE_ACCOUNT_KEY es inválido.");
+    throw new Error("El formato de FIREBASE_SERVICE_ACCOUNT_KEY es inválido. Asegúrate de que sea un string JSON válido sin saltos de línea.");
   }
 }
 
-// Inicializa la app una vez y expone los servicios
-const adminApp = initializeAdminApp();
+try {
+  adminApp = initializeAdminApp();
+} catch (error: any) {
+    console.error("Fallo crítico en la inicialización de Firebase Admin:", error.message);
+    // En un escenario real, aquí se podría notificar a un servicio de monitoreo.
+    // Para evitar que la app crashee por completo si se usa este módulo en un contexto no-API,
+    // se puede manejar de forma más controlada, pero para las API routes, el error debe propagarse.
+    throw error;
+}
+
 const db = admin.firestore();
 const storage = admin.storage();
 const auth = admin.auth();
