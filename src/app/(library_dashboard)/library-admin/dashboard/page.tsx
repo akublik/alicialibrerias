@@ -167,9 +167,9 @@ export default function LibraryAdminDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 animate-fadeIn">
-      <header className="mb-8 flex flex-col sm:flex-row items-center gap-4">
+      <header className="mb-8 flex flex-col sm:flex-row items-center gap-6">
        {libraryImageUrl && (
-         <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md border-2 border-primary/20 flex-shrink-0">
+         <div className="relative w-24 h-24 rounded-md overflow-hidden shadow-md border-2 border-primary/20 flex-shrink-0 bg-muted">
            <Image
              src={libraryImageUrl}
              alt={`Logo de ${libraryName}`}

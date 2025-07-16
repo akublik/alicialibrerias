@@ -287,9 +287,8 @@ export default function LibraryPageClient() {
       </Link>
 
       <header className="mb-8 md:mb-12">
-        <div className="flex flex-col sm:flex-row items-center gap-6">
-          <div className="relative w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden shadow-md border-4 border-primary/20 flex-shrink-0">
-            {imageUrl && (
+        <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg bg-muted">
+           {imageUrl && (
               <Image
                 src={imageUrl}
                 alt={`Logo de ${name}`}
@@ -299,28 +298,26 @@ export default function LibraryPageClient() {
                 data-ai-hint={dataAiHint || 'library logo'}
               />
             )}
-          </div>
-          <div className="flex-grow text-center sm:text-left w-full">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary mb-1">{name}</h1>
-                <p className="text-lg text-foreground/80 flex items-center justify-center sm:justify-start">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute bottom-0 left-0 p-6">
+                <h1 className="font-headline text-3xl md:text-5xl font-bold text-white shadow-2xl">{name}</h1>
+                 <p className="text-lg text-white/90 flex items-center mt-2">
                   <MapPin className="mr-2 h-5 w-5" /> {location}
                 </p>
-              </div>
-              <Button onClick={toggleFavorite} variant="outline" size="lg" className="shrink-0 font-body">
-                <Heart className={cn("mr-2 h-5 w-5", isFavorite && "fill-primary text-primary")} />
-                {isFavorite ? 'Favorita' : 'Agregar a Favoritos'}
-              </Button>
             </div>
-          </div>
+             <div className="absolute top-4 right-4">
+                 <Button onClick={toggleFavorite} variant="secondary" size="lg" className="shrink-0 font-body shadow-md">
+                    <Heart className={cn("mr-2 h-5 w-5", isFavorite && "fill-primary text-primary")} />
+                    {isFavorite ? 'Favorita' : 'Agregar a Favoritos'}
+                </Button>
+            </div>
         </div>
       </header>
 
       {description && (
         <Card className="mb-8 md:mb-12 shadow-lg">
           <CardContent className="p-6">
-            <p className="text-foreground/90 leading-relaxed">{description}</p>
+            <p className="text-foreground/90 leading-relaxed text-center text-lg">{description}</p>
           </CardContent>
         </Card>
       )}

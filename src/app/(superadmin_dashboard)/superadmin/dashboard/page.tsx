@@ -289,7 +289,9 @@ export default function SuperAdminDashboardPage() {
                                   <TableRow key={lib.id}>
                                       <TableCell>
                                           <div className="flex items-center gap-3">
-                                              <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                              <div className="relative w-10 h-10 rounded-md overflow-hidden bg-muted">
+                                                <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} layout="fill" objectFit="cover"/>
+                                              </div>
                                               <span className="font-medium">{lib.name}</span>
                                           </div>
                                       </TableCell>
@@ -377,7 +379,9 @@ export default function SuperAdminDashboardPage() {
                           <TableRow key={lib.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                <div className="relative w-8 h-8 rounded-md overflow-hidden bg-muted">
+                                    <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} layout="fill" objectFit="cover"/>
+                                </div>
                                 <span className="font-medium">{lib.name}</span>
                               </div>
                             </TableCell>
@@ -405,7 +409,9 @@ export default function SuperAdminDashboardPage() {
                           <TableRow key={reader.userId}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <Image src={reader.avatarUrl || 'https://placehold.co/40x40.png'} alt={`Avatar de ${reader.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                 <div className="relative w-8 h-8 rounded-full overflow-hidden bg-muted">
+                                    <Image src={reader.avatarUrl || 'https://placehold.co/40x40.png'} alt={`Avatar de ${reader.name}`} layout="fill" objectFit="cover"/>
+                                </div>
                                 <span className="font-medium">{reader.name}</span>
                               </div>
                             </TableCell>
@@ -433,7 +439,9 @@ export default function SuperAdminDashboardPage() {
                           <TableRow key={lib.id}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} width={40} height={40} className="rounded-full object-cover"/>
+                                 <div className="relative w-8 h-8 rounded-md overflow-hidden bg-muted">
+                                     <Image src={lib.imageUrl || 'https://placehold.co/40x40.png'} alt={`Logo de ${lib.name}`} layout="fill" objectFit="cover"/>
+                                 </div>
                                 <span className="font-medium">{lib.name}</span>
                               </div>
                             </TableCell>
@@ -461,7 +469,9 @@ export default function SuperAdminDashboardPage() {
                           <TableRow key={book.bookId}>
                             <TableCell>
                               <div className="flex items-center gap-3">
-                                <Image src={book.imageUrl || 'https://placehold.co/40x40.png'} alt={`Portada de ${book.title}`} width={30} height={45} className="rounded-sm object-cover"/>
+                                 <div className="relative w-8 h-12 rounded-sm overflow-hidden bg-muted">
+                                    <Image src={book.imageUrl || 'https://placehold.co/40x40.png'} alt={`Portada de ${book.title}`} layout="fill" objectFit="cover"/>
+                                 </div>
                                 <span className="font-medium line-clamp-1">{book.title}</span>
                               </div>
                             </TableCell>
