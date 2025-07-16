@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp, getDocs, documentId, orderBy, limit } from "firebase/firestore";
 import { format } from 'date-fns';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -95,13 +95,12 @@ export default function DashboardPage() {
   });
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("aliciaLibros_user");
-    setIsAuthenticated(false);
-    setUser(null);
-    if (typeof window !== "undefined") {
-      router.push("/");
+    if (auth) {
+      auth.signOut();
     }
+    // The onAuthStateChanged listener in Navbar will handle the rest:
+    // clearing localStorage and redirecting.
+    router.push("/");
   };
 
   const wishlistedBooks = useMemo(() => {
@@ -795,5 +794,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
