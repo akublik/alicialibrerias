@@ -1,21 +1,37 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Regla para la colección 'notifications'
-    // Permite que cualquier usuario (autenticado o no) cree (escriba) un nuevo
-    // documento en la colección 'notifications'.
-    // No se permite la lectura, actualización o eliminación desde el cliente.
-    match /notifications/{notificationId} {
-      allow read, update, delete: if false;
-      allow create: if true;
+    
+    // Regla de seguridad predeterminada: Nadie puede leer o escribir por defecto.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    
+    // Permite que cualquiera lea los libros, librerías y autores.
+    match /books/{bookId} {
+      allow read: if true;
+    }
+    
+    match /libraries/{libraryId} {
+      allow read: if true;
     }
 
-    // Regla por defecto para el resto de las colecciones.
-    // Deniega la lectura y escritura a menos que se especifique otra regla.
-    match /{document=**} {
+    match /authors/{authorId} {
+      allow read: if true;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+    }
+    
+    // Permite a cualquier usuario registrado registrarse en un evento.
+    match /eventRegistrations/{registrationId} {
+        allow create: if request.auth != null;
+    }
+
+    // Unauthenticated users cannot write to the notifications collection.
+    // This will be handled by the Admin SDK on the server-side API route.
+    match /notifications/{notificationId} {
       allow read, write: if false;
     }
   }
