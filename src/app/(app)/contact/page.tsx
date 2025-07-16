@@ -51,8 +51,9 @@ export default function ContactPage() {
         });
 
         if (!response.ok) {
-            const result = await response.json().catch(() => ({ error: "Error de respuesta del servidor." }));
-            throw new Error(result.error || "No se pudo enviar el mensaje.");
+            // Attempt to parse error message from the server response
+            const result = await response.json().catch(() => ({ error: "Error de respuesta del servidor. No se pudo obtener el detalle." }));
+            throw new Error(result.error || "No se pudo enviar el mensaje. Inténtalo de nuevo.");
         }
 
         toast({
@@ -63,6 +64,7 @@ export default function ContactPage() {
         form.reset();
 
     } catch (error: any) {
+        console.error("Contact Form Submit Error:", error);
         toast({
             title: "Error al Enviar",
             description: error.message,
