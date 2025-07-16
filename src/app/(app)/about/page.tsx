@@ -8,6 +8,8 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AboutUsContent } from '@/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 
 const iconMap: { [key: string]: React.ElementType } = {
   BookHeart,
@@ -138,40 +140,48 @@ export default function AboutPage() {
       </section>
       
       <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">{content.featuresTitle}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="font-headline text-2xl text-primary flex items-center gap-2"><BookOpen className="h-6 w-6"/>Para Librerías</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                  {(content.featuresForLibraries || []).map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
-                      <span className="text-foreground/80">{item.feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-            <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="font-headline text-2xl text-primary flex items-center gap-2"><Users className="h-6 w-6"/>Para Lectores</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3">
-                   {(content.featuresForReaders || []).map((item, index) => (
-                    <li key={index} className="flex items-start gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
-                      <span className="text-foreground/80">{item.feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+        <div className="container mx-auto px-4 max-w-4xl">
+          <h2 className="font-headline text-3xl font-semibold text-center mb-10 text-foreground">
+            {content.featuresTitle}
+          </h2>
+          <Tabs defaultValue="libraries" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/50 p-1 h-auto">
+              <TabsTrigger value="libraries" className="py-2.5 font-body text-sm flex items-center justify-center gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
+                <BookOpen className="h-5 w-5"/>Para Librerías
+              </TabsTrigger>
+              <TabsTrigger value="readers" className="py-2.5 font-body text-sm flex items-center justify-center gap-2 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
+                <Users className="h-5 w-5"/>Para Lectores
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="libraries">
+              <Card className="shadow-md">
+                <CardContent className="p-6">
+                  <ul className="space-y-3">
+                    {(content.featuresForLibraries || []).map((item, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
+                        <span className="text-foreground/80">{item.feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="readers">
+              <Card className="shadow-md">
+                <CardContent className="p-6">
+                  <ul className="space-y-3">
+                    {(content.featuresForReaders || []).map((item, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
+                        <span className="text-foreground/80">{item.feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
 
