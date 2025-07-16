@@ -211,15 +211,15 @@ export interface AboutUsContent {
   headerDataAiHint: string;
   missionTitle: string;
   missionParagraph1: string;
-  missionParagraph2: string;
+  missionParagraph2?: string;
   missionImageUrl: string;
   missionDataAiHint: string;
   featuresTitle: string;
   featuresForLibraries: FeatureListItem[];
   featuresForReaders: FeatureListItem[];
-  team: AboutUsTeamMember[];
-  whyUsTitle: string;
-  benefits: AboutUsBenefit[];
+  team?: AboutUsTeamMember[];
+  whyUsTitle?: string;
+  benefits?: AboutUsBenefit[];
 }
 
 export interface BookRequest {

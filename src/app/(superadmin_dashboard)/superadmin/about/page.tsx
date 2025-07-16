@@ -41,14 +41,13 @@ const aboutUsFormSchema = z.object({
   headerDataAiHint: z.string().optional(),
   missionTitle: z.string().min(3, "El título de misión es requerido."),
   missionParagraph1: z.string().min(10, "El primer párrafo es requerido."),
-  missionParagraph2: z.string().min(10, "El segundo párrafo es requerido."),
+  missionParagraph2: z.string().optional(),
   missionImageUrl: z.string().url("URL de imagen no válida.").or(z.literal('')),
   missionDataAiHint: z.string().optional(),
   featuresTitle: z.string().min(3, "El título de la sección de funcionalidades es requerido."),
   featuresForLibraries: z.array(featureListItemSchema).optional(),
   featuresForReaders: z.array(featureListItemSchema).optional(),
   team: z.array(teamMemberSchema).optional(),
-  // whyUsTitle and benefits are kept for backwards compatibility but not shown in UI anymore
   whyUsTitle: z.string().optional(),
   benefits: z.array(benefitSchema).optional(),
 });
@@ -70,8 +69,8 @@ export default function ManageAboutPage() {
       headerImageUrl: "",
       headerDataAiHint: "",
       missionTitle: "Nuestra Misión",
-      missionParagraph1: "Conectar a lectores de todo el mundo con la riqueza y diversidad de las librerías independientes de Latinoamérica, fortaleciendo la cultura local y el amor por la lectura.",
-      missionParagraph2: "A través de una plataforma tecnológica intuitiva, ofrecemos a las librerías las herramientas para prosperar en el mundo digital y a los lectores una puerta de entrada para descubrir, comprar y vivir nuevas historias.",
+      missionParagraph1: "",
+      missionParagraph2: "",
       missionImageUrl: "",
       missionDataAiHint: "",
       featuresTitle: "Beneficios y Funcionalidades de la Plataforma",
@@ -108,8 +107,8 @@ export default function ManageAboutPage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as Partial<AboutUsFormValues>;
           const formValues: AboutUsFormValues = {
-            headerTitle: data.headerTitle || "",
-            headerSubtitle: data.headerSubtitle || "",
+            headerTitle: data.headerTitle || "Bienvenido a Alicia Libros",
+            headerSubtitle: data.headerSubtitle || "Tu portal al universo de las librerías independientes.",
             headerImageUrl: data.headerImageUrl || "",
             headerDataAiHint: data.headerDataAiHint || "",
             missionTitle: data.missionTitle || "Nuestra Misión",
@@ -174,8 +173,8 @@ export default function ManageAboutPage() {
             <CardHeader><CardTitle>Sección de Misión</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <FormField control={form.control} name="missionTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Misión</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="missionParagraph1" render={({ field }) => ( <FormItem><FormLabel>Párrafo 1</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="missionParagraph2" render={({ field }) => ( <FormItem><FormLabel>Párrafo 2</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionParagraph1" render={({ field }) => ( <FormItem><FormLabel>Párrafo 1 (Obligatorio)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="missionParagraph2" render={({ field }) => ( <FormItem><FormLabel>Párrafo 2 (Opcional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} rows={4} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="missionImageUrl" render={({ field }) => ( <FormItem><FormLabel>URL Imagen de la Misión</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="missionDataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (Misión)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
             </CardContent>
@@ -221,7 +220,7 @@ export default function ManageAboutPage() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Sección de Equipo</CardTitle>
+                <CardTitle>Sección de Equipo (Opcional)</CardTitle>
                 <Button type="button" variant="outline" onClick={() => appendTeamMember({ name: '', role: '', imageUrl: '', dataAiHint: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Miembro</Button>
               </div>
             </CardHeader>

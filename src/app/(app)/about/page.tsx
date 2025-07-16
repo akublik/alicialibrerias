@@ -86,13 +86,13 @@ export default function AboutPage() {
               headerDataAiHint: data.headerDataAiHint || defaultContent.headerDataAiHint,
               missionTitle: data.missionTitle || defaultContent.missionTitle,
               missionParagraph1: data.missionParagraph1 || defaultContent.missionParagraph1,
-              missionParagraph2: data.missionParagraph2 || defaultContent.missionParagraph2,
+              missionParagraph2: data.missionParagraph2 || "", // Set to empty string if not present
               missionImageUrl: data.missionImageUrl || defaultContent.missionImageUrl,
               missionDataAiHint: data.missionDataAiHint || defaultContent.missionDataAiHint,
               featuresTitle: data.featuresTitle || defaultContent.featuresTitle,
               featuresForLibraries: data.featuresForLibraries && data.featuresForLibraries.length > 0 ? data.featuresForLibraries : defaultContent.featuresForLibraries,
               featuresForReaders: data.featuresForReaders && data.featuresForReaders.length > 0 ? data.featuresForReaders : defaultContent.featuresForReaders,
-              team: data.team && data.team.length > 0 ? data.team : defaultContent.team,
+              team: data.team && data.team.length > 0 ? data.team : [], // Set to empty array if not present
               whyUsTitle: data.whyUsTitle || defaultContent.whyUsTitle,
               benefits: data.benefits && data.benefits.length > 0 ? data.benefits : defaultContent.benefits,
           };
@@ -148,9 +148,11 @@ export default function AboutPage() {
               <p className="text-lg text-foreground/70 mb-4 leading-relaxed">
                 {content.missionParagraph1}
               </p>
-              <p className="text-lg text-foreground/70 leading-relaxed">
-                {content.missionParagraph2}
-              </p>
+              {content.missionParagraph2 && (
+                <p className="text-lg text-foreground/70 leading-relaxed">
+                  {content.missionParagraph2}
+                </p>
+              )}
             </div>
             <div className="relative aspect-video rounded-lg overflow-hidden shadow-xl">
                 <Image src={content.missionImageUrl} alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint={content.missionDataAiHint} />
@@ -203,24 +205,26 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Nuestro Equipo</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {content.team.map((member) => (
-              <Card key={member.name} className="text-center overflow-hidden shadow-md hover:shadow-xl transition-shadow">
-                <div className="relative w-full h-56 bg-gray-200">
-                     <Image src={member.imageUrl || 'https://placehold.co/200x200.png'} alt={member.name} layout="fill" objectFit="cover" data-ai-hint={member.dataAiHint}/>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-headline text-xl font-medium text-foreground">{member.name}</h3>
-                  <p className="text-sm text-primary font-semibold">{member.role}</p>
-                </div>
-              </Card>
-            ))}
+      {content.team && content.team.length > 0 && (
+        <section className="py-16 bg-background">
+          <div className="container mx-auto px-4">
+            <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Nuestro Equipo</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+              {content.team.map((member) => (
+                <Card key={member.name} className="text-center overflow-hidden shadow-md hover:shadow-xl transition-shadow">
+                  <div className="relative w-full h-56 bg-gray-200">
+                      <Image src={member.imageUrl || 'https://placehold.co/200x200.png'} alt={member.name} layout="fill" objectFit="cover" data-ai-hint={member.dataAiHint}/>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="font-headline text-xl font-medium text-foreground">{member.name}</h3>
+                    <p className="text-sm text-primary font-semibold">{member.role}</p>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
