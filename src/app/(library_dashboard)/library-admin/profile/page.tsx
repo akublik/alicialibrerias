@@ -27,8 +27,8 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { Library } from "@/types";
 
-const isValidJson = (value: string) => {
-  if (!value) return true; // an empty string is valid
+const isValidJson = (value: string | undefined): boolean => {
+  if (!value) return true; // An empty string or undefined is valid
   try {
     JSON.parse(value);
   } catch (e) {
