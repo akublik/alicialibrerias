@@ -287,21 +287,22 @@ export default function LibraryPageClient() {
       </Link>
 
       <header className="mb-8 md:mb-12">
-        <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg bg-muted">
+        <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden shadow-lg bg-muted flex justify-center items-center p-4">
            {imageUrl && (
               <Image
                 src={imageUrl}
                 alt={`Logo de ${name}`}
-                layout="fill"
-                objectFit="cover"
+                width={300}
+                height={150}
+                className="object-contain h-full w-auto"
                 priority
                 data-ai-hint={dataAiHint || 'library logo'}
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
             <div className="absolute bottom-0 left-0 p-6">
-                <h1 className="font-headline text-3xl md:text-5xl font-bold text-white shadow-2xl">{name}</h1>
-                 <p className="text-lg text-white/90 flex items-center mt-2">
+                <h1 className="font-headline text-3xl md:text-5xl font-bold text-white shadow-2xl" style={{textShadow: '1px 1px 3px rgba(0,0,0,0.7)'}}>{name}</h1>
+                 <p className="text-lg text-white/90 flex items-center mt-2" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.7)'}}>
                   <MapPin className="mr-2 h-5 w-5" /> {location}
                 </p>
             </div>
