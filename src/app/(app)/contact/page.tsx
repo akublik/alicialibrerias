@@ -50,9 +50,8 @@ export default function ContactPage() {
             body: JSON.stringify(values),
         });
 
-        const result = await response.json();
-
         if (!response.ok) {
+            const result = await response.json().catch(() => ({ error: "Error de respuesta del servidor." }));
             throw new Error(result.error || "No se pudo enviar el mensaje.");
         }
 
@@ -72,7 +71,7 @@ export default function ContactPage() {
     } finally {
         setIsLoading(false);
     }
-}
+  }
 
   return (
     <div className="animate-fadeIn">
@@ -197,3 +196,4 @@ export default function ContactPage() {
       </section>
     </div>
   );
+}
