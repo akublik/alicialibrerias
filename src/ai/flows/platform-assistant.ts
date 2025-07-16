@@ -82,10 +82,10 @@ export async function converseWithPlatformAssistant(history: ChatMessage[]): Pro
         console.error("Error Message:", e.message);
         console.error("----------------------------------------------------------");
         
-        if (e.message && e.message.includes('GOOGLE_API_KEY')) {
-            return "Lo siento, la función de asistente no está disponible en este momento por un problema de configuración.";
+        if (e.message && e.message.includes('API key')) {
+            return "Lo siento, la función de asistente no está disponible en este momento por un problema de configuración de la clave API.";
         }
         
-        return `Lo siento, he tenido un problema y no puedo responder ahora mismo.`;
+        return `Lo siento, he tenido un problema y no puedo responder ahora mismo. (Error: ${e.message})`;
     }
 }

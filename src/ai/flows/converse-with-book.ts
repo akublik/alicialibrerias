@@ -64,10 +64,10 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Error object:", JSON.stringify(e, null, 2));
         console.error("----------------------------------------------------------");
         
-        if (e.message && e.message.includes('GOOGLE_API_KEY')) {
-             return "Lo siento, la función de chat sobre el libro no está disponible en este momento por un problema de configuración.";
+        if (e.message && e.message.includes('API key')) {
+             return "Lo siento, la función de chat sobre el libro no está disponible en este momento por un problema de configuración de la clave API.";
         }
 
-        return `Lo siento, he tenido un problema y no puedo responder ahora mismo.`;
+        return `Lo siento, he tenido un problema y no puedo responder ahora mismo. (Error: ${e.message})`;
     }
 }
