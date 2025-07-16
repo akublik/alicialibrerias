@@ -23,6 +23,54 @@ import Papa from 'papaparse';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
+type Rule = {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'gt' | 'lt';
+  value: any;
+};
+
+const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
+  if (rules.length === 0) return true;
+
+  for (const rule of rules) {
+    const rowValue = row[rule.field];
+
+    if (rowValue === undefined || rowValue === null) return false;
+
+    const rowValueStr = String(rowValue).toLowerCase();
+    const ruleValueStr = String(rule.value).toLowerCase();
+    
+    let conditionMet = false;
+    switch (rule.operator) {
+      case 'equals':
+        conditionMet = rowValueStr === ruleValueStr;
+        break;
+      case 'not_equals':
+        conditionMet = rowValueStr !== ruleValueStr;
+        break;
+      case 'contains':
+        conditionMet = rowValueStr.includes(ruleValueStr);
+        break;
+      case 'gt':
+        conditionMet = Number(rowValue) > Number(rule.value);
+        break;
+      case 'lt':
+        conditionMet = Number(rowValue) < Number(rule.value);
+        break;
+      default:
+        // Unknown operator fails the check
+        conditionMet = false;
+    }
+    
+    if (!conditionMet) {
+      return false; // If any rule fails, the row is rejected
+    }
+  }
+
+  return true; // All rules passed
+};
+
+
 export default function LibraryBooksPage() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +79,7 @@ export default function LibraryBooksPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
   const [libraryId, setLibraryId] = useState<string | null>(null);
+  const [libraryImportRules, setLibraryImportRules] = useState<Rule[]>([]);
 
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -55,6 +104,18 @@ export default function LibraryBooksPage() {
     const userData = JSON.parse(userDataString);
     const currentLibraryId = userData.libraryId;
     setLibraryId(currentLibraryId);
+
+    const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
+    if (libraryDataString) {
+        try {
+            const libraryData = JSON.parse(libraryDataString);
+            if (libraryData.importRules) {
+                setLibraryImportRules(JSON.parse(libraryData.importRules));
+            }
+        } catch (e) {
+            console.error("Could not parse library import rules", e);
+        }
+    }
     
     if (!currentLibraryId) {
       setIsLoading(false);
@@ -170,21 +231,6 @@ export default function LibraryBooksPage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
-  const handleDownloadTemplate = () => {
-      const header = "title,authors,isbn,price,stock,description,categories,tags,isFeatured,pageCount,coverType,publisher,condition,imageUrl";
-      const example = `"Cien Años de Soledad","Gabriel García Márquez",9780307474728,15.99,25,"La novela narra...","Realismo Mágico,Novela","Clásico,Colombia",TRUE,417,"Tapa Blanda",Sudamericana,"Nuevo","https://ejemplo.com/portada.jpg"`;
-      const csvContent = `${header}\n${example}`;
-      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "plantilla_importacion_libros.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-  };
   
   const handleDownloadNewTemplate = () => {
       const header = "pvp,moneda,formato,tipo_notificacion,isbn13,alto,ancho,peso,titulo,edicion,idioma_edicion,paginas,resumen,imagen_tapa,editor,pais_edicion,fecha_publicacion,codigo_bmg,autor,colección,sello,clasificacion";
@@ -232,16 +278,6 @@ export default function LibraryBooksPage() {
            return;
         }
         
-        const headers = results.meta.fields;
-        if (!headers) {
-          toast({ title: "Error de CSV", description: "El archivo no tiene encabezados.", variant: "destructive" });
-          setIsImporting(false);
-          return;
-        }
-        
-        const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
-        const isNewFormat = normalizedHeaders.includes('pvp');
-
         const booksCollectionRef = collection(db, "books");
         const validationErrors: string[] = [];
         let booksToProcess = 0;
@@ -249,56 +285,51 @@ export default function LibraryBooksPage() {
         
         for (const row of results.data) {
           try {
-            if (isNewFormat) {
-              if (row.pais_edicion && row.pais_edicion.trim().toUpperCase() !== 'ES') {
-                  continue; // Filtro por pais_edicion
-              }
-              const isbn = row.isbn13 ? row.isbn13.trim() : null;
-              if (!isbn) {
-                  validationErrors.push(`Fila ${booksToProcess + 2}: Falta ISBN. El libro será omitido.`);
-                  continue;
-              }
-              booksToProcess++;
-
-              const bookData = {
-                  title: row.titulo || 'Sin Título',
-                  authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
-                  price: parseFloat(row.pvp) || 0,
-                  stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
-                  isbn: isbn,
-                  description: row.resumen || '',
-                  categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
-                  tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
-                  imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.titulo || 'Libro')}`,
-                  pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
-                  coverType: row.formato || null,
-                  publisher: row.editor || row.sello || null,
-                  condition: 'Nuevo' as const,
-                  format: 'Físico' as const,
-                  libraryId: libraryId,
-                  libraryName: libraryName,
-                  libraryLocation: libraryLocation,
-                  status: 'published' as const,
-                  updatedAt: serverTimestamp(),
-              };
-
-              const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn), limit(1));
-              const existingBookSnapshot = await getDocs(existingBookQuery);
-
-              if (!existingBookSnapshot.empty) {
-                  // Update existing book
-                  const bookDoc = existingBookSnapshot.docs[0];
-                  await updateDoc(doc(db, "books", bookDoc.id), bookData);
-              } else {
-                  // Create new book
-                  await addDoc(booksCollectionRef, { ...bookData, createdAt: serverTimestamp() });
-              }
-            } else {
-              // Handle old format if necessary
-               validationErrors.push(`Fila ${booksToProcess + 2}: Formato de CSV no reconocido. Utiliza la plantilla "Formato B".`);
-               continue;
+            if (!applyRules(row, libraryImportRules)) {
+              continue; // Skip row if it doesn't match rules
             }
-             booksProcessed++;
+            
+            const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
+            if (!isbn) {
+                validationErrors.push(`Fila ${booksToProcess + 2}: Falta ISBN. El libro será omitido.`);
+                continue;
+            }
+            booksToProcess++;
+
+            const bookData = {
+                title: row.titulo || 'Sin Título',
+                authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
+                price: parseFloat(row.pvp) || 0,
+                stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
+                isbn: isbn,
+                description: row.resumen || '',
+                categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
+                tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
+                imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.titulo || 'Libro')}`,
+                pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
+                coverType: row.formato || null,
+                publisher: row.editor || row.sello || null,
+                condition: 'Nuevo' as const,
+                format: 'Físico' as const,
+                libraryId: libraryId,
+                libraryName: libraryName,
+                libraryLocation: libraryLocation,
+                status: 'published' as const,
+                updatedAt: serverTimestamp(),
+            };
+
+            const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn), limit(1));
+            const existingBookSnapshot = await getDocs(existingBookQuery);
+
+            if (!existingBookSnapshot.empty) {
+                // Update existing book
+                const bookDoc = existingBookSnapshot.docs[0];
+                await updateDoc(doc(db, "books", bookDoc.id), bookData);
+            } else {
+                // Create new book
+                await addDoc(booksCollectionRef, { ...bookData, createdAt: serverTimestamp() });
+            }
+            booksProcessed++;
           } catch (e: any) {
               validationErrors.push(`Fila ${booksToProcess + 2}: Error al procesar - ${e.message}`);
           }
@@ -359,15 +390,11 @@ export default function LibraryBooksPage() {
                         <Card>
                             <CardHeader className="p-4"><CardTitle className="text-base">Instrucciones</CardTitle></CardHeader>
                             <CardContent className="p-4 pt-0 text-sm space-y-2">
-                                <p>1. La importación **sobrescribirá** los libros existentes que coincidan por **ISBN**.</p>
-                                <p>2. Se importarán únicamente los libros con `pais_edicion` igual a **'ES'**.</p>
-                                <p>3. Descarga la plantilla para asegurar que el formato es correcto.</p>
+                                <p>1. La importación **sobrescribirá** los libros existentes que coincidan por **ISBN**. Las filas sin ISBN serán omitidas.</p>
+                                <p>2. Se aplicarán las reglas de importación definidas en tu perfil de librería.</p>
                                 <div className="flex gap-4">
-                                    <Button variant="link" className="p-0 h-auto" onClick={handleDownloadTemplate}>
-                                        <FileText className="mr-2 h-4 w-4"/> Plantilla Estándar
-                                    </Button>
                                     <Button variant="link" className="p-0 h-auto" onClick={handleDownloadNewTemplate}>
-                                        <FileText className="mr-2 h-4 w-4"/> Plantilla Formato B
+                                        <FileText className="mr-2 h-4 w-4"/> Descargar plantilla (Formato B)
                                     </Button>
                                 </div>
                             </CardContent>

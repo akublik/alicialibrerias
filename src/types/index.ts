@@ -57,6 +57,7 @@ export interface Library {
   tiktok?: string;
   isActive?: boolean;
   createdAt?: any; // Firestore Timestamp
+  importRules?: string; // JSON string with import rules
 }
 
 export interface User {

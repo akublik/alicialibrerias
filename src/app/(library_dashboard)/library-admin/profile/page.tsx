@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -17,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Store, Save, ImagePlus, Share2 } from "lucide-react";
+import { Loader2, Store, Save, ImagePlus, Share2, Cog } from "lucide-react";
 import Image from 'next/image';
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,16 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { Library } from "@/types";
+
+const isValidJson = (value: string) => {
+  if (!value) return true; // an empty string is valid
+  try {
+    JSON.parse(value);
+  } catch (e) {
+    return false;
+  }
+  return true;
+};
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -37,6 +48,7 @@ const profileFormSchema = z.object({
   instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
   facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
   tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
+  importRules: z.string().optional().refine(isValidJson, { message: "El texto no es un JSON válido." }),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -61,6 +73,7 @@ export default function LibraryProfilePage() {
       instagram: "",
       facebook: "",
       tiktok: "",
+      importRules: "",
     },
   });
 
@@ -104,6 +117,7 @@ export default function LibraryProfilePage() {
             instagram: libraryData.instagram || '',
             facebook: libraryData.facebook || '',
             tiktok: libraryData.tiktok || '',
+            importRules: libraryData.importRules ? JSON.stringify(JSON.parse(libraryData.importRules), null, 2) : '',
           });
         } else {
           toast({ title: "Error", description: "No se encontró el perfil de la librería.", variant: "destructive" });
@@ -135,6 +149,7 @@ export default function LibraryProfilePage() {
           instagram: values.instagram || '',
           facebook: values.facebook || '',
           tiktok: values.tiktok || '',
+          importRules: values.importRules || '',
       };
 
       await updateDoc(libraryRef, updatedData);
@@ -142,9 +157,8 @@ export default function LibraryProfilePage() {
       const oldLibraryData = JSON.parse(localStorage.getItem("aliciaLibros_registeredLibrary") || "{}");
       localStorage.setItem("aliciaLibros_registeredLibrary", JSON.stringify({
           ...oldLibraryData,
+          ...updatedData,
           id: library.id,
-          name: values.name,
-          imageUrl: updatedData.imageUrl,
       }));
 
       toast({
@@ -189,7 +203,7 @@ export default function LibraryProfilePage() {
         <Store className="mr-3 h-8 w-8 text-primary"/>
         <div>
            <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">Perfil de la Librería</h1>
-           <p className="text-lg text-foreground/80">Actualiza la información pública de tu librería.</p>
+           <p className="text-lg text-foreground/80">Actualiza la información pública y la configuración de tu librería.</p>
         </div>
       </div>
       
@@ -221,10 +235,42 @@ export default function LibraryProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField control={form.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>URL de Instagram</FormLabel><FormControl><Input placeholder="https://instagram.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>URL de Facebook</FormLabel><FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>URL de Facebook</FormLabel><FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormMessage> )} />
                 <FormField control={form.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>URL de TikTok</FormLabel><FormControl><Input placeholder="https://tiktok.com/@tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               </CardContent>
             </Card>
+            
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Cog className="h-5 w-5"/>Configuración de Importación CSV</CardTitle>
+                    <CardDescription>Define reglas en formato JSON para filtrar los libros durante la importación masiva.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <FormField
+                        control={form.control}
+                        name="importRules"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Reglas de Importación (JSON)</FormLabel>
+                                <FormControl>
+                                    <Textarea
+                                        placeholder='[&#10;  { "field": "pais_edicion", "operator": "equals", "value": "ES" },&#10;  { "field": "idioma_edicion", "operator": "not_equals", "value": "BR" },&#10;  { "field": "pvp", "operator": "gt", "value": "5.00" }&#10;]'
+                                        {...field}
+                                        value={field.value || ''}
+                                        rows={8}
+                                        className="font-mono text-xs"
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Usa JSON para definir un array de reglas. Operadores válidos: `equals`, `not_equals`, `contains`, `gt` (mayor que), `lt` (menor que).
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+
           </div>
 
           <div className="space-y-6">
