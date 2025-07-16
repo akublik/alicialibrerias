@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
       createdAt: serverTimestamp(),
     };
 
-    // Corrected to write to the 'inbox' collection.
-    await addDoc(collection(db, 'inbox'), notificationData);
+    // Corrected to write to the 'notifications' collection as defined in firestore.rules
+    await addDoc(collection(db, 'notifications'), notificationData);
 
     return NextResponse.json({ success: true, message: 'Mensaje enviado con éxito.' });
 
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     let errorMessage = 'No se pudo enviar el mensaje.';
     
     if (error.code === 'permission-denied') {
-        errorMessage = "Error de permisos de Firestore. Asegúrate de que tus reglas de seguridad permitan la escritura en la colección 'inbox'.";
+        errorMessage = "Error de permisos de Firestore. Revisa las reglas de seguridad de tu proyecto.";
     }
 
     return new NextResponse(JSON.stringify({ error: errorMessage, details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
