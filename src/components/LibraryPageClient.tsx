@@ -292,8 +292,8 @@ export default function LibraryPageClient() {
         <div className="relative w-full h-48 md:h-64 rounded-lg overflow-hidden bg-card shadow-lg p-4 flex justify-center items-center">
             <div 
               className="absolute inset-0 bg-cover bg-center opacity-30" 
-              style={{ backgroundImage: `url('/images/loyalty-banner.jpg')` }}
-              data-ai-hint="people bookstore"
+              style={{ backgroundImage: `url('/images/library-background.jpg')` }}
+              data-ai-hint="bookstore background"
             ></div>
            {imageUrl && (
               <Image

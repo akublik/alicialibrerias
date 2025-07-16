@@ -76,8 +76,8 @@ export default function LoyaltyProgramPage() {
             <section className="relative py-16 md:py-28 text-white">
                  <div 
                     className="absolute inset-0 bg-cover bg-center opacity-40"
-                    style={{ backgroundImage: "url('/images/loyalty-banner.jpg')" }}
-                    data-ai-hint="people bookstore"
+                    style={{ backgroundImage: "url('/images/library-background.jpg')" }}
+                    data-ai-hint="bookstore background"
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent"></div>
                 <div className="container mx-auto px-4 text-center relative z-10">
