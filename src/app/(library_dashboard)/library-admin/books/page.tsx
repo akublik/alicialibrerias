@@ -11,9 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star, ShoppingCart, Upload, Download, FileText } from "lucide-react";
+import { MoreHorizontal, PlusCircle, BookCopy, Loader2, Edit, Trash2, Eye, EyeOff, Star, ShoppingCart, Upload, Download, FileText, Search, ChevronsDown } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, getDocs, addDoc, serverTimestamp, documentId, limit } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc, writeBatch, getDocs, addDoc, serverTimestamp, documentId } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Book } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,13 +21,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input";
 import Papa from 'papaparse';
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 type Rule = {
   field: string;
   operator: 'equals' | 'not_equals' | 'contains' | 'gt' | 'lt';
   value: any;
 };
+
+const ITEMS_PER_LOAD = 20;
 
 const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
   if (rules.length === 0) return true;
@@ -84,9 +85,10 @@ export default function LibraryBooksPage() {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_LOAD);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     if (!db) {
@@ -141,13 +143,23 @@ export default function LibraryBooksPage() {
     return () => unsubscribe();
   }, []);
   
-  const { currentBooks, totalPages } = useMemo(() => {
-    const indexOfLastBook = currentPage * ITEMS_PER_PAGE;
-    const indexOfFirstBook = indexOfLastBook - ITEMS_PER_PAGE;
-    const currentBooks = books.slice(indexOfFirstBook, indexOfLastBook);
-    const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
-    return { currentBooks, totalPages };
-  }, [books, currentPage]);
+  const filteredBooks = useMemo(() => {
+    if (!searchTerm) return books;
+    const lowercasedTerm = searchTerm.toLowerCase();
+    return books.filter(book => 
+        book.title.toLowerCase().includes(lowercasedTerm) ||
+        book.authors.some(author => author.toLowerCase().includes(lowercasedTerm)) ||
+        (book.isbn && book.isbn.toLowerCase().includes(lowercasedTerm))
+    );
+  }, [books, searchTerm]);
+  
+  const currentBooks = useMemo(() => {
+    return filteredBooks.slice(0, visibleCount);
+  }, [filteredBooks, visibleCount]);
+  
+  useEffect(() => {
+    setVisibleCount(ITEMS_PER_LOAD);
+  }, [searchTerm]);
 
 
   const handleToggleStatus = async (book: Book) => {
@@ -318,7 +330,7 @@ export default function LibraryBooksPage() {
                 updatedAt: serverTimestamp(),
             };
 
-            const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn), limit(1));
+            const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn));
             const existingBookSnapshot = await getDocs(existingBookQuery);
 
             if (!existingBookSnapshot.empty) {
@@ -425,10 +437,22 @@ export default function LibraryBooksPage() {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle>Inventario de Libros</CardTitle>
-            <CardDescription>
-              Mostrando {books.length} libros en tu inventario.
-            </CardDescription>
+            <CardTitle>Inventario de Libros ({filteredBooks.length})</CardTitle>
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                <CardDescription>
+                  Busca y gestiona los libros de tu inventario.
+                </CardDescription>
+                <div className="relative w-full sm:w-auto sm:max-w-xs">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Buscar por título, autor, ISBN..."
+                        className="pl-8"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
               {isLoading ? (
@@ -545,40 +569,19 @@ export default function LibraryBooksPage() {
                     )}) : (
                        <TableRow>
                           <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                              No tienes ningún libro en tu inventario todavía.
+                              {searchTerm ? `No se encontraron libros para "${searchTerm}".` : "No tienes ningún libro en tu inventario todavía."}
                           </TableCell>
                        </TableRow>
                     )}
                   </TableBody>
                 </Table>
-                {totalPages > 1 && (
-                  <Pagination className="mt-6">
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); if(currentPage > 1) setCurrentPage(currentPage - 1); }}
-                          aria-disabled={currentPage === 1}
-                          className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <PaginationItem key={page}>
-                          <PaginationLink href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(page); }} isActive={currentPage === page}>
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-                      ))}
-                      <PaginationItem>
-                        <PaginationNext
-                          href="#"
-                          onClick={(e) => { e.preventDefault(); if(currentPage < totalPages) setCurrentPage(currentPage + 1); }}
-                           aria-disabled={currentPage === totalPages}
-                           className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                {visibleCount < filteredBooks.length && (
+                  <div className="text-center mt-6">
+                    <Button onClick={() => setVisibleCount(prev => prev + ITEMS_PER_LOAD)}>
+                      <ChevronsDown className="mr-2 h-4 w-4" />
+                      Ver más ({filteredBooks.length - visibleCount} restantes)
+                    </Button>
+                  </div>
                 )}
                 </>
               )}
