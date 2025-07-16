@@ -8,8 +8,6 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AboutUsContent, FeatureListItem } from '@/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
 
 const iconMap: { [key: string]: React.ElementType } = {
   BookHeart,
