@@ -2,7 +2,7 @@
 "use client";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info, MailQuestion, LineChart, BookHeart, PenSquare, FileText, Gift, BadgePercent } from 'lucide-react';
+import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info, MailQuestion, LineChart, BookHeart, PenSquare, FileText, Gift, BadgePercent, Inbox } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
@@ -70,6 +70,7 @@ export default function SuperAdminDashboardLayout({
   
   const sidebarNavItems = [
     { title: "Dashboard", href: "/superadmin/dashboard", icon: LayoutDashboard },
+    { title: "Bandeja de Entrada", href: "/superadmin/inbox", icon: Inbox },
     { title: "Gestionar Usuarios", href: "/superadmin/users", icon: Users },
     { title: "Gestionar Librerías", href: "/superadmin/libraries", icon: Store },
     { title: "Gestionar Autores", href: "/superadmin/authors", icon: PenSquare },

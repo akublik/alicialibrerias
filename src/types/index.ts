@@ -298,3 +298,14 @@ export interface Promotion {
   isActive: boolean;
   createdAt: any; // Firestore Timestamp
 }
+
+export interface Notification {
+  id: string;
+  type: 'contact_form' | 'new_order' | 'new_request';
+  fromName: string;
+  fromEmail: string;
+  subject: string;
+  message: string;
+  isRead: boolean;
+  createdAt: any; // Firestore Timestamp
+}

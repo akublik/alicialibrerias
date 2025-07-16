@@ -44,32 +44,31 @@ export default function ContactPage() {
   async function onSubmit(values: z.infer<typeof contactFormSchema>) {
     setIsLoading(true);
     try {
-        const mailtoLink = `mailto:info@estudionet.net?subject=${encodeURIComponent(
-            values.subject
-        )}&body=${encodeURIComponent(
-            `Nombre: ${values.name}\nEmail: ${values.email}\n\nMensaje:\n${values.message}`
-        )}`;
-        
-        // This will attempt to open the user's default email client
-        window.location.href = mailtoLink;
+        const response = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(values),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "No se pudo enviar el mensaje.");
+        }
 
         toast({
-            title: "Abriendo cliente de correo",
-            description: "Por favor, envía el email desde tu aplicación de correo electrónico.",
+            title: "Mensaje Enviado",
+            description: "Gracias por contactarnos. Hemos recibido tu mensaje y te responderemos pronto.",
         });
         
-        // Reset the form after a short delay to allow the mail client to open
-        setTimeout(() => {
-           form.reset();
-           setIsLoading(false);
-        }, 1000);
+        form.reset();
 
-    } catch (error) {
+    } catch (error: any) {
         toast({
-            title: "Error",
-            description: "No se pudo abrir tu cliente de correo. Por favor, envía un email directamente a info@estudionet.net.",
+            title: "Error al Enviar",
+            description: error.message,
             variant: "destructive"
         });
+    } finally {
         setIsLoading(false);
     }
 }
