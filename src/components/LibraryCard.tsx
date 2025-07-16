@@ -19,8 +19,8 @@ export function LibraryCard({ library }: LibraryCardProps) {
                 <Link href={`/libraries/${library.id}`} className="block relative h-40 overflow-hidden bg-card flex justify-center items-center p-4">
                     <div 
                       className="absolute inset-0 bg-cover bg-center opacity-30" 
-                      style={{ backgroundImage: `url('https://alicialectura.com/assets/images/patterns/pattern-1.png')` }}
-                      data-ai-hint="subtle pattern"
+                      style={{ backgroundImage: `url('/images/loyalty-banner.jpg')` }}
+                      data-ai-hint="people bookstore"
                     ></div>
                     <Image
                         src={library.imageUrl}
