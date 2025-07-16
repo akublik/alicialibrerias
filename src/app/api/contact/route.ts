@@ -1,16 +1,46 @@
 // src/app/api/contact/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-// Usaremos la instancia de admin para escribir en la base de datos
-import { db } from '@/lib/firebase/server'; 
+import admin from 'firebase-admin';
+import { getApps, initializeApp, cert } from 'firebase-admin/app';
 import { FieldValue } from 'firebase-admin/firestore';
+
+// Esta función inicializa la app de admin BAJO DEMANDA y de forma segura (singleton).
+// Se ejecuta solo cuando la API es llamada, no durante la compilación.
+function initializeAdminApp() {
+  // Si ya hay apps inicializadas, usamos la primera (evita re-inicialización).
+  if (getApps().length > 0) {
+    return getApps()[0];
+  }
+
+  // Si no hay, procedemos a inicializarla.
+  const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountKey) {
+    throw new Error('La variable de entorno FIREBASE_SERVICE_ACCOUNT_KEY no está definida.');
+  }
+
+  try {
+    const serviceAccount = JSON.parse(serviceAccountKey);
+    return initializeApp({
+      credential: cert(serviceAccount),
+    });
+  } catch (error: any) {
+    console.error("Error al parsear FIREBASE_SERVICE_ACCOUNT_KEY:", error.message);
+    throw new Error("El formato de FIREBASE_SERVICE_ACCOUNT_KEY es inválido. Asegúrate de que sea un string JSON válido sin saltos de línea.");
+  }
+}
+
 
 export async function POST(request: NextRequest) {
   try {
     const { name, email, subject, message } = await request.json();
 
     if (!name || !email || !subject || !message) {
-      return new NextResponse(JSON.stringify({ error: 'Todos los campos son requeridos.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return NextResponse.json({ error: 'Todos los campos son requeridos.' }, { status: 400 });
     }
+    
+    // Inicializamos la app de Admin aquí, justo cuando la necesitamos.
+    const adminApp = initializeAdminApp();
+    const db = admin.firestore();
 
     const notificationData = {
       type: 'contact_form' as const,
@@ -22,9 +52,7 @@ export async function POST(request: NextRequest) {
       createdAt: FieldValue.serverTimestamp(),
     };
     
-    // Usamos el SDK de Admin para escribir en la colección 'notifications'
-    // Esto utiliza los permisos del servidor (definidos en FIREBASE_SERVICE_ACCOUNT_KEY)
-    // y no depende de las reglas de seguridad del cliente.
+    // Escribimos en la colección 'notifications'. Firestore la creará si no existe.
     await db.collection('notifications').add(notificationData);
 
     return NextResponse.json({ success: true, message: 'Mensaje enviado con éxito.' });
@@ -33,13 +61,12 @@ export async function POST(request: NextRequest) {
     console.error('API Contact (Admin SDK) Error:', error);
     let errorMessage = 'No se pudo enviar el mensaje debido a un error del servidor.';
     
-    // Proporcionar un mensaje más específico si el error es de configuración
     if (error.message.includes('FIREBASE_SERVICE_ACCOUNT_KEY')) {
-      errorMessage = "Error de configuración del servidor. Por favor, contacte al administrador.";
+      errorMessage = "Error de configuración del servidor. La clave de la cuenta de servicio no se pudo procesar.";
     } else if (error.code === 'permission-denied' || error.code === 7) {
         errorMessage = "Permiso denegado por el servidor. Verifique los permisos de la cuenta de servicio en IAM.";
     }
 
-    return new NextResponse(JSON.stringify({ error: errorMessage, details: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return NextResponse.json({ error: errorMessage, details: error.message }, { status: 500 });
   }
 }
