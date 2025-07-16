@@ -235,7 +235,7 @@ export default function LibraryProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField control={form.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel>URL de Instagram</FormLabel><FormControl><Input placeholder="https://instagram.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>URL de Facebook</FormLabel><FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormMessage> )} />
+                <FormField control={form.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel>URL de Facebook</FormLabel><FormControl><Input placeholder="https://facebook.com/tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>URL de TikTok</FormLabel><FormControl><Input placeholder="https://tiktok.com/@tulibreria" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
               </CardContent>
             </Card>
