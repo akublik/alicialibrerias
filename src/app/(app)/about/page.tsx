@@ -1,9 +1,9 @@
 // src/app/(app)/about/page.tsx
 "use client";
 
-import { BookHeart, Users, MapPinned, Sparkles, Loader2, Award, BookOpen, Globe, HeartHandshake } from 'lucide-react';
+import { BookHeart, Users, MapPinned, Sparkles, Loader2, Award, BookOpen, Globe, HeartHandshake, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -48,6 +48,23 @@ export default function AboutPage() {
             missionParagraph2: "Buscamos fortalecer el ecosistema del libro en Ecuador y Latinoamérica, proporcionando herramientas tecnológicas a las librerías para que puedan prosperar y llegar a más personas, mientras ofrecemos a los lectores una plataforma intuitiva y enriquecedora para explorar, conectar y comprar.",
             missionImageUrl: "https://placehold.co/600x400.png",
             missionDataAiHint: "diverse team discussion",
+            featuresTitle: "Beneficios y Funcionalidades de la Plataforma",
+            featuresForLibraries: [
+                { feature: "Gestión de inventario centralizada y en tiempo real." },
+                { feature: "Importación masiva de libros mediante archivos CSV." },
+                { feature: "Panel de administración para gestionar pedidos y clientes." },
+                { feature: "Creación y promoción de eventos literarios." },
+                { feature: "Herramientas de marketing con IA para generar contenido." },
+                { feature: "Estadísticas de venta y analíticas de búsqueda." },
+            ],
+            featuresForReaders: [
+                { feature: "Compra en línea de un extenso catálogo de librerías locales." },
+                { feature: "Programa de puntos y lealtad con promociones exclusivas." },
+                { feature: "Recomendaciones de libros personalizadas por IA." },
+                { feature: "Biblioteca digital para leer y conversar con tus libros." },
+                { feature: "Participación en una comunidad activa de lectores." },
+                { feature: "Descubrimiento de eventos y actividades culturales." },
+            ],
             team: [
               { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
               { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
@@ -119,20 +136,41 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-
+      
       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">{content.whyUsTitle}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {(content.benefits || []).map(benefit => {
-              const IconComponent = iconMap[benefit.icon] || BookHeart;
-              return (
-              <div key={benefit.title} className="text-center p-6 bg-card rounded-lg shadow-sm hover:shadow-lg transition-shadow">
-                <IconComponent className="h-12 w-12 text-primary mx-auto mb-4" />
-                <h3 className="font-headline text-xl font-semibold mb-2 text-foreground">{benefit.title}</h3>
-                <p className="text-sm text-muted-foreground">{benefit.description}</p>
-              </div>
-            )})}
+          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">{content.featuresTitle}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center gap-2"><BookOpen className="h-6 w-6"/>Para Librerías</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {(content.featuresForLibraries || []).map((item, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
+                      <span className="text-foreground/80">{item.feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+            <Card className="shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="font-headline text-2xl text-primary flex items-center gap-2"><Users className="h-6 w-6"/>Para Lectores</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                   {(content.featuresForReaders || []).map((item, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
+                      <span className="text-foreground/80">{item.feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>

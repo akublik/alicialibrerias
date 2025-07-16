@@ -1,5 +1,6 @@
 
 
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -202,6 +203,10 @@ export interface AboutUsBenefit {
   icon: string;
 }
 
+export interface FeatureListItem {
+  feature: string;
+}
+
 export interface AboutUsContent {
   headerTitle: string;
   headerSubtitle: string;
@@ -212,6 +217,9 @@ export interface AboutUsContent {
   missionParagraph2: string;
   missionImageUrl: string;
   missionDataAiHint: string;
+  featuresTitle: string;
+  featuresForLibraries: FeatureListItem[];
+  featuresForReaders: FeatureListItem[];
   team: AboutUsTeamMember[];
   whyUsTitle: string;
   benefits: AboutUsBenefit[];

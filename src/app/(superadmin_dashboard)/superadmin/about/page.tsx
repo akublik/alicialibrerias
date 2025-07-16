@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/about/page.tsx
 "use client";
 
@@ -16,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import type { AboutUsContent } from "@/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
 const teamMemberSchema = z.object({
@@ -32,6 +30,10 @@ const benefitSchema = z.object({
   icon: z.string().min(2, "El ícono es requerido."),
 });
 
+const featureListItemSchema = z.object({
+  feature: z.string().min(5, "El texto de la funcionalidad es requerido."),
+});
+
 const aboutUsFormSchema = z.object({
   headerTitle: z.string().min(3, "El título es requerido."),
   headerSubtitle: z.string().min(10, "El subtítulo es requerido."),
@@ -42,8 +44,12 @@ const aboutUsFormSchema = z.object({
   missionParagraph2: z.string().min(10, "El segundo párrafo es requerido."),
   missionImageUrl: z.string().url("URL de imagen no válida.").or(z.literal('')),
   missionDataAiHint: z.string().optional(),
+  featuresTitle: z.string().min(3, "El título de la sección de funcionalidades es requerido."),
+  featuresForLibraries: z.array(featureListItemSchema).optional(),
+  featuresForReaders: z.array(featureListItemSchema).optional(),
   team: z.array(teamMemberSchema).optional(),
-  whyUsTitle: z.string().min(3, "El título de la sección es requerido."),
+  // whyUsTitle and benefits are kept for backwards compatibility but not shown in UI anymore
+  whyUsTitle: z.string().optional(),
   benefits: z.array(benefitSchema).optional(),
 });
 
@@ -68,9 +74,10 @@ export default function ManageAboutPage() {
       missionParagraph2: "",
       missionImageUrl: "",
       missionDataAiHint: "",
-      whyUsTitle: "",
+      featuresTitle: "Beneficios y Funcionalidades de la Plataforma",
+      featuresForLibraries: [],
+      featuresForReaders: [],
       team: [],
-      benefits: [],
     },
   });
 
@@ -78,22 +85,17 @@ export default function ManageAboutPage() {
     control: form.control,
     name: "team",
   });
-
-  const { fields: benefitFields, append: appendBenefit, remove: removeBenefit } = useFieldArray({
+  
+  const { fields: libraryFeatureFields, append: appendLibraryFeature, remove: removeLibraryFeature } = useFieldArray({
     control: form.control,
-    name: "benefits",
+    name: "featuresForLibraries",
+  });
+  
+  const { fields: readerFeatureFields, append: appendReaderFeature, remove: removeReaderFeature } = useFieldArray({
+    control: form.control,
+    name: "featuresForReaders",
   });
 
-  const availableIcons = [
-    { value: 'BookHeart', label: 'Corazón de Libro (BookHeart)' },
-    { value: 'Users', label: 'Usuarios (Users)' },
-    { value: 'MapPinned', label: 'Mapa (MapPinned)' },
-    { value: 'Sparkles', label: 'Destellos (Sparkles)' },
-    { value: 'Award', label: 'Premio (Award)' },
-    { value: 'BookOpen', label: 'Libro Abierto (BookOpen)' },
-    { value: 'Globe', label: 'Globo (Globe)' },
-    { value: 'HeartHandshake', label: 'Apretón de Manos (HeartHandshake)' },
-  ];
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -115,8 +117,11 @@ export default function ManageAboutPage() {
             missionParagraph2: data.missionParagraph2 || "",
             missionImageUrl: data.missionImageUrl || "",
             missionDataAiHint: data.missionDataAiHint || "",
-            whyUsTitle: data.whyUsTitle || "",
+            featuresTitle: data.featuresTitle || "Beneficios y Funcionalidades de la Plataforma",
+            featuresForLibraries: data.featuresForLibraries || [],
+            featuresForReaders: data.featuresForReaders || [],
             team: data.team || [],
+            whyUsTitle: data.whyUsTitle || "",
             benefits: data.benefits || [],
           };
           form.reset(formValues);
@@ -177,42 +182,42 @@ export default function ManageAboutPage() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Sección "¿Por Qué Alicia Libros?"</CardTitle>
-                 <Button type="button" variant="outline" onClick={() => appendBenefit({ title: '', description: '', icon: 'BookHeart' })}><PlusCircle className="mr-2 h-4 w-4" /> Añadir Beneficio</Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <FormField control={form.control} name="whyUsTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Sección</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
-                <Separator />
-                {benefitFields.map((field, index) => (
-                  <div key={field.id} className="p-4 border rounded-md space-y-3 relative">
-                     <h4 className="font-medium">Beneficio {index + 1}</h4>
-                     <FormField control={form.control} name={`benefits.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
-                     <FormField control={form.control} name={`benefits.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
-                     <FormField control={form.control} name={`benefits.${index}.icon`} render={({ field }) => ( 
-                        <FormItem>
-                          <FormLabel>Ícono</FormLabel>
-                           <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecciona un ícono" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {availableIcons.map(icon => <SelectItem key={icon.value} value={icon.value}>{icon.label}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          <FormMessage />
-                        </FormItem> 
-                      )} />
-                    <Button type="button" variant="destructive" size="sm" onClick={() => removeBenefit(index)} className="absolute top-4 right-4"><Trash2 className="h-4 w-4" /></Button>
+            <CardHeader><CardTitle>Sección de Beneficios y Funcionalidades</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+                <FormField control={form.control} name="featuresTitle" render={({ field }) => ( <FormItem><FormLabel>Título de la Sección</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                <Separator/>
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Para Librerías</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendLibraryFeature({ feature: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Añadir</Button>
                   </div>
-                ))}
+                  <div className="space-y-3">
+                    {libraryFeatureFields.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <FormField control={form.control} name={`featuresForLibraries.${index}.feature`} render={({ field }) => ( <FormItem className="flex-grow"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeLibraryFeature(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Separator/>
+                 <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">Para Lectores</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendReaderFeature({ feature: '' })}><PlusCircle className="mr-2 h-4 w-4"/> Añadir</Button>
+                  </div>
+                  <div className="space-y-3">
+                    {readerFeatureFields.map((field, index) => (
+                      <div key={field.id} className="flex items-center gap-2">
+                        <FormField control={form.control} name={`featuresForReaders.${index}.feature`} render={({ field }) => ( <FormItem className="flex-grow"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeReaderFeature(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
