@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { PlatformAssistantDialog } from './PlatformAssistantDialog';
 import { AliciaLogoIcon } from './AliciaLogoIcon';
 
@@ -11,8 +11,8 @@ export function PlatformAssistantTrigger() {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
                 <Button
                     variant="default"
                     size="lg"
@@ -21,22 +21,21 @@ export function PlatformAssistantTrigger() {
                 >
                     <AliciaLogoIcon className="h-10 w-10" />
                 </Button>
-            </SheetTrigger>
-            <SheetContent
-                side="right"
-                className="w-[90vw] max-w-md p-0 flex flex-col z-50"
+            </DialogTrigger>
+            <DialogContent
+                className="w-[90vw] max-w-md p-0 flex flex-col z-50 h-[70vh] max-h-[700px]"
             >
-                <SheetHeader className="p-4 border-b text-left">
-                    <SheetTitle className="flex items-center gap-3">
+                <DialogHeader className="p-4 border-b text-left">
+                    <DialogTitle className="flex items-center gap-3">
                         <AliciaLogoIcon className="h-8 w-8 text-primary" />
                         <span className="font-headline text-2xl text-primary">AlicIA</span>
-                    </SheetTitle>
-                    <SheetDescription>
+                    </DialogTitle>
+                    <DialogDescription>
                         Tu asistente experta de la plataforma Alicia Libros.
-                    </SheetDescription>
-                </SheetHeader>
+                    </DialogDescription>
+                </DialogHeader>
                 <PlatformAssistantDialog />
-            </SheetContent>
-        </Sheet>
+            </DialogContent>
+        </Dialog>
     );
 }
