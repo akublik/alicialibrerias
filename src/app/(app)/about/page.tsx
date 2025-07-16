@@ -7,7 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { AboutUsContent } from '@/types';
+import type { AboutUsContent, FeatureListItem } from '@/types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 const iconMap: { [key: string]: React.ElementType } = {
   BookHeart,
@@ -24,10 +26,52 @@ export default function AboutPage() {
   const [content, setContent] = useState<AboutUsContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  const defaultContent: AboutUsContent = {
+    headerTitle: "Sobre Alicia Libros",
+    headerSubtitle: "Nuestra pasión es conectar a lectores con la magia de las librerías independientes, fomentando la cultura y el amor por la lectura en cada rincón de Latinoamérica.",
+    headerImageUrl: "https://placehold.co/1920x1080.png?text=Book+Pattern",
+    headerDataAiHint: "subtle pattern",
+    missionTitle: "Nuestra Misión",
+    missionParagraph1: "Conectar a lectores de todo el mundo con la riqueza y diversidad de las librerías independientes de Latinoamérica, fortaleciendo la cultura local y el amor por la lectura.",
+    missionParagraph2: "A través de una plataforma tecnológica intuitiva, ofrecemos a las librerías las herramientas para prosperar en el mundo digital y a los lectores una puerta de entrada para descubrir, comprar y vivir nuevas historias.",
+    missionImageUrl: "https://placehold.co/600x400.png",
+    missionDataAiHint: "diverse team discussion",
+    featuresTitle: "Beneficios y Funcionalidades de la Plataforma",
+    featuresForLibraries: [
+        { feature: "Gestión de inventario centralizada y en tiempo real." },
+        { feature: "Importación masiva de libros mediante archivos CSV." },
+        { feature: "Panel de administración para gestionar pedidos y clientes." },
+        { feature: "Creación y promoción de eventos literarios." },
+        { feature: "Herramientas de marketing con IA para generar contenido." },
+        { feature: "Estadísticas de venta y analíticas de búsqueda." },
+    ],
+    featuresForReaders: [
+        { feature: "Compra en línea de un extenso catálogo de librerías locales." },
+        { feature: "Programa de puntos y lealtad con promociones exclusivas." },
+        { feature: "Recomendaciones de libros personalizadas por IA." },
+        { feature: "Biblioteca digital para leer y conversar con tus libros." },
+        { feature: "Participación en una comunidad activa de lectores." },
+        { feature: "Descubrimiento de eventos y actividades culturales." },
+    ],
+    team: [
+      { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
+      { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
+      { name: 'Sofía Torres', role: 'Encargada de Comunidad', imageUrl: 'https://placehold.co/200x200.png?text=Sofia', dataAiHint: 'woman community' },
+    ],
+    whyUsTitle: "¿Por Qué Alicia Libros?",
+    benefits: [
+      { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: 'BookHeart' },
+      { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: 'Users' },
+      { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: 'Sparkles' },
+      { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: 'MapPinned' },
+    ]
+  };
+
   useEffect(() => {
     const fetchContent = async () => {
       if (!db) {
         console.error("Firestore DB is not available.");
+        setContent(defaultContent);
         setIsLoading(false);
         return;
       }
@@ -36,91 +80,31 @@ export default function AboutPage() {
         const docSnap = await getDoc(contentRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setContent({
-            headerTitle: data.headerTitle || "Sobre Alicia Libros",
-            headerSubtitle: data.headerSubtitle || "Nuestra pasión es conectar a lectores con la magia de las librerías independientes, fomentando la cultura y el amor por la lectura en cada rincón de Latinoamérica.",
-            headerImageUrl: data.headerImageUrl || "https://placehold.co/1920x1080.png?text=Book+Pattern",
-            headerDataAiHint: data.headerDataAiHint || "subtle pattern",
-            missionTitle: data.missionTitle || "Nuestra Misión",
-            missionParagraph1: data.missionParagraph1 || "En Alicia Libros, creemos que cada librería independiente es un tesoro cultural, un espacio único que ofrece mucho más que libros: ofrece comunidad, descubrimiento y pasión por las historias. Nuestra misión es ser el puente que une estos valiosos espacios con lectores ávidos de nuevas aventuras literarias.",
-            missionParagraph2: data.missionParagraph2 || "Buscamos fortalecer el ecosistema del libro en Ecuador y Latinoamérica, proporcionando herramientas tecnológicas a las librerías para que puedan prosperar y llegar a más personas, mientras ofrecemos a los lectores una plataforma intuitiva y enriquecedora para explorar, conectar y comprar.",
-            missionImageUrl: data.missionImageUrl || "https://placehold.co/600x400.png",
-            missionDataAiHint: data.missionDataAiHint || "diverse team discussion",
-            featuresTitle: data.featuresTitle || "Beneficios y Funcionalidades de la Plataforma",
-            featuresForLibraries: data.featuresForLibraries || [
-                { feature: "Gestión de inventario centralizada y en tiempo real." },
-                { feature: "Importación masiva de libros mediante archivos CSV." },
-                { feature: "Panel de administración para gestionar pedidos y clientes." },
-                { feature: "Creación y promoción de eventos literarios." },
-                { feature: "Herramientas de marketing con IA para generar contenido." },
-                { feature: "Estadísticas de venta y analíticas de búsqueda." },
-            ],
-            featuresForReaders: data.featuresForReaders || [
-                { feature: "Compra en línea de un extenso catálogo de librerías locales." },
-                { feature: "Programa de puntos y lealtad con promociones exclusivas." },
-                { feature: "Recomendaciones de libros personalizadas por IA." },
-                { feature: "Biblioteca digital para leer y conversar con tus libros." },
-                { feature: "Participación en una comunidad activa de lectores." },
-                { feature: "Descubrimiento de eventos y actividades culturales." },
-            ],
-            team: data.team || [
-              { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
-              { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
-              { name: 'Sofía Torres', role: 'Encargada de Comunidad', imageUrl: 'https://placehold.co/200x200.png?text=Sofia', dataAiHint: 'woman community' },
-            ],
-            whyUsTitle: data.whyUsTitle || "¿Por Qué Alicia Libros?",
-            benefits: data.benefits || [
-              { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: 'BookHeart' },
-              { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: 'Users' },
-              { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: 'Sparkles' },
-              { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: 'MapPinned' },
-            ]
-          });
+          const mergedContent: AboutUsContent = {
+              ...defaultContent,
+              headerTitle: data.headerTitle || defaultContent.headerTitle,
+              headerSubtitle: data.headerSubtitle || defaultContent.headerSubtitle,
+              headerImageUrl: data.headerImageUrl || defaultContent.headerImageUrl,
+              headerDataAiHint: data.headerDataAiHint || defaultContent.headerDataAiHint,
+              missionTitle: data.missionTitle || defaultContent.missionTitle,
+              missionParagraph1: data.missionParagraph1 || defaultContent.missionParagraph1,
+              missionParagraph2: data.missionParagraph2 || defaultContent.missionParagraph2,
+              missionImageUrl: data.missionImageUrl || defaultContent.missionImageUrl,
+              missionDataAiHint: data.missionDataAiHint || defaultContent.missionDataAiHint,
+              featuresTitle: data.featuresTitle || defaultContent.featuresTitle,
+              featuresForLibraries: data.featuresForLibraries && data.featuresForLibraries.length > 0 ? data.featuresForLibraries : defaultContent.featuresForLibraries,
+              featuresForReaders: data.featuresForReaders && data.featuresForReaders.length > 0 ? data.featuresForReaders : defaultContent.featuresForReaders,
+              team: data.team && data.team.length > 0 ? data.team : defaultContent.team,
+              whyUsTitle: data.whyUsTitle || defaultContent.whyUsTitle,
+              benefits: data.benefits && data.benefits.length > 0 ? data.benefits : defaultContent.benefits,
+          };
+          setContent(mergedContent);
         } else {
-          // Set default content if nothing is in Firestore yet
-          setContent({
-            headerTitle: "Sobre Alicia Libros",
-            headerSubtitle: "Nuestra pasión es conectar a lectores con la magia de las librerías independientes, fomentando la cultura y el amor por la lectura en cada rincón de Latinoamérica.",
-            headerImageUrl: "https://placehold.co/1920x1080.png?text=Book+Pattern",
-            headerDataAiHint: "subtle pattern",
-            missionTitle: "Nuestra Misión",
-            missionParagraph1: "En Alicia Libros, creemos que cada librería independiente es un tesoro cultural, un espacio único que ofrece mucho más que libros: ofrece comunidad, descubrimiento y pasión por las historias. Nuestra misión es ser el puente que une estos valiosos espacios con lectores ávidos de nuevas aventuras literarias.",
-            missionParagraph2: "Buscamos fortalecer el ecosistema del libro en Ecuador y Latinoamérica, proporcionando herramientas tecnológicas a las librerías para que puedan prosperar y llegar a más personas, mientras ofrecemos a los lectores una plataforma intuitiva y enriquecedora para explorar, conectar y comprar.",
-            missionImageUrl: "https://placehold.co/600x400.png",
-            missionDataAiHint: "diverse team discussion",
-            featuresTitle: "Beneficios y Funcionalidades de la Plataforma",
-            featuresForLibraries: [
-                { feature: "Gestión de inventario centralizada y en tiempo real." },
-                { feature: "Importación masiva de libros mediante archivos CSV." },
-                { feature: "Panel de administración para gestionar pedidos y clientes." },
-                { feature: "Creación y promoción de eventos literarios." },
-                { feature: "Herramientas de marketing con IA para generar contenido." },
-                { feature: "Estadísticas de venta y analíticas de búsqueda." },
-            ],
-            featuresForReaders: [
-                { feature: "Compra en línea de un extenso catálogo de librerías locales." },
-                { feature: "Programa de puntos y lealtad con promociones exclusivas." },
-                { feature: "Recomendaciones de libros personalizadas por IA." },
-                { feature: "Biblioteca digital para leer y conversar con tus libros." },
-                { feature: "Participación en una comunidad activa de lectores." },
-                { feature: "Descubrimiento de eventos y actividades culturales." },
-            ],
-            team: [
-              { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
-              { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
-              { name: 'Sofía Torres', role: 'Encargada de Comunidad', imageUrl: 'https://placehold.co/200x200.png?text=Sofia', dataAiHint: 'woman community' },
-            ],
-            whyUsTitle: "¿Por Qué Alicia Libros?",
-            benefits: [
-              { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: 'BookHeart' },
-              { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: 'Users' },
-              { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: 'Sparkles' },
-              { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: 'MapPinned' },
-            ]
-          });
+          setContent(defaultContent);
         }
       } catch (error) {
         console.error("Error fetching about page content:", error);
+        setContent(defaultContent);
       } finally {
         setIsLoading(false);
       }
@@ -147,7 +131,7 @@ export default function AboutPage() {
   return (
     <div className="animate-fadeIn">
       <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${content.headerImageUrl || 'https://placehold.co/1920x1080.png'}')` }} data-ai-hint={content.headerDataAiHint}></div>
+         <div className="absolute inset-0 opacity-5" style={{ backgroundImage: `url('${content.headerImageUrl}')` }} data-ai-hint={content.headerDataAiHint}></div>
         <div className="container mx-auto px-4 text-center relative z-10">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
             {content.headerTitle}
@@ -171,7 +155,7 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="relative aspect-video rounded-lg overflow-hidden shadow-xl">
-                <Image src={content.missionImageUrl || 'https://placehold.co/600x400.png'} alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint={content.missionDataAiHint} />
+                <Image src={content.missionImageUrl} alt="Equipo de Alicia Libros trabajando" layout="fill" objectFit="cover" data-ai-hint={content.missionDataAiHint} />
             </div>
           </div>
         </div>
@@ -191,7 +175,7 @@ export default function AboutPage() {
                     </CardHeader>
                     <CardContent>
                         <ul className="space-y-3">
-                            {(content.featuresForLibraries || []).map((item, index) => (
+                            {content.featuresForLibraries.map((item, index) => (
                             <li key={index} className="flex items-start gap-3">
                                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
                                 <span className="text-foreground/80">{item.feature}</span>
@@ -208,7 +192,7 @@ export default function AboutPage() {
                     </CardHeader>
                     <CardContent>
                         <ul className="space-y-3">
-                            {(content.featuresForReaders || []).map((item, index) => (
+                            {content.featuresForReaders.map((item, index) => (
                             <li key={index} className="flex items-start gap-3">
                                 <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0"/>
                                 <span className="text-foreground/80">{item.feature}</span>
