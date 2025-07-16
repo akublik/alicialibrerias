@@ -245,16 +245,28 @@ export default function LibraryProfilePage() {
                     <CardTitle className="flex items-center gap-2"><Cog className="h-5 w-5"/>Configuración de Importación CSV</CardTitle>
                     <CardDescription>Define reglas en formato JSON para filtrar los libros durante la importación masiva.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                     <div className="p-4 bg-muted border rounded-md">
+                        <h4 className="font-semibold text-sm mb-2">Ejemplo de Reglas (Copiar y Pegar)</h4>
+                        <pre className="text-xs bg-background p-3 rounded-md overflow-x-auto">
+                            <code>
+{`[
+  { "field": "pais_edicion", "operator": "equals", "value": "ES" },
+  { "field": "idioma_edicion", "operator": "not_equals", "value": "BR" },
+  { "field": "pvp", "operator": "gt", "value": "5.00" }
+]`}
+                            </code>
+                        </pre>
+                    </div>
                     <FormField
                         control={form.control}
                         name="importRules"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Reglas de Importación (JSON)</FormLabel>
+                                <FormLabel>Tus Reglas de Importación (en formato JSON)</FormLabel>
                                 <FormControl>
                                     <Textarea
-                                        placeholder='[&#10;  { "field": "pais_edicion", "operator": "equals", "value": "ES" },&#10;  { "field": "idioma_edicion", "operator": "not_equals", "value": "BR" },&#10;  { "field": "pvp", "operator": "gt", "value": "5.00" }&#10;]'
+                                        placeholder='Pega y modifica el ejemplo de arriba aquí...'
                                         {...field}
                                         value={field.value || ''}
                                         rows={8}
@@ -262,7 +274,7 @@ export default function LibraryProfilePage() {
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    Usa JSON para definir un array de reglas. Operadores válidos: `equals`, `not_equals`, `contains`, `gt` (mayor que), `lt` (menor que).
+                                    Usa un array de objetos JSON para definir reglas. Operadores válidos: `equals`, `not_equals`, `contains`, `gt` (mayor que), `lt` (menor que).
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
