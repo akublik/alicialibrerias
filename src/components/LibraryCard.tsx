@@ -20,6 +20,7 @@ export function LibraryCard({ library }: LibraryCardProps) {
                     <div 
                       className="absolute inset-0 bg-cover bg-center opacity-30" 
                       style={{ backgroundImage: `url('https://alicialectura.com/assets/images/patterns/pattern-1.png')` }}
+                      data-ai-hint="subtle pattern"
                     ></div>
                     <Image
                         src={library.imageUrl}
