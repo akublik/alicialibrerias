@@ -8,6 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { defineFlow, type Flow } from 'genkit';
 
 // Define ChatMessage type locally to resolve any potential import issues.
 export type ChatMessage = {
@@ -35,58 +36,67 @@ Tu conocimiento se basa en estos puntos clave:
 5.  Cuando proporciones un enlace, utiliza siempre el formato Markdown, por ejemplo: [texto del enlace](/ruta-del-enlace).`;
 
 
-export async function converseWithPlatformAssistant(history: ChatMessage[]): Promise<string> {
-    try {
-        // Find the first user message, as the history must start with a user message for the AI.
-        const firstUserIndex = history.findIndex(m => m && m.role === 'user');
-        
-        // If no user message is found, the history is invalid. Return a helpful prompt.
-        if (firstUserIndex === -1) {
-             return "Por favor, hazme una pregunta para empezar.";
-        }
-
-        // Slice the history from the first valid user message and filter out any malformed entries.
-        const validHistory = history
-            .slice(firstUserIndex)
-            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
-
-        // Convert to the format Genkit expects (role 'assistant' becomes 'model').
-        const genkitHistory = validHistory.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            content: [{ text: msg.content }],
-        }));
-        
-        const response = await ai.generate({
-            model: 'googleai/gemini-1.5-flash',
-            system: systemPrompt,
-            history: genkitHistory,
-            config: {
-                temperature: 0.5, // A bit more creative but still grounded
+const platformAssistantFlow: Flow<ChatMessage[], string> = defineFlow(
+    {
+      name: 'platformAssistantFlow',
+    },
+    async (history: ChatMessage[]) => {
+       try {
+            // Find the first user message, as the history must start with a user message for the AI.
+            const firstUserIndex = history.findIndex(m => m && m.role === 'user');
+            
+            // If no user message is found, the history is invalid. Return a helpful prompt.
+            if (firstUserIndex === -1) {
+                 return "Por favor, hazme una pregunta para empezar.";
             }
-        });
 
-        const text = response.text;
-        
-        // IMPORTANT: Always return a string to prevent breaking the chat history.
-        if (text) {
-          return text;
-        }
+            // Slice the history from the first valid user message and filter out any malformed entries.
+            const validHistory = history
+                .slice(firstUserIndex)
+                .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
 
-        console.warn("Platform assistant response was empty. Full response:", JSON.stringify(response, null, 2));
-        return "AlicIA está pensando... pero no ha encontrado una respuesta. Inténtalo de nuevo.";
-        
-    } catch (e: any) {
-        console.error("----------- DETAILED PLATFORM ASSISTANT ERROR -----------");
-        console.error("Timestamp:", new Date().toISOString());
-        console.error("History from client:", JSON.stringify(history, null, 2));
-        console.error("Error Name:", e.name);
-        console.error("Error Message:", e.message);
-        console.error("----------------------------------------------------------");
-        
-        if (e.message && e.message.includes('GOOGLE_API_KEY')) {
-            return "Lo siento, la función de asistente no está disponible en este momento por un problema de configuración.";
+            // Convert to the format Genkit expects (role 'assistant' becomes 'model').
+            const genkitHistory = validHistory.map(msg => ({
+                role: msg.role === 'user' ? 'user' : 'model',
+                content: [{ text: msg.content }],
+            }));
+            
+            const response = await ai.generate({
+                model: 'googleai/gemini-1.5-flash',
+                system: systemPrompt,
+                history: genkitHistory,
+                config: {
+                    temperature: 0.5, // A bit more creative but still grounded
+                }
+            });
+
+            const text = response.text;
+            
+            // IMPORTANT: Always return a string to prevent breaking the chat history.
+            if (text) {
+              return text;
+            }
+
+            console.warn("Platform assistant response was empty. Full response:", JSON.stringify(response, null, 2));
+            return "AlicIA está pensando... pero no ha encontrado una respuesta. Inténtalo de nuevo.";
+            
+        } catch (e: any) {
+            console.error("----------- DETAILED PLATFORM ASSISTANT ERROR -----------");
+            console.error("Timestamp:", new Date().toISOString());
+            console.error("History from client:", JSON.stringify(history, null, 2));
+            console.error("Error Name:", e.name);
+            console.error("Error Message:", e.message);
+            console.error("----------------------------------------------------------");
+            
+            if (e.message && e.message.includes('GOOGLE_API_KEY')) {
+                return "Lo siento, la función de asistente no está disponible en este momento por un problema de configuración.";
+            }
+            
+            return `Lo siento, tuve un problema interno al procesar tu solicitud. Error: ${e.message}`;
         }
-        
-        return `Lo siento, tuve un problema interno al procesar tu solicitud. Error: ${e.message}`;
     }
+);
+
+export async function converseWithPlatformAssistant(history: ChatMessage[]): Promise<string> {
+    return platformAssistantFlow(history);
 }
