@@ -35,7 +35,47 @@ export default function AboutPage() {
         const contentRef = doc(db, "site_content", "about_us_page");
         const docSnap = await getDoc(contentRef);
         if (docSnap.exists()) {
-          setContent(docSnap.data() as AboutUsContent);
+          const data = docSnap.data();
+          setContent({
+            headerTitle: data.headerTitle || "Sobre Alicia Libros",
+            headerSubtitle: data.headerSubtitle || "Nuestra pasión es conectar a lectores con la magia de las librerías independientes, fomentando la cultura y el amor por la lectura en cada rincón de Latinoamérica.",
+            headerImageUrl: data.headerImageUrl || "https://placehold.co/1920x1080.png?text=Book+Pattern",
+            headerDataAiHint: data.headerDataAiHint || "subtle pattern",
+            missionTitle: data.missionTitle || "Nuestra Misión",
+            missionParagraph1: data.missionParagraph1 || "En Alicia Libros, creemos que cada librería independiente es un tesoro cultural, un espacio único que ofrece mucho más que libros: ofrece comunidad, descubrimiento y pasión por las historias. Nuestra misión es ser el puente que une estos valiosos espacios con lectores ávidos de nuevas aventuras literarias.",
+            missionParagraph2: data.missionParagraph2 || "Buscamos fortalecer el ecosistema del libro en Ecuador y Latinoamérica, proporcionando herramientas tecnológicas a las librerías para que puedan prosperar y llegar a más personas, mientras ofrecemos a los lectores una plataforma intuitiva y enriquecedora para explorar, conectar y comprar.",
+            missionImageUrl: data.missionImageUrl || "https://placehold.co/600x400.png",
+            missionDataAiHint: data.missionDataAiHint || "diverse team discussion",
+            featuresTitle: data.featuresTitle || "Beneficios y Funcionalidades de la Plataforma",
+            featuresForLibraries: data.featuresForLibraries || [
+                { feature: "Gestión de inventario centralizada y en tiempo real." },
+                { feature: "Importación masiva de libros mediante archivos CSV." },
+                { feature: "Panel de administración para gestionar pedidos y clientes." },
+                { feature: "Creación y promoción de eventos literarios." },
+                { feature: "Herramientas de marketing con IA para generar contenido." },
+                { feature: "Estadísticas de venta y analíticas de búsqueda." },
+            ],
+            featuresForReaders: data.featuresForReaders || [
+                { feature: "Compra en línea de un extenso catálogo de librerías locales." },
+                { feature: "Programa de puntos y lealtad con promociones exclusivas." },
+                { feature: "Recomendaciones de libros personalizadas por IA." },
+                { feature: "Biblioteca digital para leer y conversar con tus libros." },
+                { feature: "Participación en una comunidad activa de lectores." },
+                { feature: "Descubrimiento de eventos y actividades culturales." },
+            ],
+            team: data.team || [
+              { name: 'Elena Rodriguez', role: 'Fundadora y CEO', imageUrl: 'https://placehold.co/200x200.png?text=Elena', dataAiHint: 'woman professional' },
+              { name: 'Carlos Vega', role: 'Director de Tecnología', imageUrl: 'https://placehold.co/200x200.png?text=Carlos', dataAiHint: 'man tech' },
+              { name: 'Sofía Torres', role: 'Encargada de Comunidad', imageUrl: 'https://placehold.co/200x200.png?text=Sofia', dataAiHint: 'woman community' },
+            ],
+            whyUsTitle: data.whyUsTitle || "¿Por Qué Alicia Libros?",
+            benefits: data.benefits || [
+              { title: "Amor por los Libros", description: "Compartimos una profunda pasión por la lectura y el valor de las historias.", icon: 'BookHeart' },
+              { title: "Apoyo a lo Local", description: "Impulsamos a las librerías independientes, corazón de nuestras comunidades.", icon: 'Users' },
+              { title: "Descubrimiento Continuo", description: "Te ayudamos a encontrar joyas literarias y autores que te sorprenderán.", icon: 'Sparkles' },
+              { title: "Conexión Cultural", description: "Facilitamos el acceso a la diversidad literaria de Latinoamérica.", icon: 'MapPinned' },
+            ]
+          });
         } else {
           // Set default content if nothing is in Firestore yet
           setContent({
