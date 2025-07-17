@@ -81,6 +81,6 @@ const chatWithPlatformAssistantFlow = ai.defineFlow(
     if (!output) {
       return { response: "Lo siento, no pude procesar una respuesta en este momento." };
     }
-    return {response: output.response};
+    return output;
   }
 );
