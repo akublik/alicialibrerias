@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Wand2 } from 'lucide-react';
 import { ConverseWithBookDialog } from './ConverseWithBookDialog';
-import { AliciaLogoIcon } from './AliciaLogoIcon';
 
 interface ConverseWithBookTriggerProps {
     bookTitle: string;
