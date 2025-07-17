@@ -27,17 +27,7 @@ const ChatWithPlatformAssistantOutputSchema = z.object({
 });
 export type ChatWithPlatformAssistantOutput = z.infer<typeof ChatWithPlatformAssistantOutputSchema>;
 
-export async function chatWithPlatformAssistant(
-  input: ChatWithPlatformAssistantInput
-): Promise<ChatWithPlatformAssistantOutput> {
-  return chatWithPlatformAssistantFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'platformAssistantChatPrompt',
-  input: {schema: ChatWithPlatformAssistantInputSchema},
-  output: {schema: ChatWithPlatformAssistantOutputSchema},
-  prompt: `Eres "AlicIA", una asistente virtual amigable, experta y entusiasta de la plataforma de lectura AlicIA Libros. Tu misión es ayudar a los visitantes (lectores y dueños de librerías) a entender el valor de la plataforma y guiarlos para que se registren de manera gratuita o conozcan el catálogo.
+const systemPrompt = `Eres "AlicIA", una asistente virtual amigable, experta y entusiasta de la plataforma de lectura AlicIA Libros. Tu misión es ayudar a los visitantes (lectores y dueños de librerías) a entender el valor de la plataforma y guiarlos para que se registren de manera gratuita o conozcan el catálogo.
 
 **Tu Personalidad:**
 - **Amigable y Servicial:** Siempre saluda con calidez y mantén un tono positivo.
@@ -59,28 +49,47 @@ const prompt = ai.definePrompt({
 2.  **Responde Preguntas:** Usa la información clave para responder a las preguntas del usuario de manera clara y concisa.
 3.  **Llamada a la Acción:** Cuando sea apropiado (si preguntan cómo empezar, costos, etc.), guía la conversación hacia el registro gratuito.
 4.  **Proporciona el Enlace Correcto:** Usa el enlace markdown correcto según el tipo de usuario. No inventes otros enlaces.
+`;
 
-**Historial de la Conversación:**
-Aquí está el historial de la conversación. El último mensaje es del usuario. Tu tarea es proporcionar la siguiente respuesta en la conversación.
 
-{{#each chatHistory}}
-{{role}}: {{{content}}}
-{{/each}}
-model:`,
-});
+export async function chatWithPlatformAssistant(
+  input: ChatWithPlatformAssistantInput
+): Promise<ChatWithPlatformAssistantOutput> {
+  try {
+    const genkitHistory = input.chatHistory.map((msg) => ({
+        role: msg.role,
+        content: [{ text: msg.content }],
+    }));
 
-const chatWithPlatformAssistantFlow = ai.defineFlow(
-  {
-    name: 'chatWithPlatformAssistantFlow',
-    inputSchema: ChatWithPlatformAssistantInputSchema,
-    outputSchema: ChatWithPlatformAssistantOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    // Add a safeguard against null/undefined output
-    if (!output) {
-      return { response: "Lo siento, no pude procesar una respuesta en este momento." };
+    const response = await ai.generate({
+      model: 'googleai/gemini-1.5-flash',
+      system: systemPrompt,
+      history: genkitHistory,
+    });
+    
+    const text = response.text;
+    
+    if (text) {
+      return { response: text };
     }
-    return output;
+
+    console.warn("Platform assistant response was empty or did not contain text. Full response:", JSON.stringify(response, null, 2));
+    return { response: "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo." };
+
+  } catch (e: any) {
+    console.error("----------- DETAILED PLATFORM ASSISTANT ERROR -----------");
+    console.error("Flow: chatWithPlatformAssistant");
+    console.error("Timestamp:", new Date().toISOString());
+    console.error("Input History:", JSON.stringify(input.chatHistory, null, 2));
+    console.error("Error Name:", e.name);
+    console.error("Error Message:", e.message);
+    console.error("Error object:", JSON.stringify(e, null, 2));
+    console.error("----------------------------------------------------------");
+    
+    if (e.message && e.message.includes('API key')) {
+         return { response: "Lo siento, la función de chat no está disponible en este momento por un problema de configuración de la clave API." };
+    }
+
+    return { response: `Lo siento, he tenido un problema y no puedo responder ahora mismo. (Error: ${e.message})` };
   }
-);
+}
