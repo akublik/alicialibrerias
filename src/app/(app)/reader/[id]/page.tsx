@@ -16,6 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { textToSpeech } from '@/ai/flows/tts-flow';
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ConverseWithBookTrigger } from '@/components/ConverseWithBookTrigger';
 
 const availableVoices = ['Algenib', 'Achernar', 'Canopus', 'Sirius', 'Rigel', 'Procyon'];
 
@@ -296,6 +297,7 @@ export default function ReaderPage() {
             <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
         </div>
         <audio ref={audioRef} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} />
+        {book && <ConverseWithBookTrigger bookTitle={book.title} />}
     </div>
   );
 }

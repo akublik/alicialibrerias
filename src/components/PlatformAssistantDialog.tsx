@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, User, Loader2 } from 'lucide-react';
 import { converseWithPlatformAssistant, type ChatMessage } from '@/ai/flows/platform-assistant';
 import { cn } from '@/lib/utils';
 import { AliciaLogoIcon } from './AliciaLogoIcon';

@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Bot, User, Loader2 } from 'lucide-react';
 import { converseWithBook, type ChatMessage } from '@/ai/flows/converse-with-book';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 type Message = ChatMessage;
 
@@ -58,6 +59,26 @@ export function ConverseWithBookDialog({ bookTitle }: ConverseWithBookDialogProp
         }
     }, [messages]);
 
+    const renderContent = (content: string) => {
+        const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        const parts = content.split(linkRegex);
+
+        return parts.map((part, index) => {
+            if (index % 3 === 1) { 
+                const url = parts[index + 1];
+                return (
+                    <Link key={index} href={url} className="text-primary underline hover:opacity-80" target={url.startsWith('http') ? '_blank' : '_self'}>
+                        {part}
+                    </Link>
+                );
+            }
+            if (index % 3 === 2) {
+                return null;
+            }
+            return part;
+        });
+    };
+
     return (
         <>
             <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
@@ -73,7 +94,7 @@ export function ConverseWithBookDialog({ bookTitle }: ConverseWithBookDialogProp
                                "p-3 rounded-lg max-w-[80%] text-sm whitespace-pre-wrap",
                                message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
                            )}>
-                               {message.content}
+                               {renderContent(message.content)}
                            </div>
                            {message.role === 'user' && (
                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
