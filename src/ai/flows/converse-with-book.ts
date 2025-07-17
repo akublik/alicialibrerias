@@ -8,11 +8,17 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { z } from 'zod';
 
 export type ChatMessage = {
     role: 'user' | 'assistant';
     content: string;
 };
+
+const chatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string(),
+});
 
 export async function converseWithBook(bookTitle: string, history: ChatMessage[]): Promise<string> {
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
@@ -31,7 +37,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             .slice(firstUserIndex)
             .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
 
-        // Convert to the format Genkit expects.
+        // Convert to the format Genkit expects for history.
         const genkitHistory = validHistory.map((msg) => ({
             role: msg.role === 'user' ? 'user' : 'model',
             content: [{ text: msg.content }],
@@ -46,6 +52,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         const text = response.text;
         
         // IMPORTANT: Always return a string to prevent breaking the chat history.
+        // This check prevents the "cannot read properties of undefined" error.
         if (text) {
           return text;
         }
