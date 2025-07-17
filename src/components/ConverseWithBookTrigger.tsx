@@ -24,7 +24,7 @@ export function ConverseWithBookTrigger({ bookTitle }: ConverseWithBookTriggerPr
                     className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-xl z-[100] flex items-center justify-center p-0"
                     aria-label="Conversar con el libro"
                 >
-                    <AliciaLogoIcon className="h-10 w-10" />
+                    <Wand2 className="h-8 w-8" />
                 </Button>
             </SheetTrigger>
             <SheetContent
