@@ -3,7 +3,7 @@ import { googleAI } from '@genkit-ai/googleai';
 
 let ai: any;
 
-const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 if (apiKey) {
   // Initialize Genkit with the Google AI plugin.
@@ -13,17 +13,18 @@ if (apiKey) {
 } else {
   console.warn(`
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! ATENCIÓN: CLAVE DE API DE GOOGLE/GEMINI NO ENCONTRADA !!!
+    !!! ATENCIÓN: CLAVE DE API DE GEMINI NO ENCONTRADA !!!
     
-    No se encontró la variable de entorno GOOGLE_API_KEY o GEMINI_API_KEY.
+    No se encontró la variable de entorno GEMINI_API_KEY.
     Las funciones de IA generativa estarán deshabilitadas.
     
-    Para habilitarlas, define la variable en tu archivo .env.
+    Para habilitarlas, obtén una clave de Google AI Studio y
+    defínela en tu archivo .env.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   `);
   
   // Create a mock 'ai' object that will throw clear errors when any AI feature is used.
-  const errorMessage = "La funcionalidad de IA está deshabilitada porque falta la clave de API (GOOGLE_API_KEY o GEMINI_API_KEY). Por favor, configúrala en las variables de entorno del servidor.";
+  const errorMessage = "La funcionalidad de IA está deshabilitada porque falta la clave de API (GEMINI_API_KEY). Por favor, configúrala en el archivo .env.";
 
   const mockFunc = async () => {
     throw new Error(errorMessage);
