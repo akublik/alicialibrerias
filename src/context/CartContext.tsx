@@ -57,7 +57,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             // Ensure format is explicitly handled.
             const bookWithFormat: CartItem = { 
                 ...freshBook,
-                format: freshBook.format || 'Físico', // <-- Critical Correction
+                format: freshBook.format === 'Digital' ? 'Digital' : 'Físico',
                 quantity: item.quantity 
             };
             return bookWithFormat;
@@ -93,6 +93,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === book.id);
+      
+      const bookWithFormat: Book = {
+        ...book,
+        format: book.format === 'Digital' ? 'Digital' : 'Físico',
+      };
+
       if (existingItem) {
         return prevItems.map((item) =>
           item.id === book.id
@@ -100,11 +106,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             : item
         );
       }
-      // Ensure the book object passed to the cart has a format property.
-      const bookWithFormat = {
-        ...book,
-        format: book.format || 'Físico', // Default to 'Físico' if undefined
-      };
       return [...prevItems, { ...bookWithFormat, quantity }];
     });
     toast({
