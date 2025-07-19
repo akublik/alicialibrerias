@@ -90,9 +90,7 @@ export function RegisterForm() {
       
       const userDataForStorage = {
         id: firebaseUser.uid,
-        name: values.name,
-        email: values.email,
-        role: 'reader'
+        ...newUser,
       };
       
       localStorage.setItem("isAuthenticated", "true");
@@ -103,6 +101,8 @@ export function RegisterForm() {
         description: `Bienvenido/a, ${values.name}.`,
       });
       router.push(redirectUrl);
+      // We use router.refresh() to ensure the server component re-renders and the layout can update the auth state.
+      router.refresh(); 
 
     } catch (error: any) {
       let description = "No se pudo completar el registro. Inténtalo de nuevo.";
@@ -121,7 +121,7 @@ export function RegisterForm() {
   }
 
   return (
-    <Card className="w-full max-w-4xl shadow-2xl animate-fadeIn">
+    <Card className="w-full max-w-4xl shadow-2xl animate-fadeIn my-8">
       <CardHeader className="text-center">
         <UserPlus className="mx-auto h-12 w-12 text-primary mb-4" />
         <CardTitle className="font-headline text-3xl text-primary">Crea tu Cuenta de Lector</CardTitle>

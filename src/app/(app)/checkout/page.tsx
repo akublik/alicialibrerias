@@ -1,5 +1,3 @@
-
-
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -74,6 +72,8 @@ export default function CheckoutPage() {
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
   const [pointsToApply, setPointsToApply] = useState(0);
 
+  // This is the core logic to determine if the order is fully digital.
+  // It checks if every item in the cart has the format 'Digital'.
   const isDigitalOrder = cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
 
   const form = useForm<CheckoutFormValues>({
@@ -96,6 +96,7 @@ export default function CheckoutPage() {
   const needsInvoice = form.watch("needsInvoice");
   
   useEffect(() => {
+    // This effect handles authentication and cart state.
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
 
     if (!authStatus) {
@@ -128,13 +129,17 @@ export default function CheckoutPage() {
         }
     }
     
+    // Set default shipping method based on order type
     if (isDigitalOrder) {
         setSelectedShippingMethod('digital');
+    } else {
+        setSelectedShippingMethod('delivery');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemCount, isSubmitting, router, toast, isDigitalOrder]);
 
   useEffect(() => {
+    // This effect updates the shipping cost based on the selected method.
     if (isDigitalOrder) {
       setCurrentShippingCost(0);
     } else if (selectedShippingMethod === "delivery") {
@@ -315,7 +320,7 @@ export default function CheckoutPage() {
                 totalPrice: finalTotal,
                 status: 'pending' as const,
                 createdAt: serverTimestamp(),
-                shippingMethod: selectedShippingMethod,
+                shippingMethod: isDigitalOrder ? 'digital' : selectedShippingMethod,
                 paymentMethod: selectedPaymentMethod,
                 shippingAddress: isDigitalOrder ? 'Entrega Digital' : (selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería'),
                 orderNotes: values.orderNotes || '',

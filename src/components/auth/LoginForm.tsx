@@ -95,6 +95,8 @@ export function LoginForm() {
       
       toast({ title: "Inicio de Sesión Exitoso", description: `Bienvenido/a de nuevo, ${userData.name}.` });
       router.push(redirectUrl);
+      // We use router.refresh() to ensure the server component re-renders and the layout can update the auth state.
+      router.refresh(); 
 
     } catch (error: any) {
       let description = "Hubo un problema al intentar iniciar sesión.";

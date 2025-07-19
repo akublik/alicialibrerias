@@ -13,15 +13,18 @@ export default function PreCheckoutPage() {
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
+    // Check status from localStorage. This runs only on the client.
     const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
     if (isAuthenticated) {
       setAuthStatus('authenticated');
-      router.replace('/checkout');
+      // If the user is already authenticated, redirect them directly to the final checkout page.
+      router.replace('/checkout'); 
     } else {
       setAuthStatus('unauthenticated');
     }
   }, [router]);
 
+  // Show a loading spinner while checking auth status or during the redirection.
   if (authStatus === 'loading' || authStatus === 'authenticated') {
     return (
       <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
@@ -33,6 +36,7 @@ export default function PreCheckoutPage() {
     );
   }
 
+  // If the user is unauthenticated, show the login/register options.
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
       <Card className="max-w-2xl mx-auto shadow-lg">
