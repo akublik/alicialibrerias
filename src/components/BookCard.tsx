@@ -1,4 +1,5 @@
 
+
 import type { Book } from '@/types';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -23,7 +24,12 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    addToCart(book);
+    // Ensure the book object passed to the cart has a format property.
+    const bookWithFormat = {
+      ...book,
+      format: book.format || 'Físico', // Default to 'Físico' if undefined
+    };
+    addToCart(bookWithFormat);
   };
   
   const handleToggleWishlist = (e: React.MouseEvent<HTMLButtonElement>) => {

@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction, query, where, getDocs, documentId, limit } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
-import type { User, Promotion, DigitalBook } from "@/types";
+import type { User, Promotion, DigitalBook, OrderItem } from "@/types";
 import { format } from "date-fns";
 
 const SHIPPING_COST_DELIVERY = 3.50;
@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
   const [pointsToApply, setPointsToApply] = useState(0);
 
-  const isDigitalOrder = cartItems.every(item => item.format === 'Digital');
+  const isDigitalOrder = cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -167,7 +167,7 @@ export default function CheckoutPage() {
     }
     
     let hasError = false;
-    if (selectedShippingMethod === "delivery") {
+    if (selectedShippingMethod === "delivery" && !isDigitalOrder) {
       if (!values.shippingAddress?.trim()) {
         form.setError("shippingAddress", { type: "manual", message: "La dirección es requerida para envío a domicilio." });
         hasError = true;
@@ -199,7 +199,17 @@ export default function CheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        // Pre-fetch all necessary data before the transaction
+        const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.id);
+        let digitalBooksMap = new Map<string, DigitalBook>();
+        
+        if (digitalBookIds.length > 0) {
+            const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
+            const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
+            digitalBooksSnapshot.forEach(doc => {
+                digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
+            });
+        }
+        
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
@@ -212,17 +222,6 @@ export default function CheckoutPage() {
                 const endDate = p.endDate.toDate();
                 return startDate <= now && endDate >= now;
             });
-
-        const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.bookId);
-        let digitalBooksMap = new Map<string, DigitalBook>();
-        
-        if (digitalBookIds.length > 0) {
-            const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
-            const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
-            digitalBooksSnapshot.forEach(doc => {
-                digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
-            });
-        }
 
 
         await runTransaction(db, async (transaction) => {
@@ -292,14 +291,14 @@ export default function CheckoutPage() {
             const finalPoints = pointsAfterRedemption + pointsToAward;
             
             transaction.update(userRef, { loyaltyPoints: finalPoints });
-
+            
             const newOrderData = {
                 libraryId,
                 buyerId: user.id,
                 buyerName: values.buyerName,
                 buyerEmail: values.buyerEmail,
                 buyerPhone: values.buyerPhone,
-                items: cartItems.map(item => ({
+                items: cartItems.map((item): OrderItem => ({
                     bookId: item.id,
                     title: item.title,
                     price: item.price,
@@ -325,12 +324,12 @@ export default function CheckoutPage() {
             transaction.set(newOrderRef, newOrderData);
 
             for (const item of cartItems) {
-                if (item.format === 'Digital' && digitalBooksMap.has(item.bookId!)) {
-                    const digitalBookData = digitalBooksMap.get(item.bookId!)!;
+                if (item.format === 'Digital' && digitalBooksMap.has(item.id)) {
+                    const digitalBookData = digitalBooksMap.get(item.id)!;
                     const purchaseRef = doc(collection(db, 'digital_purchases'));
                     transaction.set(purchaseRef, {
                         userId: user.id,
-                        bookId: item.bookId,
+                        bookId: item.id,
                         orderId: newOrderRef.id,
                         title: digitalBookData.title,
                         author: digitalBookData.author,
