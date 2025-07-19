@@ -1,4 +1,5 @@
 
+
 // src/app/(app)/dashboard/page.tsx
 "use client";
 
@@ -12,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase, DigitalBook } from "@/types";
+import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download, CreditCard } from "lucide-react";
 import Image from "next/image";

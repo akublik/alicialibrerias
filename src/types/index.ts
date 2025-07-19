@@ -1,3 +1,4 @@
+
 export interface Book {
   id: string;
   isbn?: string;
@@ -30,6 +31,7 @@ export interface DigitalBook {
   id: string;
   title: string;
   author: string;
+  isbn?: string;
   description?: string;
   coverImageUrl: string;
   epubFileUrl: string; // URL to the EPUB file in Firebase Storage
@@ -49,6 +51,7 @@ export interface DigitalPurchase {
   author: string;
   coverImageUrl: string;
   createdAt: any; // Firestore Timestamp
+  epubFileUrl?: string;
 }
 
 export interface Library {

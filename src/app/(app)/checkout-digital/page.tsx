@@ -1,3 +1,4 @@
+
 // src/app/(app)/checkout-digital/page.tsx
 "use client";
 
@@ -27,7 +28,7 @@ import { useState, useEffect, useMemo } from "react";
 import { CreditCard, Gift, Landmark, Loader2, ShoppingBag, UserCircle, FileText, Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, runTransaction, query, where, getDocs, documentId } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, runTransaction, query, where, getDocs, limit } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
 import type { User, Promotion, DigitalBook, OrderItem } from "@/types";
 
@@ -152,34 +153,38 @@ export default function DigitalCheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        const promotionsRef = collection(db, "promotions");
-        const now = new Date();
-        const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
-        const promotionsSnapshot = await getDocs(promotionsQuery);
-        
-        const activePromotions = promotionsSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
-            .filter(p => {
-                const startDate = p.startDate.toDate();
-                const endDate = p.endDate.toDate();
-                return startDate <= now && endDate >= now;
-            });
-
         await runTransaction(db, async (transaction) => {
-            const userRef = doc(db, "users", user.id);
-            const digitalBookRefs = cartItems
-              .filter(item => item.format === 'Digital')
-              .map(item => doc(db, "digital_books", item.id));
-
             // --- 1. ALL READS FIRST ---
+            const userRef = doc(db, "users", user.id);
             const userSnap = await transaction.get(userRef);
             if (!userSnap.exists()) throw new Error("El usuario no existe.");
-
-            const digitalBookSnaps = await Promise.all(
-              digitalBookRefs.map(ref => transaction.get(ref))
-            );
             
+            const digitalBooksToQuery = cartItems
+                .filter(item => item.format === 'Digital' && item.isbn)
+                .map(item => item.isbn!);
+
+            const digitalBookSnaps: any[] = [];
+            if (digitalBooksToQuery.length > 0) {
+              const digitalBooksRef = collection(db, "digital_books");
+              const q = query(digitalBooksRef, where("isbn", "in", digitalBooksToQuery), limit(digitalBooksToQuery.length));
+              const querySnapshot = await transaction.get(q);
+              querySnapshot.forEach(doc => digitalBookSnaps.push(doc));
+            }
+
+            const promotionsRef = collection(db, "promotions");
+            const now = new Date();
+            const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
+            const promotionsSnapshot = await getDocs(promotionsQuery);
+
             // --- 2. LOGIC AND CHECKS (NO MORE READS) ---
+            const activePromotions = promotionsSnapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
+                .filter(p => {
+                    const startDate = p.startDate.toDate();
+                    const endDate = p.endDate.toDate();
+                    return startDate <= now && endDate >= now;
+                });
+            
             const currentUserData = userSnap.data() as User;
             const currentPoints = currentUserData.loyaltyPoints || 0;
             const finalDiscountAmount = pointsToApply / 100;
@@ -270,14 +275,14 @@ export default function DigitalCheckoutPage() {
             transaction.set(newOrderRef, newOrderData);
 
             // Create records in digital_purchases
-            cartItems.forEach((item, index) => {
-                const digitalBookSnap = digitalBookSnaps[index];
+            cartItems.forEach((item) => {
+                const digitalBookSnap = digitalBookSnaps.find(snap => snap.data().isbn === item.isbn);
                 if (item.format === 'Digital' && digitalBookSnap?.exists()) {
                     const digitalBookData = digitalBookSnap.data() as DigitalBook;
                     const purchaseRef = doc(collection(db, 'digital_purchases'));
                     transaction.set(purchaseRef, {
                         userId: user.id,
-                        bookId: item.id,
+                        bookId: digitalBookSnap.id, // CRITICAL: Use the ID from the digital_books collection
                         orderId: newOrderRef.id,
                         title: item.title,
                         author: item.authors.join(', '),
