@@ -28,7 +28,7 @@ import { useState, useEffect } from "react";
 import { CreditCard, Gift, Truck, Landmark, Loader2, ShoppingBag, Store, PackageSearch, UserCircle, FileText, Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction, query, where, getDocs, documentId } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, increment, getDoc, runTransaction, query, where, getDocs, documentId, limit } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
 import type { User, Promotion, DigitalBook } from "@/types";
 import { format } from "date-fns";
@@ -200,6 +200,7 @@ export default function CheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
+        // Pre-fetch all necessary data before the transaction
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
@@ -212,6 +213,18 @@ export default function CheckoutPage() {
                 const endDate = p.endDate.toDate();
                 return startDate <= now && endDate >= now;
             });
+
+        let digitalBooksMap = new Map<string, DigitalBook>();
+        if (isDigitalOrder) {
+            const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.id);
+            if (digitalBookIds.length > 0) {
+                const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
+                const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
+                digitalBooksSnapshot.docs.forEach(doc => {
+                    digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
+                });
+            }
+        }
 
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
@@ -313,28 +326,19 @@ export default function CheckoutPage() {
             transaction.set(newOrderRef, newOrderData);
 
             if (isDigitalOrder) {
-                const digitalBooksRef = collection(db, "digital_books");
                 for (const item of cartItems) {
-                    if (item.format === 'Digital') {
-                        // Find the corresponding digital book to get its info
-                        const q = query(digitalBooksRef, where("title", "==", item.title), where("author", "==", item.authors.join(', ')), limit(1));
-                        const digitalBookSnapshot = await getDocs(q);
-
-                        if (!digitalBookSnapshot.empty) {
-                            const digitalBookDoc = digitalBookSnapshot.docs[0];
-                            const digitalBookData = digitalBookDoc.data() as DigitalBook;
-
-                            const purchaseRef = doc(collection(db, 'digital_purchases'));
-                            transaction.set(purchaseRef, {
-                                userId: user.id,
-                                bookId: digitalBookDoc.id, // Use the ID from the digital_books collection
-                                orderId: newOrderRef.id,
-                                title: digitalBookData.title,
-                                author: digitalBookData.author,
-                                coverImageUrl: digitalBookData.coverImageUrl,
-                                createdAt: serverTimestamp(),
-                            });
-                        }
+                    if (item.format === 'Digital' && digitalBooksMap.has(item.id)) {
+                        const digitalBookData = digitalBooksMap.get(item.id)!;
+                        const purchaseRef = doc(collection(db, 'digital_purchases'));
+                        transaction.set(purchaseRef, {
+                            userId: user.id,
+                            bookId: item.id, // Use the ID from the cart item which matches the digital_books collection ID
+                            orderId: newOrderRef.id,
+                            title: digitalBookData.title,
+                            author: digitalBookData.author,
+                            coverImageUrl: digitalBookData.coverImageUrl,
+                            createdAt: serverTimestamp(),
+                        });
                     }
                 }
             }
