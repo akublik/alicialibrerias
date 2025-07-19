@@ -214,12 +214,16 @@ export default function DashboardPage() {
         const ordersRef = collection(db, "orders");
         const qOrders = query(ordersRef, where("buyerId", "==", initialUserData.id));
         const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
-          const userOrders = snapshot.docs.map(doc => ({
-            id: doc.id, ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
-          } as Order));
-          userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-          setOrders(userOrders);
+            let userOrders = snapshot.docs.map(doc => ({
+                id: doc.id, ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
+            } as Order));
+
+            // Filter out digital orders for the physical purchase history
+            userOrders = userOrders.filter(order => order.shippingMethod !== 'digital');
+
+            userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
         
