@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase, DigitalBook } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download, CreditCard } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -229,7 +229,7 @@ export default function DashboardPage() {
         // Listener for digital purchases
         const digitalPurchasesRef = collection(db, "digital_purchases");
         const qDigital = query(digitalPurchasesRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"));
-        const digitalUnsub = onSnapshot(qDigital, async (snapshot) => {
+        const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
             const userDigitalPurchases = snapshot.docs.map(doc => ({
                 id: doc.id, ...doc.data(),
             } as DigitalPurchase));
@@ -263,13 +263,12 @@ export default function DashboardPage() {
         
         // Listener for points history
         const pointsRef = collection(db, "pointsTransactions");
-        const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), limit(50));
+        const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"), limit(50));
         const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
             const history = snapshot.docs.map(doc => ({
                 id: doc.id, ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
             } as PointsTransaction));
-            history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setPointsHistory(history);
         });
         unsubscribes.push(pointsUnsub);
@@ -599,7 +598,7 @@ export default function DashboardPage() {
             <TabsContent value="purchases">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Historial de Compras</CardTitle>
+                  <CardTitle className="font-headline text-xl">Historial de Compras Físicas</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {orders.length > 0 ? (
@@ -622,13 +621,13 @@ export default function DashboardPage() {
                             <TableCell>{libraries.get(order.libraryId) || 'Librería Desconocida'}</TableCell>
                             <TableCell>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
                             <TableCell className="text-right">${order.totalPrice.toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-semibold text-primary">+{Math.floor(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</TableCell>
+                            <TableCell className="text-right font-semibold text-primary">+{order.pointsEarned || 0}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra.</p>
+                    <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra de libros físicos.</p>
                   )}
                 </CardContent>
               </Card>
