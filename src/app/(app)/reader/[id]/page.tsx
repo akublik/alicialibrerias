@@ -56,13 +56,37 @@ export default function ReaderPage() {
       setEpubData(null);
       
       try {
-        const bookRef = doc(db, "digital_books", bookId);
-        const docSnap = await getDoc(bookRef);
-        if (!docSnap.exists()) {
-           throw new Error("Libro no encontrado en la biblioteca digital.");
+        // First try to find it in digital_books (the main library)
+        let bookRef = doc(db, "digital_books", bookId);
+        let docSnap = await getDoc(bookRef);
+        let bookData;
+
+        if (docSnap.exists()) {
+            bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+        } else {
+            // If not found, try to find it in the physical books collection
+            bookRef = doc(db, "books", bookId);
+            docSnap = await getDoc(bookRef);
+            if(docSnap.exists()) {
+                const physicalBookData = docSnap.data();
+                if (physicalBookData.format !== 'Digital' || !physicalBookData.epubFileUrl) {
+                    throw new Error("Este libro no está disponible en un formato digital para leer.");
+                }
+                // Adapt the physical book data to the DigitalBook interface for the reader
+                bookData = {
+                    id: docSnap.id,
+                    title: physicalBookData.title,
+                    author: physicalBookData.authors.join(', '),
+                    coverImageUrl: physicalBookData.imageUrl,
+                    epubFileUrl: physicalBookData.epubFileUrl,
+                    createdAt: physicalBookData.createdAt,
+                    format: 'EPUB', // Assuming EPUB
+                } as DigitalBook;
+            } else {
+                 throw new Error("Libro no encontrado en ninguna biblioteca.");
+            }
         }
         
-        const bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
         setBook(bookData);
         
         if (!bookData.epubFileUrl) {
@@ -205,10 +229,10 @@ export default function ReaderPage() {
         <header className="flex-shrink-0 bg-background shadow-md z-30">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Link href="/my-library" passHref>
+                  <Link href="/dashboard" passHref>
                       <Button variant="outline" size="sm">
                           <ArrowLeft className="mr-2 h-4 w-4" />
-                          Biblioteca
+                          Mi Panel
                       </Button>
                   </Link>
                    <Button variant="outline" size="sm" onClick={() => setIsTocVisible(!isTocVisible)}>

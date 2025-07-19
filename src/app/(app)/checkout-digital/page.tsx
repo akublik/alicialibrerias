@@ -213,24 +213,54 @@ export default function DigitalCheckoutPage() {
             };
             transaction.set(newOrderRef, newOrderData);
 
-            // CORRECTION: Add digital book purchases to the 'digital_purchases' collection.
+            // Create a record in digital_purchases for each digital book
             for (const item of cartItems) {
-                // Ensure it's a digital item before creating the purchase record.
-                if (item.format === 'Digital') {
+                if (item.format === 'Digital' && item.epubFileUrl) { // Check it's digital and has a file
                     const purchaseRef = doc(collection(db, 'digital_purchases'));
-                    transaction.set(purchaseRef, {
-                        userId: user.id,
-                        bookId: item.id,
-                        orderId: newOrderRef.id,
-                        title: item.title,
-                        author: item.authors.join(', '),
-                        coverImageUrl: item.imageUrl,
-                        createdAt: serverTimestamp(),
-                    });
+                    const digitalBookRef = doc(db, "digital_books", item.id);
+                    const digitalBookSnap = await transaction.get(digitalBookRef);
+
+                    if (digitalBookSnap.exists()) {
+                         const digitalBookData = digitalBookSnap.data() as DigitalBook;
+                         transaction.set(purchaseRef, {
+                            userId: user.id,
+                            bookId: item.id,
+                            orderId: newOrderRef.id,
+                            title: item.title,
+                            author: item.authors.join(', '),
+                            coverImageUrl: item.imageUrl,
+                            epubFileUrl: digitalBookData.epubFileUrl, // Get from the source digital_book
+                            createdAt: serverTimestamp(),
+                        });
+                    }
                 }
             }
             
             // Points transaction logic... (copied from original checkout)
+            const pointsAfterRedemption = currentPoints - pointsToApply;
+            const finalPoints = pointsAfterRedemption + pointsToAward;
+            
+            transaction.update(userRef, { loyaltyPoints: finalPoints });
+
+            if (pointsToApply > 0) {
+                 transaction.set(doc(collection(db, "pointsTransactions")), {
+                    userId: user.id,
+                    orderId: newOrderRef.id,
+                    description: `Canje de puntos en pedido #${newOrderRef.id.slice(0, 7)}`,
+                    points: -pointsToApply,
+                    createdAt: serverTimestamp()
+                });
+            }
+
+            if (pointsToAward > 0) {
+                 transaction.set(doc(collection(db, "pointsTransactions")), {
+                    userId: user.id,
+                    orderId: newOrderRef.id,
+                    description: transactionDescription,
+                    points: pointsToAward,
+                    createdAt: serverTimestamp()
+                });
+            }
         });
 
       toast({ title: "¡Pedido Realizado con Éxito!", description: "Gracias por tu compra. Tus libros digitales ya están en tu panel." });
