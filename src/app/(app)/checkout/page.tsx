@@ -1,4 +1,3 @@
-
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -73,10 +72,6 @@ export default function CheckoutPage() {
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
   const [pointsToApply, setPointsToApply] = useState(0);
 
-  // This is the core logic to determine if the order is fully digital.
-  // It checks if every item in the cart has the format 'Digital'.
-  const isDigitalOrder = cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
-
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -97,7 +92,6 @@ export default function CheckoutPage() {
   const needsInvoice = form.watch("needsInvoice");
   
   useEffect(() => {
-    // This effect handles authentication and cart state.
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
 
     if (!authStatus) {
@@ -129,26 +123,16 @@ export default function CheckoutPage() {
             console.error("Error parsing user data from localStorage", e);
         }
     }
-    
-    // Set default shipping method based on order type
-    if (isDigitalOrder) {
-        setSelectedShippingMethod('digital');
-    } else {
-        setSelectedShippingMethod('delivery');
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemCount, isSubmitting, router, toast, isDigitalOrder]);
+  }, [itemCount, isSubmitting, router, toast]);
 
   useEffect(() => {
-    // This effect updates the shipping cost based on the selected method.
-    if (isDigitalOrder) {
-      setCurrentShippingCost(0);
-    } else if (selectedShippingMethod === "delivery") {
+    if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
     } else {
       setCurrentShippingCost(0);
     }
-  }, [selectedShippingMethod, isDigitalOrder]);
+  }, [selectedShippingMethod]);
 
   const discountAmount = pointsToApply / 100;
   const finalTotal = totalPrice + currentShippingCost - discountAmount;
@@ -177,7 +161,7 @@ export default function CheckoutPage() {
     }
     
     let hasError = false;
-    if (selectedShippingMethod === "delivery" && !isDigitalOrder) {
+    if (selectedShippingMethod === "delivery") {
       if (!values.shippingAddress?.trim()) {
         form.setError("shippingAddress", { type: "manual", message: "La dirección es requerida para envío a domicilio." });
         hasError = true;
@@ -209,17 +193,6 @@ export default function CheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.id);
-        let digitalBooksMap = new Map<string, DigitalBook>();
-        
-        if (digitalBookIds.length > 0) {
-            const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
-            const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
-            digitalBooksSnapshot.forEach(doc => {
-                digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
-            });
-        }
-        
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
@@ -321,9 +294,9 @@ export default function CheckoutPage() {
                 totalPrice: finalTotal,
                 status: 'pending' as const,
                 createdAt: serverTimestamp(),
-                shippingMethod: isDigitalOrder ? 'digital' : selectedShippingMethod,
+                shippingMethod: selectedShippingMethod,
                 paymentMethod: selectedPaymentMethod,
-                shippingAddress: isDigitalOrder ? 'Entrega Digital' : (selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería'),
+                shippingAddress: (selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería'),
                 orderNotes: values.orderNotes || '',
                 needsInvoice: values.needsInvoice || false,
                 taxId: values.needsInvoice ? values.taxId || '' : '',
@@ -332,22 +305,6 @@ export default function CheckoutPage() {
                 pointsEarned: pointsToAward,
             };
             transaction.set(newOrderRef, newOrderData);
-
-            for (const item of cartItems) {
-                if (item.format === 'Digital' && digitalBooksMap.has(item.id)) {
-                    const digitalBookData = digitalBooksMap.get(item.id)!;
-                    const purchaseRef = doc(collection(db, 'digital_purchases'));
-                    transaction.set(purchaseRef, {
-                        userId: user.id,
-                        bookId: item.id,
-                        orderId: newOrderRef.id,
-                        title: digitalBookData.title,
-                        author: digitalBookData.author,
-                        coverImageUrl: digitalBookData.coverImageUrl,
-                        createdAt: serverTimestamp(),
-                    });
-                }
-            }
 
             if (pointsToApply > 0) {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
@@ -430,62 +387,60 @@ export default function CheckoutPage() {
               </CardContent>
             </Card>
             
-            {!isDigitalOrder && (
-              <>
-              <Card className="shadow-md">
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <RadioGroup
-                    value={selectedShippingMethod}
-                    onValueChange={setSelectedShippingMethod}
-                    className="flex flex-col space-y-2"
-                  >
-                    <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                      <RadioGroupItem value="delivery" id="shipping-delivery"/>
-                      <Label htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
-                        <div className="flex items-center">
-                          <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
-                          <div>
-                            A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
-                            <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
-                          </div>
+            <>
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  value={selectedShippingMethod}
+                  onValueChange={setSelectedShippingMethod}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="delivery" id="shipping-delivery"/>
+                    <Label htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
+                      <div className="flex items-center">
+                        <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
+                        <div>
+                          A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
+                          <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
                         </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                      <RadioGroupItem value="pickup" id="shipping-pickup"/>
-                      <Label htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
-                         <div className="flex items-center">
-                           <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
-                           <div>
-                              Retiro en Librería (Gratis)
-                              <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
-                            </div>
-                         </div>
-                      </Label>
-                    </div>
-                  </RadioGroup>
+                      </div>
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                    <RadioGroupItem value="pickup" id="shipping-pickup"/>
+                    <Label htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
+                       <div className="flex items-center">
+                         <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
+                         <div>
+                            Retiro en Librería (Gratis)
+                            <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                          </div>
+                       </div>
+                    </Label>
+                  </div>
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          
+            {selectedShippingMethod === "delivery" && (
+              <Card className="shadow-md animate-fadeIn">
+                <CardHeader>
+                  <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <FormField control={form.control} name="shippingAddress" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                  <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} value={field.value || ''} /></FormControl> <FormMessage /> </FormItem> )} />
                 </CardContent>
               </Card>
-            
-              {selectedShippingMethod === "delivery" && (
-                <Card className="shadow-md animate-fadeIn">
-                  <CardHeader>
-                    <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="shippingAddress" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                    <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                    <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                    <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                    <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} value={field.value || ''} /></FormControl> <FormMessage /> </FormItem> )} />
-                  </CardContent>
-                </Card>
-              )}
-              </>
             )}
+            </>
 
             <Card className="shadow-md">
               <CardHeader>
@@ -526,13 +481,13 @@ export default function CheckoutPage() {
                   <Card className="mt-4 bg-muted/50">
                     <CardHeader><CardTitle className="text-base font-semibold">Instrucciones para Transferencia Bancaria</CardTitle></CardHeader>
                     <CardContent className="text-sm space-y-1 whitespace-pre-line">
-<p><strong>Banco:</strong> Banco Pichincha</p>
-<p><strong>Tipo de Cuenta:</strong> Ahorros</p>
-<p><strong>Número de Cuenta:</strong> 2204535505</p>
-<p><strong>Beneficiario:</strong> André Kublik</p>
-<p><strong>CC:</strong> 1708258940</p>
-<p><strong>Email para notificación:</strong> info@alicialibros.com</p>
-<p className="mt-2 text-xs">Por favor, incluye tu número de pedido en la referencia de la transferencia. Tu pedido será procesado una vez confirmado el pago.</p>
+                      <p><strong>Banco:</strong> Banco Pichincha</p>
+                      <p><strong>Tipo de Cuenta:</strong> Ahorros</p>
+                      <p><strong>Número de Cuenta:</strong> 2204535505</p>
+                      <p><strong>Beneficiario:</strong> André Kublik</p>
+                      <p><strong>CC:</strong> 1708258940</p>
+                      <p><strong>Email para notificación:</strong> info@alicialibros.com</p>
+                      <p className="mt-2 text-xs">Por favor, incluye tu número de pedido en la referencia de la transferencia. Tu pedido será procesado una vez confirmado el pago.</p>
                     </CardContent>
                   </Card>
                 )}
@@ -644,14 +599,12 @@ export default function CheckoutPage() {
                         <span className="font-medium">-${discountAmount.toFixed(2)}</span>
                       </div>
                   )}
-                  {!isDigitalOrder && (
-                    <div className="flex justify-between">
-                      <span>Envío:</span>
-                      <span className="font-medium">
-                        {currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis"}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex justify-between">
+                    <span>Envío:</span>
+                    <span className="font-medium">
+                      {currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis"}
+                    </span>
+                  </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold text-primary"><span>Total:</span> <span>${finalTotal.toFixed(2)}</span></div>
                 </div>

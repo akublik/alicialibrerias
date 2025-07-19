@@ -1,28 +1,36 @@
 // src/app/(app)/pre-checkout/page.tsx
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { useCart } from '@/context/CartContext';
 
 export default function PreCheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { cartItems } = useCart();
   const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+
+  const isDigitalOrder = useMemo(() => {
+    return cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
+  }, [cartItems]);
+  
+  const finalRedirect = searchParams.get('redirect') || (isDigitalOrder ? '/checkout-digital' : '/checkout');
 
   useEffect(() => {
     // Check status from localStorage. This runs only on the client.
     const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
     if (isAuthenticated) {
       setAuthStatus('authenticated');
-      // If the user is already authenticated, redirect them directly to the final checkout page.
-      router.replace('/checkout'); 
+      router.replace(finalRedirect); 
     } else {
       setAuthStatus('unauthenticated');
     }
-  }, [router]);
+  }, [router, finalRedirect]);
 
   // Show a loading spinner while checking auth status or during the redirection.
   if (authStatus === 'loading' || authStatus === 'authenticated') {
@@ -47,7 +55,7 @@ export default function PreCheckoutPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-          <Link href="/login?redirect=/checkout" className="w-full">
+          <Link href={`/login?redirect=${finalRedirect}`} className="w-full">
             <Button size="lg" className="w-full font-body text-base h-auto py-4 flex flex-col items-start text-left">
               <div className='flex items-center'>
                 <LogIn className="mr-3 h-6 w-6" />
@@ -56,7 +64,7 @@ export default function PreCheckoutPage() {
               <span className='font-normal text-sm text-primary-foreground/80 pt-1 whitespace-normal'>Ya tengo una cuenta en Alicia Libros.</span>
             </Button>
           </Link>
-          <Link href="/register?redirect=/checkout" className="w-full">
+          <Link href={`/register?redirect=${finalRedirect}`} className="w-full">
             <Button size="lg" variant="outline" className="w-full font-body text-base h-auto py-4 flex flex-col items-start text-left">
                <div className='flex items-center'>
                 <UserPlus className="mr-3 h-6 w-6" />

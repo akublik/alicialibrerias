@@ -9,9 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Trash2, Plus, Minus, ShoppingCart, ArrowRight } from "lucide-react";
+import { useMemo } from "react";
 
 export default function CartPage() {
   const { cartItems, removeFromCart, updateItemQuantity, itemCount, totalPrice, clearCart } = useCart();
+
+  const isDigitalOrder = useMemo(() => {
+    return cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
+  }, [cartItems]);
+
+  const checkoutUrl = isDigitalOrder ? '/checkout-digital' : '/pre-checkout';
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -117,10 +124,12 @@ export default function CartPage() {
                   <span>Subtotal ({itemCount} artículos):</span>
                   <span className="font-semibold">${totalPrice.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-lg">
-                  <span>Envío:</span>
-                  <span className="font-semibold">Por Calcular</span> {/* Placeholder */}
-                </div>
+                {!isDigitalOrder && (
+                  <div className="flex justify-between text-lg">
+                    <span>Envío:</span>
+                    <span className="font-semibold">Por Calcular</span> {/* Placeholder */}
+                  </div>
+                )}
                 <Separator />
                 <div className="flex justify-between text-xl font-bold text-primary">
                   <span>Total Estimado:</span>
@@ -128,7 +137,7 @@ export default function CartPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Link href="/pre-checkout" className="w-full">
+                <Link href={checkoutUrl} className="w-full">
                   <Button size="lg" className="w-full font-body text-base">
                     Proceder al Pago <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
