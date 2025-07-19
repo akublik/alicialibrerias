@@ -92,11 +92,17 @@ export default function HomePage() {
 
         const augmentBooks = (books: Book[]): Book[] => {
             return books.map(book => {
+                const augmentedBook: Book = { ...book };
                 if (book.libraryId && librariesMap.has(book.libraryId)) {
                     const libInfo = librariesMap.get(book.libraryId)!;
-                    return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
+                    augmentedBook.libraryName = libInfo.name;
+                    augmentedBook.libraryLocation = libInfo.location;
                 }
-                return book;
+                // Ensure format field is present
+                if (!augmentedBook.format) {
+                    augmentedBook.format = 'Físico';
+                }
+                return augmentedBook;
             });
         };
         

@@ -51,7 +51,13 @@ function SearchResults() {
         const booksSnapshot = await getDocs(booksQuery);
 
         const booksData = booksSnapshot.docs.map(doc => {
-            const book = { id: doc.id, ...doc.data() } as Book;
+            const bookData = doc.data();
+            const book: Book = { 
+                id: doc.id,
+                ...bookData,
+                format: bookData.format || 'Físico', // Ensure format is always present
+            } as Book;
+
             if (book.libraryId && librariesMap.has(book.libraryId)) {
                 const libInfo = librariesMap.get(book.libraryId)!;
                 return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };

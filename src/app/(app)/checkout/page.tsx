@@ -1,4 +1,5 @@
 
+
 // src/app/(app)/checkout/page.tsx
 "use client";
 
@@ -126,13 +127,16 @@ export default function CheckoutPage() {
             console.error("Error parsing user data from localStorage", e);
         }
     }
+    
+    if (isDigitalOrder) {
+        setSelectedShippingMethod('digital');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemCount, isSubmitting, router, toast]);
+  }, [itemCount, isSubmitting, router, toast, isDigitalOrder]);
 
   useEffect(() => {
     if (isDigitalOrder) {
-        setSelectedShippingMethod('digital');
-        setCurrentShippingCost(0);
+      setCurrentShippingCost(0);
     } else if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
     } else {

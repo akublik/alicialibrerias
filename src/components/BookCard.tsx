@@ -25,7 +25,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
     e.preventDefault();
     e.stopPropagation();
     // Ensure the book object passed to the cart has a format property.
-    const bookWithFormat = {
+    const bookWithFormat: Book = {
       ...book,
       format: book.format || 'Físico', // Default to 'Físico' if undefined
     };

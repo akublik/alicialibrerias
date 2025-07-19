@@ -57,7 +57,12 @@ export default function AuthorPageClient() {
           });
           
           const authorBooks = booksSnapshot.docs.map(bookDoc => {
-            const book = { id: bookDoc.id, ...bookDoc.data() } as Book;
+            const bookData = bookDoc.data();
+            const book: Book = { 
+                id: bookDoc.id, 
+                ...bookData,
+                format: bookData.format || 'Físico', // Ensure format is always present
+            } as Book;
              if (book.libraryId && librariesMap.has(book.libraryId)) {
                 const libInfo = librariesMap.get(book.libraryId)!;
                 return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
