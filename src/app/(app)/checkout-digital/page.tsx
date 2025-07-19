@@ -28,9 +28,9 @@ import { useState, useEffect, useMemo } from "react";
 import { CreditCard, Gift, Landmark, Loader2, ShoppingBag, UserCircle, FileText, Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp, doc, runTransaction, query, where, getDocs, limit } from "firebase/firestore";
+import { addDoc, collection, serverTimestamp, doc, runTransaction, query, where, getDocs, limit, documentId } from "firebase/firestore";
 import { Switch } from "@/components/ui/switch";
-import type { User, Promotion, DigitalBook, OrderItem } from "@/types";
+import type { User, Promotion, DigitalBook, OrderItem, CartItem } from "@/types";
 
 const checkoutFormSchema = z.object({
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -88,7 +88,7 @@ export default function DigitalCheckoutPage() {
       return;
     }
 
-    if (itemCount === 0) {
+    if (itemCount === 0 && !isSubmitting) {
       toast({
         title: "Carrito Vacío",
         description: "Tu carrito está vacío. Redirigiendo...",
@@ -112,6 +112,7 @@ export default function DigitalCheckoutPage() {
             console.error("Error parsing user data from localStorage", e);
         }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemCount, router, toast, form, isDigitalOrder]);
 
   const discountAmount = pointsToApply / 100;
@@ -159,17 +160,29 @@ export default function DigitalCheckoutPage() {
             const userSnap = await transaction.get(userRef);
             if (!userSnap.exists()) throw new Error("El usuario no existe.");
             
-            const digitalBooksToQuery = cartItems
+            const isbnsToQuery = cartItems
                 .filter(item => item.format === 'Digital' && item.isbn)
                 .map(item => item.isbn!);
 
-            const digitalBookSnaps: any[] = [];
-            if (digitalBooksToQuery.length > 0) {
-              const digitalBooksRef = collection(db, "digital_books");
-              const q = query(digitalBooksRef, where("isbn", "in", digitalBooksToQuery), limit(digitalBooksToQuery.length));
-              const querySnapshot = await transaction.get(q);
-              querySnapshot.forEach(doc => digitalBookSnaps.push(doc));
+            const digitalBooksRef = collection(db, "digital_books");
+            const q = query(digitalBooksRef, where("isbn", "in", isbnsToQuery));
+            const digitalBooksSnapshot = await transaction.get(q);
+
+            const digitalBooksMap = new Map<string, { id: string, epubFileUrl: string }>();
+            digitalBooksSnapshot.forEach(doc => {
+              const data = doc.data();
+              if(data.isbn) {
+                digitalBooksMap.set(data.isbn, { id: doc.id, epubFileUrl: data.epubFileUrl });
+              }
+            });
+            
+            // Validate that all digital books in cart exist in the digital_books collection
+            for (const item of cartItems) {
+                if (item.format === 'Digital' && item.isbn && !digitalBooksMap.has(item.isbn)) {
+                    throw new Error(`El archivo digital para el libro "${item.title}" (ISBN: ${item.isbn}) no se encontró. Por favor, contacta a soporte.`);
+                }
             }
+
 
             const promotionsRef = collection(db, "promotions");
             const now = new Date();
@@ -276,21 +289,22 @@ export default function DigitalCheckoutPage() {
 
             // Create records in digital_purchases
             cartItems.forEach((item) => {
-                const digitalBookSnap = digitalBookSnaps.find(snap => snap.data().isbn === item.isbn);
-                if (item.format === 'Digital' && digitalBookSnap?.exists()) {
-                    const digitalBookData = digitalBookSnap.data() as DigitalBook;
-                    const purchaseRef = doc(collection(db, 'digital_purchases'));
-                    transaction.set(purchaseRef, {
-                        userId: user.id,
-                        bookId: digitalBookSnap.id, // CRITICAL: Use the ID from the digital_books collection
-                        orderId: newOrderRef.id,
-                        title: item.title,
-                        author: item.authors.join(', '),
-                        coverImageUrl: item.imageUrl,
-                        epubFileUrl: digitalBookData.epubFileUrl,
-                        createdAt: serverTimestamp(),
-                    });
+              if (item.format === 'Digital' && item.isbn) {
+                const digitalBookInfo = digitalBooksMap.get(item.isbn);
+                if (digitalBookInfo) {
+                  const purchaseRef = doc(collection(db, 'digital_purchases'));
+                  transaction.set(purchaseRef, {
+                      userId: user.id,
+                      bookId: digitalBookInfo.id,
+                      orderId: newOrderRef.id,
+                      title: item.title,
+                      author: item.authors.join(', '),
+                      coverImageUrl: item.imageUrl,
+                      epubFileUrl: digitalBookInfo.epubFileUrl,
+                      createdAt: serverTimestamp(),
+                  });
                 }
+              }
             });
             
             // Points transaction logic
@@ -324,13 +338,13 @@ export default function DigitalCheckoutPage() {
       router.push(`/order-confirmation/${newOrderRef.id}`);
 
     } catch (error: any) {
-        toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive" });
+        toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive", duration: 7000 });
     } finally {
         setIsSubmitting(false);
     }
   }
 
-  if (!user || !isDigitalOrder) {
+  if (!user || (!isDigitalOrder && itemCount > 0)) {
       return (
         <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
           <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
