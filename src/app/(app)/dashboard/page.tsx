@@ -73,7 +73,6 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
   const [digitalPurchases, setDigitalPurchases] = useState<DigitalPurchase[]>([]);
-  const [digitalLibrary, setDigitalLibrary] = useState<DigitalBook[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [preferences, setPreferences] = useState('');
@@ -229,24 +228,12 @@ export default function DashboardPage() {
         
         // Listener for digital purchases
         const digitalPurchasesRef = collection(db, "digital_purchases");
-        const qDigital = query(digitalPurchasesRef, where("userId", "==", initialUserData.id));
+        const qDigital = query(digitalPurchasesRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"));
         const digitalUnsub = onSnapshot(qDigital, async (snapshot) => {
             const userDigitalPurchases = snapshot.docs.map(doc => ({
                 id: doc.id, ...doc.data(),
             } as DigitalPurchase));
             setDigitalPurchases(userDigitalPurchases);
-
-            // Fetch full book details for the purchased digital books
-            const bookIds = userDigitalPurchases.map(p => p.bookId).filter(Boolean);
-            if(bookIds.length > 0) {
-              const digitalBooksRef = collection(db, "digital_books");
-              const digitalBooksQuery = query(digitalBooksRef, where(documentId(), "in", bookIds));
-              const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
-              const booksData = digitalBooksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DigitalBook));
-              setDigitalLibrary(booksData);
-            } else {
-              setDigitalLibrary([]);
-            }
         });
         unsubscribes.push(digitalUnsub);
 
@@ -654,11 +641,11 @@ export default function DashboardPage() {
                   <CardDescription>Aquí encontrarás todos los libros digitales que has adquirido.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {digitalLibrary.length > 0 ? (
+                  {digitalPurchases.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {digitalLibrary.map((purchase) => (
+                      {digitalPurchases.map((purchase) => (
                         <Card key={purchase.id} className="overflow-hidden group">
-                           <Link href={`/reader/${purchase.id}`}>
+                           <Link href={`/reader/${purchase.bookId}`}>
                             <div className="aspect-[2/3] relative">
                                 <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
                             </div>
@@ -668,7 +655,7 @@ export default function DashboardPage() {
                             </div>
                           </Link>
                           <CardFooter className="p-3 pt-0">
-                             <Link href={`/reader/${purchase.id}`} className="w-full">
+                             <Link href={`/reader/${purchase.bookId}`} className="w-full">
                                 <Button className="w-full">Leer Ahora</Button>
                              </Link>
                           </CardFooter>
