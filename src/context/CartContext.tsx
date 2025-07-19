@@ -32,35 +32,47 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         const storedCartJSON = localStorage.getItem(CART_STORAGE_KEY);
         if (!storedCartJSON) return;
         
-        const storedCart: CartItem[] = JSON.parse(storedCartJSON);
+        let storedCart: CartItem[] = JSON.parse(storedCartJSON);
         if (!Array.isArray(storedCart) || storedCart.length === 0) return;
 
         // Get all book IDs from the stored cart.
         const bookIds = storedCart.map(item => item.id);
-        if (!db || bookIds.length === 0) return;
+        if (!db || bookIds.length === 0) {
+            setCartItems(storedCart); // Fallback to stored cart if DB is unavailable
+            return;
+        }
 
         // Fetch full, up-to-date data for all books in the cart from Firestore.
         // This ensures price, stock, and crucially, the 'format' are correct.
         const booksRef = collection(db, "books");
-        const booksQuery = query(booksRef, where(documentId(), "in", bookIds));
-        const querySnapshot = await getDocs(booksQuery);
+        
+        // Chunk the book IDs to handle Firestore's 'in' query limitation (max 30 per query)
+        const chunks: string[][] = [];
+        for (let i = 0; i < bookIds.length; i += 30) {
+            chunks.push(bookIds.slice(i, i + 30));
+        }
 
         const freshBooksMap = new Map<string, Book>();
-        querySnapshot.forEach(doc => {
-          freshBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as Book);
-        });
-
+        
+        for (const chunk of chunks) {
+            const booksQuery = query(booksRef, where(documentId(), "in", chunk));
+            const querySnapshot = await getDocs(booksQuery);
+            querySnapshot.forEach(doc => {
+                const bookData = doc.data();
+                const bookWithFormat: Book = {
+                    id: doc.id,
+                    ...bookData,
+                    format: bookData.format === 'Digital' ? 'Digital' : 'Físico',
+                } as Book;
+                freshBooksMap.set(doc.id, bookWithFormat);
+            });
+        }
+        
         // Reconstruct the cart with fresh data, preserving quantities.
         const validatedCart = storedCart.map(item => {
           const freshBook = freshBooksMap.get(item.id);
           if (freshBook) {
-            // Ensure format is explicitly handled.
-            const bookWithFormat: CartItem = { 
-                ...freshBook,
-                format: freshBook.format === 'Digital' ? 'Digital' : 'Físico',
-                quantity: item.quantity 
-            };
-            return bookWithFormat;
+            return { ...freshBook, quantity: item.quantity };
           }
           return null; // Book no longer exists, will be filtered out.
         }).filter((item): item is CartItem => item !== null);
@@ -94,7 +106,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCartItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.id === book.id);
       
-      const bookWithFormat: Book = {
+      const bookWithGuaranteedFormat: Book = {
         ...book,
         format: book.format === 'Digital' ? 'Digital' : 'Físico',
       };
@@ -106,7 +118,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             : item
         );
       }
-      return [...prevItems, { ...bookWithFormat, quantity }];
+      return [...prevItems, { ...bookWithGuaranteedFormat, quantity }];
     });
     toast({
       title: "¡Añadido al carrito!",

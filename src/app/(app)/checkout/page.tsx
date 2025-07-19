@@ -522,8 +522,13 @@ export default function CheckoutPage() {
                 {selectedPaymentMethod === "transfer" && (
                   <Card className="mt-4 bg-muted/50">
                     <CardHeader><CardTitle className="text-base font-semibold">Instrucciones para Transferencia Bancaria</CardTitle></CardHeader>
-                    <CardContent className="text-sm space-y-1">
-                      <p><strong>Banco:</strong> Banco del Austro</p> <p><strong>Tipo de Cuenta:</strong> Ahorros</p> <p><strong>Número de Cuenta:</strong> 1234567890</p> <p><strong>Beneficiario:</strong> Alicia Libros S.A.</p> <p><strong>RUC/CI:</strong> 1790000000001</p> <p><strong>Email para notificación:</strong> pagos@alicialibros.com</p>
+                    <CardContent className="text-sm space-y-1 whitespace-pre-line">
+                      <p><strong>Banco:</strong> Banco Pichincha</p>
+                      <p><strong>Tipo de Cuenta:</strong> Ahorros</p>
+                      <p><strong>Número de Cuenta:</strong> 2204535505</p>
+                      <p><strong>Beneficiario:</strong> André Kublik</p>
+                      <p><strong>CC:</strong> 1708258940</p>
+                      <p><strong>Email para notificación:</strong> info@alicialibros.com</p>
                       <p className="mt-2 text-xs">Por favor, incluye tu número de pedido en la referencia de la transferencia. Tu pedido será procesado una vez confirmado el pago.</p>
                     </CardContent>
                   </Card>
