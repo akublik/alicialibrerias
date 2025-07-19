@@ -24,10 +24,10 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    // Ensure the book object passed to the cart has a format property.
+    // This is the critical fix: ensure the book object passed to the cart has a format property.
     const bookWithFormat: Book = {
       ...book,
-      format: book.format || 'Físico', // Default to 'Físico' if undefined
+      format: book.format === 'Digital' ? 'Digital' : 'Físico',
     };
     addToCart(bookWithFormat);
   };
