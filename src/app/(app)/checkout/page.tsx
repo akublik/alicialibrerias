@@ -73,6 +73,8 @@ export default function CheckoutPage() {
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
   const [pointsToApply, setPointsToApply] = useState(0);
 
+  const isDigitalOrder = cartItems.some(item => item.format === 'Digital');
+
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
     defaultValues: {
@@ -92,7 +94,6 @@ export default function CheckoutPage() {
 
   const needsInvoice = form.watch("needsInvoice");
   
-  // This effect runs to check auth status and pre-fill form data if available.
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
 
@@ -125,8 +126,12 @@ export default function CheckoutPage() {
             console.error("Error parsing user data from localStorage", e);
         }
     }
+    // Set digital delivery if applicable
+    if(isDigitalOrder) {
+        setSelectedShippingMethod('digital');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemCount, isSubmitting, router, toast]);
+  }, [itemCount, isSubmitting, router, toast, isDigitalOrder]);
 
   useEffect(() => {
     if (selectedShippingMethod === "delivery") {
@@ -144,7 +149,6 @@ export default function CheckoutPage() {
       let value = parseInt(e.target.value, 10);
       if (isNaN(value)) value = 0;
       if (value < 0) value = 0;
-      // Cannot use more points than available or more than the item total (100 points per dollar)
       const maxApplicablePoints = Math.min(user?.loyaltyPoints || 0, Math.floor(totalPrice * 100));
       if (value > maxApplicablePoints) {
           value = maxApplicablePoints;
@@ -193,16 +197,14 @@ export default function CheckoutPage() {
     }
 
     let transactionDescription = `Puntos por compra`;
+    const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        // Fetch active promotions before starting the transaction
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
-        // Query only by isActive to avoid needing a composite index
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
         const promotionsSnapshot = await getDocs(promotionsQuery);
         
-        // Filter by date on the client side
         const activePromotions = promotionsSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
             .filter(p => {
@@ -225,11 +227,9 @@ export default function CheckoutPage() {
                  throw new Error("No tienes suficientes puntos para realizar este canje.");
             }
             
-            // --- Points Calculation ---
             let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
             let birthdayMultiplier = 1;
             
-            // Birthday bonus logic
             if (currentUserData.birthdate) {
               const today = new Date();
               const birthdate = new Date(currentUserData.birthdate);
@@ -238,7 +238,6 @@ export default function CheckoutPage() {
               }
             }
 
-            // Promotions logic
             let promoMultiplier = 1;
             let promoBonusPoints = 0;
             const appliedPromoNames: string[] = [];
@@ -265,13 +264,11 @@ export default function CheckoutPage() {
                 }
             }
 
-            // Apply promotions and birthday bonus
             pointsToAward = Math.floor(pointsToAward * promoMultiplier) + promoBonusPoints;
             if(birthdayMultiplier > 1) {
                 pointsToAward *= birthdayMultiplier;
             }
 
-            // Build transaction description string
             if (appliedPromoNames.length > 0) {
               transactionDescription += ` (Promos: ${appliedPromoNames.join(', ')})`;
             }
@@ -282,9 +279,8 @@ export default function CheckoutPage() {
             const pointsAfterRedemption = currentPoints - pointsToApply;
             const finalPoints = pointsAfterRedemption + pointsToAward;
             
-            // --- All DB Writes Happen Here ---
             transaction.update(userRef, { loyaltyPoints: finalPoints });
-            const newOrderRef = doc(collection(db, "orders"));
+
             const newOrderData = {
                 libraryId,
                 buyerId: user.id,
@@ -299,13 +295,14 @@ export default function CheckoutPage() {
                     imageUrl: item.imageUrl,
                     categories: item.categories || [],
                     authors: item.authors || [],
+                    format: item.format || 'Físico',
                 })),
                 totalPrice: finalTotal,
                 status: 'pending' as const,
                 createdAt: serverTimestamp(),
                 shippingMethod: selectedShippingMethod,
                 paymentMethod: selectedPaymentMethod,
-                shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería',
+                shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : (isDigitalOrder ? 'Entrega Digital' : 'Retiro en librería'),
                 orderNotes: values.orderNotes || '',
                 needsInvoice: values.needsInvoice || false,
                 taxId: values.needsInvoice ? values.taxId || '' : '',
@@ -314,6 +311,22 @@ export default function CheckoutPage() {
                 pointsEarned: pointsToAward,
             };
             transaction.set(newOrderRef, newOrderData);
+
+            if (isDigitalOrder) {
+                const digitalItems = cartItems.filter(item => item.format === 'Digital');
+                for (const item of digitalItems) {
+                    const purchaseRef = doc(collection(db, 'digital_purchases'));
+                    transaction.set(purchaseRef, {
+                        userId: user.id,
+                        bookId: item.id,
+                        orderId: newOrderRef.id,
+                        title: item.title,
+                        author: item.authors.join(', '),
+                        coverImageUrl: item.imageUrl,
+                        createdAt: serverTimestamp(),
+                    });
+                }
+            }
 
             if (pointsToApply > 0) {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
@@ -355,7 +368,7 @@ export default function CheckoutPage() {
       }
       
       clearCart();
-      router.push("/dashboard");
+      router.push(`/order-confirmation/${newOrderRef.id}`);
 
     } catch (error: any) {
         toast({ title: "Error al procesar el pedido", description: error.message, variant: "destructive" });
@@ -395,44 +408,46 @@ export default function CheckoutPage() {
                 <FormField control={form.control} name="buyerPhone" render={({ field }) => ( <FormItem> <FormLabel>Teléfono</FormLabel> <FormControl><Input type="tel" placeholder="Ej: 0991234567" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
               </CardContent>
             </Card>
-
-            <Card className="shadow-md">
-              <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup
-                  value={selectedShippingMethod}
-                  onValueChange={setSelectedShippingMethod}
-                  className="flex flex-col space-y-2"
-                >
-                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                    <RadioGroupItem value="delivery" id="shipping-delivery"/>
-                    <Label htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
-                      <div className="flex items-center">
-                        <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
-                        <div>
-                          A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
-                          <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
-                        </div>
-                      </div>
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
-                    <RadioGroupItem value="pickup" id="shipping-pickup"/>
-                    <Label htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
-                       <div className="flex items-center">
-                         <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
-                         <div>
-                            Retiro en Librería (Gratis)
-                            <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+            
+            {!isDigitalOrder && (
+              <Card className="shadow-md">
+                <CardHeader>
+                  <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={selectedShippingMethod}
+                    onValueChange={setSelectedShippingMethod}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                      <RadioGroupItem value="delivery" id="shipping-delivery"/>
+                      <Label htmlFor="shipping-delivery" className="font-normal flex-grow cursor-pointer">
+                        <div className="flex items-center">
+                          <Truck className="mr-2 h-5 w-5 text-muted-foreground"/> 
+                          <div>
+                            A Domicilio (Recargo: ${SHIPPING_COST_DELIVERY.toFixed(2)})
+                            <span className="block text-xs text-muted-foreground">Recibe tu pedido en la comodidad de tu hogar.</span>
                           </div>
-                       </div>
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </CardContent>
-            </Card>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 space-y-0 p-3 border rounded-md hover:border-primary transition-colors">
+                      <RadioGroupItem value="pickup" id="shipping-pickup"/>
+                      <Label htmlFor="shipping-pickup" className="font-normal flex-grow cursor-pointer">
+                         <div className="flex items-center">
+                           <Store className="mr-2 h-5 w-5 text-muted-foreground"/>
+                           <div>
+                              Retiro en Librería (Gratis)
+                              <span className="block text-xs text-muted-foreground">Recoge tu pedido en una de nuestras librerías asociadas sin costo adicional.</span>
+                            </div>
+                         </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
             
             {selectedShippingMethod === "delivery" && (
               <Card className="shadow-md animate-fadeIn">
@@ -601,12 +616,14 @@ export default function CheckoutPage() {
                         <span className="font-medium">-${discountAmount.toFixed(2)}</span>
                       </div>
                   )}
-                  <div className="flex justify-between">
-                    <span>Envío:</span>
-                    <span className="font-medium">
-                      {currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis"}
-                    </span>
-                  </div>
+                  {!isDigitalOrder && (
+                    <div className="flex justify-between">
+                      <span>Envío:</span>
+                      <span className="font-medium">
+                        {currentShippingCost > 0 ? `$${currentShippingCost.toFixed(2)}` : "Gratis"}
+                      </span>
+                    </div>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-lg font-bold text-primary"><span>Total:</span> <span>${finalTotal.toFixed(2)}</span></div>
                 </div>

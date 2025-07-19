@@ -40,6 +40,17 @@ export interface DigitalBook {
   tags?: string[];
 }
 
+export interface DigitalPurchase {
+  id?: string;
+  userId: string;
+  bookId: string;
+  orderId: string;
+  title: string;
+  author: string;
+  coverImageUrl: string;
+  createdAt: any; // Firestore Timestamp
+}
+
 export interface Library {
   id: string;
   name: string;
@@ -101,6 +112,7 @@ export interface OrderItem {
   imageUrl?: string;
   categories?: string[];
   authors?: string[];
+  format?: 'Físico' | 'Digital';
 }
 
 export interface Order {

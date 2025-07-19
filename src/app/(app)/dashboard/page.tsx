@@ -12,9 +12,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import type { Book, Library, User, Order, BookRequest, PointsTransaction } from "@/types";
+import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -72,6 +72,7 @@ export default function DashboardPage() {
   
   const [orders, setOrders] = useState<Order[]>([]);
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
+  const [digitalPurchases, setDigitalPurchases] = useState<DigitalPurchase[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [preferences, setPreferences] = useState('');
@@ -210,8 +211,8 @@ export default function DashboardPage() {
 
 
         const ordersRef = collection(db, "orders");
-        const q = query(ordersRef, where("buyerId", "==", initialUserData.id));
-        const ordersUnsub = onSnapshot(q, (snapshot) => {
+        const qOrders = query(ordersRef, where("buyerId", "==", initialUserData.id));
+        const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
           const userOrders = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
@@ -220,6 +221,18 @@ export default function DashboardPage() {
           setOrders(userOrders);
         });
         unsubscribes.push(ordersUnsub);
+        
+        // Listener for digital purchases
+        const digitalPurchasesRef = collection(db, "digital_purchases");
+        const qDigital = query(digitalPurchasesRef, where("userId", "==", initialUserData.id));
+        const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
+            const userDigitalPurchases = snapshot.docs.map(doc => ({
+                id: doc.id, ...doc.data(),
+            } as DigitalPurchase));
+            setDigitalPurchases(userDigitalPurchases);
+        });
+        unsubscribes.push(digitalUnsub);
+
 
         // Listener for favorite libraries
         const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', initialUserData.id));
@@ -571,22 +584,12 @@ export default function DashboardPage() {
         {/* Tabs Section */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="purchases" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6 bg-muted/50 p-1 h-auto">
-              <TabsTrigger value="purchases" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <ShoppingBag className="mr-2 h-5 w-5" /> Mis Compras
-              </TabsTrigger>
-               <TabsTrigger value="points-history" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <Gift className="mr-2 h-5 w-5" /> Puntos
-              </TabsTrigger>
-              <TabsTrigger value="favorites" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <Heart className="mr-2 h-5 w-5" /> Librerías Favoritas
-              </TabsTrigger>
-              <TabsTrigger value="wishlist" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <Bookmark className="mr-2 h-5 w-5" /> Lista de Deseos
-              </TabsTrigger>
-              <TabsTrigger value="ai-recommendations" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
-                <Sparkles className="mr-2 h-5 w-5" /> Recomendaciones IA
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6 bg-muted/50 p-1 h-auto text-xs sm:text-sm">
+              <TabsTrigger value="purchases"><ShoppingBag className="mr-2 h-4 w-4" /> Mis Compras</TabsTrigger>
+              <TabsTrigger value="digital-books"><Download className="mr-2 h-4 w-4" /> Libros Digitales</TabsTrigger>
+              <TabsTrigger value="points-history"><Gift className="mr-2 h-4 w-4" /> Puntos</TabsTrigger>
+              <TabsTrigger value="favorites"><Heart className="mr-2 h-4 w-4" /> Librerías Favoritas</TabsTrigger>
+              <TabsTrigger value="wishlist"><Bookmark className="mr-2 h-4 w-4" /> Lista de Deseos</TabsTrigger>
             </TabsList>
 
             <TabsContent value="purchases">
@@ -622,6 +625,41 @@ export default function DashboardPage() {
                     </Table>
                   ) : (
                     <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="digital-books">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="font-headline text-xl">Mis Libros Digitales Comprados</CardTitle>
+                  <CardDescription>Aquí encontrarás todos los libros digitales que has adquirido.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {digitalPurchases.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {digitalPurchases.map((purchase) => (
+                        <Card key={purchase.id} className="overflow-hidden group">
+                           <Link href={`/reader/${purchase.bookId}`}>
+                            <div className="aspect-[2/3] relative">
+                                <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
+                            </div>
+                            <div className="p-3">
+                                <h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4>
+                                <p className="text-xs text-muted-foreground truncate">{purchase.author}</p>
+                            </div>
+                          </Link>
+                          <CardFooter className="p-3 pt-0">
+                             <Link href={`/reader/${purchase.bookId}`} className="w-full">
+                                <Button className="w-full">Leer Ahora</Button>
+                             </Link>
+                          </CardFooter>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">No has comprado ningún libro digital todavía.</p>
                   )}
                 </CardContent>
               </Card>
@@ -709,91 +747,9 @@ export default function DashboardPage() {
                 </Card>
             </TabsContent>
 
-            <TabsContent value="ai-recommendations">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl flex items-center">
-                    <Sparkles className="mr-2 h-5 w-5 text-primary" />
-                    Alicia te recomienda
-                  </CardTitle>
-                  <CardDescription>
-                    Nuestra IA utiliza los gustos que nos describas aquí para encontrar tu próxima lectura ideal.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <Label htmlFor="preferences-ai" className="font-medium">Describe qué te apetece leer:</Label>
-                        <Textarea
-                            id="preferences-ai"
-                            value={preferences}
-                            onChange={(e) => setPreferences(e.target.value)}
-                            placeholder="Ej: Busco una novela histórica que no sea sobre la Segunda Guerra Mundial, o algo de fantasía con un buen sistema de magia..."
-                            rows={3}
-                            className="mt-2"
-                        />
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Describe lo que buscas. Sé tan específico como quieras. La IA responderá únicamente a lo que escribas aquí.
-                        </p>
-                    </div>
-                    <Button onClick={handleGetRecommendations} disabled={isLoadingAi} className="w-full sm:w-auto">
-                        {isLoadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        {isLoadingAi ? "Generando..." : "Generar Recomendaciones"}
-                    </Button>
-                </CardContent>
-              </Card>
-              
-              <div className="mt-6 space-y-6">
-                {isLoadingAi ? (
-                     <div className="flex justify-center items-center py-16">
-                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                     </div>
-                ) : (
-                  <>
-                    {foundBooks.length > 0 && (
-                       <div>
-                         <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground">Encontrado en nuestro catálogo</h3>
-                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {foundBooks.map(book => <BookCard key={book.id} book={book} size="small" />)}
-                         </div>
-                       </div>
-                    )}
-
-                    {newSuggestions.length > 0 && (
-                       <div>
-                         <h3 className="font-headline text-2xl font-semibold mb-4 text-foreground">Otras sugerencias para ti</h3>
-                         <div className="space-y-4">
-                           {newSuggestions.map((suggestion, index) => (
-                             <Card key={index} className="shadow-sm">
-                                <CardHeader>
-                                  <CardTitle className="font-headline text-lg text-primary">{suggestion.title}</CardTitle>
-                                  <CardDescription>por {suggestion.author}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                  <p className="text-sm text-foreground/80 italic">"{suggestion.rationale}"</p>
-                                </CardContent>
-                             </Card>
-                           ))}
-                         </div>
-                       </div>
-                    )}
-                    
-                    {!isLoadingAi && foundBooks.length === 0 && newSuggestions.length === 0 && (
-                         <div className="text-center py-8 bg-muted/50 rounded-lg">
-                            <p className="text-muted-foreground">Tus recomendaciones aparecerán aquí.</p>
-                            <p className="text-xs text-muted-foreground">¡Usa el generador para empezar!</p>
-                        </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </TabsContent>
-
           </Tabs>
         </div>
       </div>
     </div>
   );
 }
-
-
-
