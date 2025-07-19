@@ -33,7 +33,7 @@ import { Switch } from "@/components/ui/switch";
 import type { User, Promotion, DigitalBook, OrderItem } from "@/types";
 import { format } from "date-fns";
 
-const SHIPPING_COST_DELIVERY = 3.50;
+const SHIPPING_COST_DELIVERY = 1.90;
 
 const checkoutFormSchema = z.object({
   buyerName: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -431,6 +431,7 @@ export default function CheckoutPage() {
             </Card>
             
             {!isDigitalOrder && (
+              <>
               <Card className="shadow-md">
                 <CardHeader>
                   <CardTitle className="font-headline text-xl flex items-center"><PackageSearch className="mr-2 h-5 w-5 text-primary"/>Método de Envío</CardTitle>
@@ -468,21 +469,22 @@ export default function CheckoutPage() {
                   </RadioGroup>
                 </CardContent>
               </Card>
-            )}
             
-            {selectedShippingMethod === "delivery" && !isDigitalOrder && (
-              <Card className="shadow-md animate-fadeIn">
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="shippingAddress" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                  <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                  <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                  <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                  <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} value={field.value || ''} /></FormControl> <FormMessage /> </FormItem> )} />
-                </CardContent>
-              </Card>
+              {selectedShippingMethod === "delivery" && (
+                <Card className="shadow-md animate-fadeIn">
+                  <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="shippingAddress" render={({ field }) => ( <FormItem className="sm:col-span-2"> <FormLabel>Dirección (Calle Principal, Número, Calle Secundaria)</FormLabel> <FormControl><Input placeholder="Ej: Av. Amazonas N34-451 y Juan Pablo Sanz" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={form.control} name="shippingCity" render={({ field }) => ( <FormItem> <FormLabel>Ciudad</FormLabel> <FormControl><Input placeholder="Ej: Quito" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={form.control} name="shippingProvince" render={({ field }) => ( <FormItem> <FormLabel>Provincia</FormLabel> <FormControl><Input placeholder="Ej: Pichincha" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={form.control} name="shippingPostalCode" render={({ field }) => ( <FormItem> <FormLabel>Código Postal</FormLabel> <FormControl><Input placeholder="Ej: 170101" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={form.control} name="shippingCountry" render={({ field }) => ( <FormItem> <FormLabel>País</FormLabel> <FormControl><Input {...field} value={field.value || ''} /></FormControl> <FormMessage /> </FormItem> )} />
+                  </CardContent>
+                </Card>
+              )}
+              </>
             )}
 
             <Card className="shadow-md">
