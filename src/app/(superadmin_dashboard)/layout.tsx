@@ -6,6 +6,7 @@ import { LogOut, LayoutDashboard, Users, Store, Settings, FilePenLine, Info, Mai
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import React from "react";
+import { auth } from '@/lib/firebase'; // Import auth object
 
 // Custom hook to check superadmin auth status on the client-side
 const useSuperAdminAuthStatus = () => {
@@ -45,10 +46,10 @@ export default function SuperAdminDashboardLayout({
   }, [isSuperAdminAuthenticated, router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("aliciaLibros_user");
-    localStorage.removeItem("isLibraryAdminAuthenticated");
-    localStorage.removeItem("aliciaLibros_registeredLibrary");
+    if (auth) {
+      auth.signOut(); // This will trigger the onAuthStateChanged listener in Navbar to clean up and redirect
+    }
+    // No need to manually clear localStorage here, the listener will do it.
     router.push("/superadmin-login");
   };
   
