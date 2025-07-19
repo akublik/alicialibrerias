@@ -201,11 +201,6 @@ export default function NewBookPage() {
         toast({ title: "Falta la portada", description: "Debes subir un archivo para la portada del libro.", variant: "destructive" });
         return;
     }
-    if (values.format === 'Digital' && !epubFile && !pdfFile) {
-        toast({ title: "Falta archivo digital", description: "Debes subir al menos un archivo EPUB o PDF para un libro digital.", variant: "destructive" });
-        return;
-    }
-
 
     setIsSubmitting(true);
     setUploadProgress(0);
@@ -233,15 +228,13 @@ export default function NewBookPage() {
         let finalEpubUrl = '';
         let finalPdfUrl = '';
         
-        if (values.format === 'Digital') {
-            if (epubFile) {
-                setUploadStep("Subiendo EPUB...");
-                finalEpubUrl = await uploadFile(epubFile, 'epubs');
-            }
-            if (pdfFile) {
-                setUploadStep("Subiendo PDF...");
-                finalPdfUrl = await uploadFile(pdfFile, 'pdfs');
-            }
+        if (epubFile) {
+            setUploadStep("Subiendo EPUB...");
+            finalEpubUrl = await uploadFile(epubFile, 'epubs');
+        }
+        if (pdfFile) {
+            setUploadStep("Subiendo PDF...");
+            finalPdfUrl = await uploadFile(pdfFile, 'pdfs');
         }
         
         setUploadStep("Guardando información...");
@@ -320,7 +313,7 @@ export default function NewBookPage() {
 
               {bookFormat === 'Digital' && (
                   <Card className="bg-muted/50">
-                      <CardHeader><CardTitle className="text-lg">Archivos Digitales</CardTitle><CardDescription>Sube los archivos para el libro digital. Debes subir al menos un formato.</CardDescription></CardHeader>
+                      <CardHeader><CardTitle className="text-lg">Archivos Digitales (Opcional)</CardTitle><CardDescription>Sube los archivos si deseas que este libro sea descargable.</CardDescription></CardHeader>
                       <CardContent className="space-y-4">
                           <div className="space-y-2">
                               <Label htmlFor="epub-file">Archivo EPUB (Recomendado)</Label>

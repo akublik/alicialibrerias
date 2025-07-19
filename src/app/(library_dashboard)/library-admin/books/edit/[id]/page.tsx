@@ -362,7 +362,7 @@ export default function EditBookPage() {
 
               {bookFormat === 'Digital' && (
                   <Card className="bg-muted/50">
-                      <CardHeader><CardTitle className="text-lg">Archivos Digitales</CardTitle><CardDescription>Sube los archivos para el libro digital. Puedes reemplazar los existentes.</CardDescription></CardHeader>
+                      <CardHeader><CardTitle className="text-lg">Archivos Digitales (Opcional)</CardTitle><CardDescription>Sube los archivos para el libro digital si deseas que sea descargable. Puedes reemplazar los existentes.</CardDescription></CardHeader>
                       <CardContent className="space-y-4">
                           <div className="space-y-2">
                               <Label htmlFor="epub-file">Reemplazar Archivo EPUB</Label>
