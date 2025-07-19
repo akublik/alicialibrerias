@@ -154,42 +154,42 @@ export default function DigitalCheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
+        // Fetch all necessary external data BEFORE starting the transaction
+        const isbnsToQuery = cartItems
+            .filter(item => item.format === 'Digital' && item.isbn)
+            .map(item => item.isbn!);
+
+        const digitalBooksRef = collection(db, "digital_books");
+        const q = query(digitalBooksRef, where("isbn", "in", isbnsToQuery));
+        const digitalBooksSnapshot = await getDocs(q);
+
+        const digitalBooksMap = new Map<string, { id: string, epubFileUrl: string }>();
+        digitalBooksSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.isbn) {
+                digitalBooksMap.set(data.isbn, { id: doc.id, epubFileUrl: data.epubFileUrl });
+            }
+        });
+
+        // Validate that all digital books in cart exist in the digital_books collection
+        for (const item of cartItems) {
+            if (item.format === 'Digital' && item.isbn && !digitalBooksMap.has(item.isbn)) {
+                throw new Error(`El archivo digital para el libro "${item.title}" (ISBN: ${item.isbn}) no se encontró. Por favor, contacta a soporte.`);
+            }
+        }
+
+        const promotionsRef = collection(db, "promotions");
+        const now = new Date();
+        const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
+        const promotionsSnapshot = await getDocs(promotionsQuery);
+
+        // Now run the transaction with all external data already fetched
         await runTransaction(db, async (transaction) => {
-            // --- 1. ALL READS FIRST ---
             const userRef = doc(db, "users", user.id);
             const userSnap = await transaction.get(userRef);
             if (!userSnap.exists()) throw new Error("El usuario no existe.");
             
-            const isbnsToQuery = cartItems
-                .filter(item => item.format === 'Digital' && item.isbn)
-                .map(item => item.isbn!);
-
-            const digitalBooksRef = collection(db, "digital_books");
-            const q = query(digitalBooksRef, where("isbn", "in", isbnsToQuery));
-            const digitalBooksSnapshot = await transaction.get(q);
-
-            const digitalBooksMap = new Map<string, { id: string, epubFileUrl: string }>();
-            digitalBooksSnapshot.forEach(doc => {
-              const data = doc.data();
-              if(data.isbn) {
-                digitalBooksMap.set(data.isbn, { id: doc.id, epubFileUrl: data.epubFileUrl });
-              }
-            });
-            
-            // Validate that all digital books in cart exist in the digital_books collection
-            for (const item of cartItems) {
-                if (item.format === 'Digital' && item.isbn && !digitalBooksMap.has(item.isbn)) {
-                    throw new Error(`El archivo digital para el libro "${item.title}" (ISBN: ${item.isbn}) no se encontró. Por favor, contacta a soporte.`);
-                }
-            }
-
-
-            const promotionsRef = collection(db, "promotions");
-            const now = new Date();
-            const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
-            const promotionsSnapshot = await getDocs(promotionsQuery);
-
-            // --- 2. LOGIC AND CHECKS (NO MORE READS) ---
+            // --- LOGIC AND CHECKS (NO MORE READS) ---
             const activePromotions = promotionsSnapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
                 .filter(p => {
@@ -255,7 +255,7 @@ export default function DigitalCheckoutPage() {
               transactionDescription += " (¡Bono de cumpleaños!)";
             }
             
-            // --- 3. ALL WRITES LAST ---
+            // --- WRITES ---
             const newOrderData = {
                 libraryId,
                 buyerId: user.id,
@@ -295,7 +295,7 @@ export default function DigitalCheckoutPage() {
                   const purchaseRef = doc(collection(db, 'digital_purchases'));
                   transaction.set(purchaseRef, {
                       userId: user.id,
-                      bookId: digitalBookInfo.id,
+                      bookId: digitalBookInfo.id, // Use the ID from the digital_books collection
                       orderId: newOrderRef.id,
                       title: item.title,
                       author: item.authors.join(', '),
@@ -489,3 +489,5 @@ export default function DigitalCheckoutPage() {
     </div>
   );
 }
+
+    
