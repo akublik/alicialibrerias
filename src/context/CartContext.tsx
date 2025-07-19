@@ -37,7 +37,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
         // Get all book IDs from the stored cart.
         const bookIds = storedCart.map(item => item.id);
-        if (!db) return;
+        if (!db || bookIds.length === 0) return;
 
         // Fetch full, up-to-date data for all books in the cart from Firestore.
         // This ensures price, stock, and crucially, the 'format' are correct.
@@ -54,8 +54,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         const validatedCart = storedCart.map(item => {
           const freshBook = freshBooksMap.get(item.id);
           if (freshBook) {
-            // Merge fresh data with stored quantity.
-            return { ...freshBook, quantity: item.quantity };
+            // Ensure format is explicitly handled.
+            const bookWithFormat: CartItem = { 
+                ...freshBook,
+                format: freshBook.format || 'Físico', // <-- Critical Correction
+                quantity: item.quantity 
+            };
+            return bookWithFormat;
           }
           return null; // Book no longer exists, will be filtered out.
         }).filter((item): item is CartItem => item !== null);
@@ -95,7 +100,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             : item
         );
       }
-      return [...prevItems, { ...book, quantity }];
+      // Ensure the book object passed to the cart has a format property.
+      const bookWithFormat = {
+        ...book,
+        format: book.format || 'Físico', // Default to 'Físico' if undefined
+      };
+      return [...prevItems, { ...bookWithFormat, quantity }];
     });
     toast({
       title: "¡Añadido al carrito!",
