@@ -171,7 +171,12 @@ export default function EditDigitalBookPage() {
       
       setUploadStep("Actualizando información...");
       const bookRef = doc(db, "digital_books", bookId);
-      const dataToUpdate = { ...values, coverImageUrl: finalCoverUrl, epubFileUrl: finalEpubUrl };
+      const dataToUpdate = { 
+        ...values, 
+        coverImageUrl: finalCoverUrl, 
+        epubFileUrl: finalEpubUrl,
+        isbn: values.isbn || '',
+      };
       await updateDoc(bookRef, dataToUpdate);
       
       toast({ title: "Libro digital actualizado", description: `"${values.title}" se ha guardado.` });

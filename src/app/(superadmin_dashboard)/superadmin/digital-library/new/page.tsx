@@ -141,7 +141,13 @@ export default function NewDigitalBookPage() {
       // 3. Save metadata to Firestore
       setUploadStep("Guardando información...");
       await addDoc(collection(db, "digital_books"), {
-        ...values,
+        title: values.title,
+        author: values.author,
+        isbn: values.isbn || '',
+        description: values.description || '',
+        format: values.format,
+        categories: values.categories || [],
+        tags: values.tags || [],
         coverImageUrl: coverUploadUrl,
         epubFileUrl: epubUploadUrl,
         createdAt: serverTimestamp(),
