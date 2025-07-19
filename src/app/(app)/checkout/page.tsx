@@ -73,7 +73,7 @@ export default function CheckoutPage() {
   const [currentShippingCost, setCurrentShippingCost] = useState(SHIPPING_COST_DELIVERY);
   const [pointsToApply, setPointsToApply] = useState(0);
 
-  const isDigitalOrder = cartItems.some(item => item.format === 'Digital');
+  const isDigitalOrder = cartItems.every(item => item.format === 'Digital');
 
   const form = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutFormSchema),
@@ -126,20 +126,19 @@ export default function CheckoutPage() {
             console.error("Error parsing user data from localStorage", e);
         }
     }
-    // Set digital delivery if applicable
-    if(isDigitalOrder) {
-        setSelectedShippingMethod('digital');
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemCount, isSubmitting, router, toast, isDigitalOrder]);
+  }, [itemCount, isSubmitting, router, toast]);
 
   useEffect(() => {
-    if (selectedShippingMethod === "delivery") {
+    if (isDigitalOrder) {
+        setSelectedShippingMethod('digital');
+        setCurrentShippingCost(0);
+    } else if (selectedShippingMethod === "delivery") {
       setCurrentShippingCost(SHIPPING_COST_DELIVERY);
     } else {
       setCurrentShippingCost(0);
     }
-  }, [selectedShippingMethod]);
+  }, [selectedShippingMethod, isDigitalOrder]);
 
   const discountAmount = pointsToApply / 100;
   const finalTotal = totalPrice + currentShippingCost - discountAmount;
@@ -214,17 +213,17 @@ export default function CheckoutPage() {
                 return startDate <= now && endDate >= now;
             });
 
+        const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.bookId);
         let digitalBooksMap = new Map<string, DigitalBook>();
-        if (isDigitalOrder) {
-            const digitalBookIds = cartItems.filter(item => item.format === 'Digital').map(item => item.id);
-            if (digitalBookIds.length > 0) {
-                const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
-                const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
-                digitalBooksSnapshot.docs.forEach(doc => {
-                    digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
-                });
-            }
+        
+        if (digitalBookIds.length > 0) {
+            const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
+            const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
+            digitalBooksSnapshot.forEach(doc => {
+                digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
+            });
         }
+
 
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
@@ -315,7 +314,7 @@ export default function CheckoutPage() {
                 createdAt: serverTimestamp(),
                 shippingMethod: selectedShippingMethod,
                 paymentMethod: selectedPaymentMethod,
-                shippingAddress: selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : (isDigitalOrder ? 'Entrega Digital' : 'Retiro en librería'),
+                shippingAddress: isDigitalOrder ? 'Entrega Digital' : (selectedShippingMethod === 'delivery' ? `${values.shippingAddress}, ${values.shippingCity}, ${values.shippingProvince}` : 'Retiro en librería'),
                 orderNotes: values.orderNotes || '',
                 needsInvoice: values.needsInvoice || false,
                 taxId: values.needsInvoice ? values.taxId || '' : '',
@@ -325,24 +324,21 @@ export default function CheckoutPage() {
             };
             transaction.set(newOrderRef, newOrderData);
 
-            if (isDigitalOrder) {
-                for (const item of cartItems) {
-                    if (item.format === 'Digital' && digitalBooksMap.has(item.id)) {
-                        const digitalBookData = digitalBooksMap.get(item.id)!;
-                        const purchaseRef = doc(collection(db, 'digital_purchases'));
-                        transaction.set(purchaseRef, {
-                            userId: user.id,
-                            bookId: item.id, // Use the ID from the cart item which matches the digital_books collection ID
-                            orderId: newOrderRef.id,
-                            title: digitalBookData.title,
-                            author: digitalBookData.author,
-                            coverImageUrl: digitalBookData.coverImageUrl,
-                            createdAt: serverTimestamp(),
-                        });
-                    }
+            for (const item of cartItems) {
+                if (item.format === 'Digital' && digitalBooksMap.has(item.bookId!)) {
+                    const digitalBookData = digitalBooksMap.get(item.bookId!)!;
+                    const purchaseRef = doc(collection(db, 'digital_purchases'));
+                    transaction.set(purchaseRef, {
+                        userId: user.id,
+                        bookId: item.bookId,
+                        orderId: newOrderRef.id,
+                        title: digitalBookData.title,
+                        author: digitalBookData.author,
+                        coverImageUrl: digitalBookData.coverImageUrl,
+                        createdAt: serverTimestamp(),
+                    });
                 }
             }
-
 
             if (pointsToApply > 0) {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
@@ -465,7 +461,7 @@ export default function CheckoutPage() {
               </Card>
             )}
             
-            {selectedShippingMethod === "delivery" && (
+            {selectedShippingMethod === "delivery" && !isDigitalOrder && (
               <Card className="shadow-md animate-fadeIn">
                 <CardHeader>
                   <CardTitle className="font-headline text-xl flex items-center"><Truck className="mr-2 h-5 w-5 text-primary"/>Dirección de Envío</CardTitle>
