@@ -77,10 +77,20 @@ export default function DigitalCheckoutPage() {
       return;
     }
     
-    if (itemCount === 0 || !isDigitalOrder) {
+    if (itemCount > 0 && !isDigitalOrder) {
       toast({
         title: "Carrito Inválido",
-        description: "Tu carrito está vacío o contiene productos físicos. Redirigiendo...",
+        description: "Tu carrito contiene productos físicos. Redirigiendo al checkout correcto...",
+        variant: "destructive"
+      });
+      router.push("/checkout");
+      return;
+    }
+
+    if (itemCount === 0) {
+      toast({
+        title: "Carrito Vacío",
+        description: "Tu carrito está vacío. Redirigiendo...",
         variant: "destructive"
       });
       router.push("/cart");
@@ -142,17 +152,6 @@ export default function DigitalCheckoutPage() {
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        const digitalBookIds = cartItems.map(item => item.id);
-        let digitalBooksMap = new Map<string, DigitalBook>();
-        
-        if (digitalBookIds.length > 0) {
-            const digitalBooksQuery = query(collection(db, "digital_books"), where(documentId(), "in", digitalBookIds));
-            const digitalBooksSnapshot = await getDocs(digitalBooksQuery);
-            digitalBooksSnapshot.forEach(doc => {
-                digitalBooksMap.set(doc.id, { id: doc.id, ...doc.data() } as DigitalBook);
-            });
-        }
-        
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
@@ -214,21 +213,23 @@ export default function DigitalCheckoutPage() {
             };
             transaction.set(newOrderRef, newOrderData);
 
+            // CORRECTION: Add digital book purchases to the 'digital_purchases' collection.
             for (const item of cartItems) {
-                if (digitalBooksMap.has(item.id)) {
-                    const digitalBookData = digitalBooksMap.get(item.id)!;
+                // Ensure it's a digital item before creating the purchase record.
+                if (item.format === 'Digital') {
                     const purchaseRef = doc(collection(db, 'digital_purchases'));
                     transaction.set(purchaseRef, {
                         userId: user.id,
                         bookId: item.id,
                         orderId: newOrderRef.id,
-                        title: digitalBookData.title,
-                        author: digitalBookData.author,
-                        coverImageUrl: digitalBookData.coverImageUrl,
+                        title: item.title,
+                        author: item.authors.join(', '),
+                        coverImageUrl: item.imageUrl,
                         createdAt: serverTimestamp(),
                     });
                 }
             }
+            
             // Points transaction logic... (copied from original checkout)
         });
 
@@ -377,7 +378,7 @@ export default function DigitalCheckoutPage() {
               </CardContent>
               <CardFooter>
                   <Button type="submit" size="lg" className="w-full font-body text-base" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CreditCard className="mr-2 h-5 w-5" />}
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
                     Realizar Pedido
                   </Button>
               </CardFooter>
