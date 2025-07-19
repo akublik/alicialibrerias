@@ -150,34 +150,24 @@ export default function DigitalCheckoutPage() {
        return;
     }
 
+    // Validate that all digital books have a file URL BEFORE the transaction
+    for (const item of cartItems) {
+        if (item.format === 'Digital' && !item.epubFileUrl) {
+            toast({ 
+                title: "Error de Archivo",
+                description: `El libro "${item.title}" no tiene un archivo digital asociado. No se puede completar la compra.`,
+                variant: "destructive",
+                duration: 8000
+            });
+            setIsSubmitting(false);
+            return;
+        }
+    }
+
     let transactionDescription = `Puntos por compra`;
     const newOrderRef = doc(collection(db, "orders"));
 
     try {
-        // Fetch all necessary external data BEFORE starting the transaction
-        const isbnsToQuery = cartItems
-            .filter(item => item.format === 'Digital' && item.isbn)
-            .map(item => item.isbn!);
-
-        const digitalBooksRef = collection(db, "digital_books");
-        const q = query(digitalBooksRef, where("isbn", "in", isbnsToQuery));
-        const digitalBooksSnapshot = await getDocs(q);
-
-        const digitalBooksMap = new Map<string, { id: string, epubFileUrl: string }>();
-        digitalBooksSnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.isbn) {
-                digitalBooksMap.set(data.isbn, { id: doc.id, epubFileUrl: data.epubFileUrl });
-            }
-        });
-
-        // Validate that all digital books in cart exist in the digital_books collection
-        for (const item of cartItems) {
-            if (item.format === 'Digital' && item.isbn && !digitalBooksMap.has(item.isbn)) {
-                throw new Error(`El archivo digital para el libro "${item.title}" (ISBN: ${item.isbn}) no se encontró. Por favor, contacta a soporte.`);
-            }
-        }
-
         const promotionsRef = collection(db, "promotions");
         const now = new Date();
         const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
@@ -289,21 +279,18 @@ export default function DigitalCheckoutPage() {
 
             // Create records in digital_purchases
             cartItems.forEach((item) => {
-              if (item.format === 'Digital' && item.isbn) {
-                const digitalBookInfo = digitalBooksMap.get(item.isbn);
-                if (digitalBookInfo) {
+              if (item.format === 'Digital') {
                   const purchaseRef = doc(collection(db, 'digital_purchases'));
                   transaction.set(purchaseRef, {
                       userId: user.id,
-                      bookId: digitalBookInfo.id, // Use the ID from the digital_books collection
+                      bookId: item.id, // The ID of the book from the 'books' collection
                       orderId: newOrderRef.id,
                       title: item.title,
                       author: item.authors.join(', '),
                       coverImageUrl: item.imageUrl,
-                      epubFileUrl: digitalBookInfo.epubFileUrl,
+                      epubFileUrl: item.epubFileUrl, // Use the URL directly from the cart item
                       createdAt: serverTimestamp(),
                   });
-                }
               }
             });
             
@@ -489,5 +476,3 @@ export default function DigitalCheckoutPage() {
     </div>
   );
 }
-
-    

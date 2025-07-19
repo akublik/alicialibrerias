@@ -1,3 +1,4 @@
+
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -25,7 +26,7 @@ export default function ReaderPage() {
   const router = useRouter();
   const bookId = params.id as string;
   
-  const [book, setBook] = useState<DigitalBook | null>(null);
+  const [book, setBook] = useState<Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string } | null>(null);
   const [epubData, setEpubData] = useState<ArrayBuffer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,42 +57,45 @@ export default function ReaderPage() {
       setEpubData(null);
       
       try {
-        // First try to find it in digital_books (the main library)
+        let bookData: Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string } | null = null;
+        
+        // First, check the main library ('digital_books')
         let bookRef = doc(db, "digital_books", bookId);
         let docSnap = await getDoc(bookRef);
-        let bookData;
 
         if (docSnap.exists()) {
-            bookData = { id: docSnap.id, ...docSnap.data() } as DigitalBook;
+            const data = docSnap.data();
+            bookData = {
+                id: docSnap.id,
+                title: data.title,
+                author: data.author,
+                epubFileUrl: data.epubFileUrl,
+            };
         } else {
-            // If not found, try to find it in the physical books collection
+            // If not found, check the physical/digital books collection ('books')
             bookRef = doc(db, "books", bookId);
             docSnap = await getDoc(bookRef);
             if(docSnap.exists()) {
-                const physicalBookData = docSnap.data();
-                if (physicalBookData.format !== 'Digital' || !physicalBookData.epubFileUrl) {
+                const data = docSnap.data();
+                if (!data.epubFileUrl) {
                     throw new Error("Este libro no está disponible en un formato digital para leer.");
                 }
-                // Adapt the physical book data to the DigitalBook interface for the reader
                 bookData = {
                     id: docSnap.id,
-                    title: physicalBookData.title,
-                    author: physicalBookData.authors.join(', '),
-                    coverImageUrl: physicalBookData.imageUrl,
-                    epubFileUrl: physicalBookData.epubFileUrl,
-                    createdAt: physicalBookData.createdAt,
-                    format: 'EPUB', // Assuming EPUB
-                } as DigitalBook;
+                    title: data.title,
+                    author: Array.isArray(data.authors) ? data.authors.join(', ') : data.authors,
+                    epubFileUrl: data.epubFileUrl,
+                };
             } else {
                  throw new Error("Libro no encontrado en ninguna biblioteca.");
             }
         }
         
-        setBook(bookData);
-        
-        if (!bookData.epubFileUrl) {
+        if (!bookData || !bookData.epubFileUrl) {
           throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
         }
+
+        setBook(bookData);
 
         const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
         const response = await fetch(proxyUrl);
