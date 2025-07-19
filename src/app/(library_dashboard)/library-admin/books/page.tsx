@@ -307,6 +307,9 @@ export default function LibraryBooksPage() {
                 continue;
             }
             booksToProcess++;
+            
+            const formatValue = (row.formato || "").toLowerCase();
+            const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
 
             const bookData = {
                 title: row.titulo || 'Sin Título',
@@ -322,7 +325,7 @@ export default function LibraryBooksPage() {
                 coverType: row.formato || null,
                 publisher: row.editor || row.sello || null,
                 condition: 'Nuevo' as const,
-                format: 'Físico' as const,
+                format: bookFormat, // Correctly set the format
                 libraryId: libraryId,
                 libraryName: libraryName,
                 libraryLocation: libraryLocation,
@@ -511,7 +514,7 @@ export default function LibraryBooksPage() {
                            <div className="text-xs text-muted-foreground">{book.authors.join(', ')}</div>
                         </TableCell>
                          <TableCell>
-                          <Badge variant="outline">{book.format || 'Físico'}</Badge>
+                          <Badge variant={book.format === 'Digital' ? 'default' : 'secondary'}>{book.format || 'Físico'}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge variant={status === 'published' ? "secondary" : "destructive"}>
@@ -614,5 +617,3 @@ export default function LibraryBooksPage() {
     </>
   );
 }
-
-    
