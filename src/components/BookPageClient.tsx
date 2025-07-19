@@ -124,7 +124,13 @@ export default function BookPageClient() {
         }
 
         // --- 2. Augment Main Book Data ---
-        let foundBook = { id: bookSnap.id, ...bookSnap.data() } as Book;
+        const bookData = bookSnap.data();
+        let foundBook: Book = {
+            id: bookSnap.id,
+            ...bookData,
+            format: bookData.format || 'Físico',
+        } as Book;
+
         if (foundBook.libraryId && librariesMap.has(foundBook.libraryId)) {
           const libInfo = librariesMap.get(foundBook.libraryId)!;
           foundBook.libraryName = libInfo.name;
@@ -167,7 +173,13 @@ export default function BookPageClient() {
 
         const augmentAndAddBook = (doc: any) => {
             if (!relatedBooksMap.has(doc.id)) {
-                let relatedBook = { id: doc.id, ...doc.data() } as Book;
+                const relatedBookData = doc.data();
+                let relatedBook: Book = { 
+                    id: doc.id,
+                    ...relatedBookData,
+                    format: relatedBookData.format || 'Físico',
+                } as Book;
+
                 if (relatedBook.libraryId && librariesMap.has(relatedBook.libraryId)) {
                     const libInfo = librariesMap.get(relatedBook.libraryId)!;
                     relatedBook.libraryName = libInfo.name;

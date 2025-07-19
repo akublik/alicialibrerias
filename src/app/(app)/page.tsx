@@ -98,10 +98,6 @@ export default function HomePage() {
                     augmentedBook.libraryName = libInfo.name;
                     augmentedBook.libraryLocation = libInfo.location;
                 }
-                // Ensure format field is present
-                if (!augmentedBook.format) {
-                    augmentedBook.format = 'Físico';
-                }
                 return augmentedBook;
             });
         };
@@ -120,7 +116,12 @@ export default function HomePage() {
             const bookSnapshots = await Promise.all(bookPromises);
             bookSnapshots.forEach(snapshot => {
                 snapshot.docs.forEach(doc => {
-                    allBooks.push({ id: doc.id, ...doc.data() } as Book);
+                    const bookData = doc.data();
+                    allBooks.push({ 
+                        id: doc.id,
+                        ...bookData,
+                        format: bookData.format || 'Físico',
+                    } as Book);
                 });
             });
         }
@@ -132,7 +133,14 @@ export default function HomePage() {
         } else {
            const fallbackBooksQuery = query(collection(db, "books"), limit(4));
            const booksSnapshot = await getDocs(fallbackBooksQuery);
-           const books: Book[] = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+           const books: Book[] = booksSnapshot.docs.map(doc => {
+               const bookData = doc.data();
+               return { 
+                   id: doc.id, 
+                   ...bookData,
+                   format: bookData.format || 'Físico',
+                } as Book
+            });
            setFeaturedBooks(augmentBooks(books));
         }
 

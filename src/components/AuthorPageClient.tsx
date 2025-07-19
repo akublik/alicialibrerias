@@ -61,7 +61,7 @@ export default function AuthorPageClient() {
             const book: Book = { 
                 id: bookDoc.id, 
                 ...bookData,
-                format: bookData.format || 'Físico', // Ensure format is always present
+                format: bookData.format || 'Físico',
             } as Book;
              if (book.libraryId && librariesMap.has(book.libraryId)) {
                 const libInfo = librariesMap.get(book.libraryId)!;

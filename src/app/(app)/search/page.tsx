@@ -55,7 +55,7 @@ function SearchResults() {
             const book: Book = { 
                 id: doc.id,
                 ...bookData,
-                format: bookData.format || 'Físico', // Ensure format is always present
+                format: bookData.format || 'Físico',
             } as Book;
 
             if (book.libraryId && librariesMap.has(book.libraryId)) {
