@@ -167,10 +167,19 @@ export default function DigitalCheckoutPage() {
 
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
-            const userSnap = await transaction.get(userRef);
+            const digitalBookRefs = cartItems
+              .filter(item => item.format === 'Digital')
+              .map(item => doc(db, "digital_books", item.id));
 
+            // --- 1. ALL READS FIRST ---
+            const userSnap = await transaction.get(userRef);
             if (!userSnap.exists()) throw new Error("El usuario no existe.");
+
+            const digitalBookSnaps = await Promise.all(
+              digitalBookRefs.map(ref => transaction.get(ref))
+            );
             
+            // --- 2. LOGIC AND CHECKS (NO MORE READS) ---
             const currentUserData = userSnap.data() as User;
             const currentPoints = currentUserData.loyaltyPoints || 0;
             const finalDiscountAmount = pointsToApply / 100;
@@ -180,8 +189,55 @@ export default function DigitalCheckoutPage() {
             }
             
             let pointsToAward = Math.floor(totalPrice - finalDiscountAmount);
-            // Points logic... (copied from original checkout)
+            let birthdayMultiplier = 1;
+            
+            if (currentUserData.birthdate) {
+              const today = new Date();
+              const birthdate = new Date(currentUserData.birthdate);
+              if (today.getUTCMonth() === birthdate.getUTCMonth() && today.getUTCDate() === birthdate.getUTCDate()) {
+                  birthdayMultiplier = 2;
+              }
+            }
 
+            let promoMultiplier = 1;
+            let promoBonusPoints = 0;
+            const appliedPromoNames: string[] = [];
+
+            for (const item of cartItems) {
+                for (const promo of activePromotions) {
+                    let isApplicable = false;
+                    if (promo.targetType === 'global') isApplicable = true;
+                    if (promo.targetType === 'book' && promo.targetValue === item.id) isApplicable = true;
+                    if (promo.targetType === 'category' && item.categories?.includes(promo.targetValue!)) isApplicable = true;
+                    if (promo.targetType === 'author' && item.authors?.includes(promo.targetValue!)) isApplicable = true;
+                    
+                    if (isApplicable) {
+                        if (promo.type === 'multiplier' && promo.value > promoMultiplier) {
+                            promoMultiplier = promo.value;
+                        }
+                        if (promo.type === 'bonus') {
+                            promoBonusPoints += promo.value;
+                        }
+                        if (!appliedPromoNames.includes(promo.name)) {
+                            appliedPromoNames.push(promo.name);
+                        }
+                    }
+                }
+            }
+
+            pointsToAward = Math.floor(pointsToAward * promoMultiplier) + promoBonusPoints;
+            if(birthdayMultiplier > 1) {
+                pointsToAward *= birthdayMultiplier;
+            }
+
+            if (appliedPromoNames.length > 0) {
+              transactionDescription += ` (Promos: ${appliedPromoNames.join(', ')})`;
+            }
+            if(birthdayMultiplier > 1) {
+              transactionDescription += " (¡Bono de cumpleaños!)";
+            }
+            
+            // --- 3. ALL WRITES LAST ---
             const newOrderData = {
                 libraryId,
                 buyerId: user.id,
@@ -213,33 +269,28 @@ export default function DigitalCheckoutPage() {
             };
             transaction.set(newOrderRef, newOrderData);
 
-            // Create a record in digital_purchases for each digital book
-            for (const item of cartItems) {
-                if (item.format === 'Digital' && item.epubFileUrl) { // Check it's digital and has a file
+            // Create records in digital_purchases
+            cartItems.forEach((item, index) => {
+                const digitalBookSnap = digitalBookSnaps[index];
+                if (item.format === 'Digital' && digitalBookSnap?.exists()) {
+                    const digitalBookData = digitalBookSnap.data() as DigitalBook;
                     const purchaseRef = doc(collection(db, 'digital_purchases'));
-                    const digitalBookRef = doc(db, "digital_books", item.id);
-                    const digitalBookSnap = await transaction.get(digitalBookRef);
-
-                    if (digitalBookSnap.exists()) {
-                         const digitalBookData = digitalBookSnap.data() as DigitalBook;
-                         transaction.set(purchaseRef, {
-                            userId: user.id,
-                            bookId: item.id,
-                            orderId: newOrderRef.id,
-                            title: item.title,
-                            author: item.authors.join(', '),
-                            coverImageUrl: item.imageUrl,
-                            epubFileUrl: digitalBookData.epubFileUrl, // Get from the source digital_book
-                            createdAt: serverTimestamp(),
-                        });
-                    }
+                    transaction.set(purchaseRef, {
+                        userId: user.id,
+                        bookId: item.id,
+                        orderId: newOrderRef.id,
+                        title: item.title,
+                        author: item.authors.join(', '),
+                        coverImageUrl: item.imageUrl,
+                        epubFileUrl: digitalBookData.epubFileUrl,
+                        createdAt: serverTimestamp(),
+                    });
                 }
-            }
+            });
             
-            // Points transaction logic... (copied from original checkout)
+            // Points transaction logic
             const pointsAfterRedemption = currentPoints - pointsToApply;
             const finalPoints = pointsAfterRedemption + pointsToAward;
-            
             transaction.update(userRef, { loyaltyPoints: finalPoints });
 
             if (pointsToApply > 0) {
