@@ -1,3 +1,4 @@
+import './init.ts';
 import '@/ai/flows/literary-game-ai.ts';
 import '@/ai/flows/book-recommendations.ts';
 import '@/ai/flows/generate-automatic-tags.ts';
