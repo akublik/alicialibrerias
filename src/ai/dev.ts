@@ -1,4 +1,3 @@
-import './init'; // Import and run initialization first
 import '@/ai/flows/literary-game-ai.ts';
 import '@/ai/flows/book-recommendations.ts';
 import '@/ai/flows/generate-automatic-tags.ts';
