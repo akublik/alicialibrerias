@@ -238,17 +238,25 @@ export default function DashboardPage() {
     if (!user?.id || !db) return;
     
     const digitalPurchasesRef = collection(db, "digital_purchases");
-    const qDigital = query(digitalPurchasesRef, where("userId", "==", user.id), orderBy("createdAt", "desc"));
+    const qDigital = query(digitalPurchasesRef, where("userId", "==", user.id));
     
     const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
         const userDigitalPurchases = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate() || new Date(),
         } as DigitalPurchase));
+        
+        userDigitalPurchases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setDigitalPurchases(userDigitalPurchases);
     }, (error) => {
-        console.error("Error fetching digital purchases:", error);
-        toast({ title: "Error al cargar libros digitales", description: error.message, variant: "destructive" });
+        console.error("Error al cargar libros digitales:", error);
+        toast({ 
+          title: "Error al cargar libros digitales", 
+          description: "La consulta requiere un índice. Puedes crearlo aquí: " + (error as any).url,
+          variant: "destructive",
+          duration: 10000,
+        });
     });
 
     return () => digitalUnsub();
