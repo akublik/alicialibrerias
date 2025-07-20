@@ -1,4 +1,5 @@
 
+
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
@@ -8,7 +9,7 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play, Download } from 'lucide-react';
 import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/button';
@@ -249,6 +250,12 @@ export default function ReaderPage() {
                     <p className="text-sm text-muted-foreground truncate">{book.author}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <a href={book.epubFileUrl} download={`${book.title}.epub`}>
+                        <Button variant="outline" size="sm">
+                            <Download className="mr-2 h-4 w-4" />
+                            Descargar EPUB
+                        </Button>
+                    </a>
                     <Select value={selectedVoice} onValueChange={setSelectedVoice}>
                       <SelectTrigger className="w-[120px] h-9 text-xs">
                         <SelectValue placeholder="Selecciona una voz" />

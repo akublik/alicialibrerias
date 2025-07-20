@@ -645,28 +645,36 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {digitalPurchases.map((purchase) => (
                         <Card key={purchase.id} className="overflow-hidden group flex flex-col justify-between">
-                          <Link href={purchase.isAvailable ? `/reader/${purchase.bookId}` : '#'} className={cn(!purchase.isAvailable && "pointer-events-none")}>
-                            <div className="aspect-[2/3] relative">
-                                <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
-                                {!purchase.isAvailable && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"></div>}
-                            </div>
-                            <div className="p-3">
-                                <h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4>
-                                <p className="text-xs text-muted-foreground truncate">{purchase.author}</p>
-                            </div>
-                          </Link>
-                          <CardFooter className="p-3 pt-0">
-                             {purchase.isAvailable ? (
-                                <Link href={`/reader/${purchase.bookId}`} className="w-full">
-                                  <Button className="w-full">Leer Ahora</Button>
-                                </Link>
-                              ) : (
-                                <Button className="w-full" disabled variant="outline">
-                                  <Clock className="mr-2 h-4 w-4" />
-                                  Pendiente
-                                </Button>
-                              )}
-                          </CardFooter>
+                            <Link href={purchase.isAvailable ? `/reader/${purchase.bookId}` : '#'} className={cn(!purchase.isAvailable && "pointer-events-none")}>
+                                <div className="aspect-[2/3] relative">
+                                    <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
+                                    {!purchase.isAvailable && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"></div>}
+                                </div>
+                                <div className="p-3">
+                                    <h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4>
+                                    <p className="text-xs text-muted-foreground truncate">{purchase.author}</p>
+                                </div>
+                            </Link>
+                            <CardFooter className="p-3 pt-0 flex-col items-stretch space-y-2">
+                                {purchase.isAvailable ? (
+                                    <>
+                                        <Link href={`/reader/${purchase.bookId}`} className="w-full">
+                                            <Button className="w-full">Leer Ahora</Button>
+                                        </Link>
+                                        <a href={purchase.epubFileUrl} download={`${purchase.title}.epub`}>
+                                            <Button variant="secondary" className="w-full">
+                                                <Download className="mr-2 h-4 w-4" />
+                                                Descargar
+                                            </Button>
+                                        </a>
+                                    </>
+                                ) : (
+                                    <Button className="w-full" disabled variant="outline">
+                                        <Clock className="mr-2 h-4 w-4" />
+                                        Pendiente
+                                    </Button>
+                                )}
+                            </CardFooter>
                         </Card>
                       ))}
                     </div>
