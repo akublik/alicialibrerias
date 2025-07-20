@@ -85,23 +85,21 @@ export default function LibraryOrdersPage() {
     setIsUpdatingStatus(order.id);
 
     try {
-        // Fetch associated digital purchases outside the transaction first.
-        const digitalPurchasesRef = collection(db, "digital_purchases");
-        const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
-        const purchaseSnapshot = await getDocs(q);
+        if (newStatus === 'delivered') {
+            const digitalPurchasesRef = collection(db, "digital_purchases");
+            const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
+            const purchaseSnapshot = await getDocs(q);
 
-        await runTransaction(db, async (transaction) => {
-            const orderRef = doc(db, "orders", order.id);
-
-            // Logic for 'delivered' status: activate digital books.
-            if (newStatus === 'delivered' && !purchaseSnapshot.empty) {
+            await runTransaction(db, async (transaction) => {
+                const orderRef = doc(db, "orders", order.id);
                 purchaseSnapshot.forEach(purchaseDoc => {
                     transaction.update(purchaseDoc.ref, { isAvailable: true });
                 });
-            }
-            
-            // Logic for 'cancelled' status: refund points.
-            if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+                transaction.update(orderRef, { status: newStatus });
+            });
+        } else if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+             await runTransaction(db, async (transaction) => {
+                const orderRef = doc(db, "orders", order.id);
                 const userRef = doc(db, "users", order.buyerId);
                 const userSnap = await transaction.get(userRef);
                 if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
@@ -132,12 +130,13 @@ export default function LibraryOrdersPage() {
                         createdAt: serverTimestamp()
                     });
                 }
-            }
-            
-            // Finally, update the order status itself.
-            transaction.update(orderRef, { status: newStatus });
-        });
-
+                 transaction.update(orderRef, { status: newStatus });
+            });
+        } else {
+             const orderRef = doc(db, "orders", order.id);
+             await updateDoc(orderRef, { status: newStatus });
+        }
+        
         toast({
             title: "Estado Actualizado",
             description: `El estado del pedido se ha cambiado a "${statusTranslations[newStatus]}".`,

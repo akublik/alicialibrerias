@@ -121,13 +121,7 @@ export default function DashboardPage() {
       return;
     }
     setIsAuthenticated(true);
-
-    const userDataString = localStorage.getItem("aliciaLibros_user");
-    if (!userDataString) {
-      handleLogout();
-      return;
-    }
-
+    
     if (!db) {
       toast({ title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
       handleLogout();
@@ -135,13 +129,16 @@ export default function DashboardPage() {
     }
     
     let currentUserId: string | null = null;
-    try {
-        const parsedUser = JSON.parse(userDataString);
-        currentUserId = parsedUser.id;
-    } catch(e) {
-        console.error("Error parsing user data, logging out:", e);
-        handleLogout();
-        return;
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (userDataString) {
+        try {
+            const parsedUser = JSON.parse(userDataString);
+            currentUserId = parsedUser.id;
+        } catch(e) {
+            console.error("Error parsing user data, logging out:", e);
+            handleLogout();
+            return;
+        }
     }
     
     if (!currentUserId) {
@@ -176,6 +173,20 @@ export default function DashboardPage() {
       }
     });
     unsubscribes.push(userUnsub);
+    
+    // Listener for digital purchases
+    const digitalPurchasesRef = collection(db, "digital_purchases");
+    const qDigital = query(digitalPurchasesRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"));
+    const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
+        const userDigitalPurchases = snapshot.docs.map(doc => ({
+            id: doc.id, ...doc.data(),
+        } as DigitalPurchase));
+        setDigitalPurchases(userDigitalPurchases);
+    }, (error) => {
+        console.error("Error fetching digital purchases:", error);
+    });
+    unsubscribes.push(digitalUnsub);
+
 
     // Listener for all libraries to augment book data
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
@@ -221,17 +232,6 @@ export default function DashboardPage() {
         setOrders(userOrders);
     });
     unsubscribes.push(ordersUnsub);
-
-    // Listener for digital purchases
-    const digitalPurchasesRef = collection(db, "digital_purchases");
-    const qDigital = query(digitalPurchasesRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"));
-    const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
-        const userDigitalPurchases = snapshot.docs.map(doc => ({
-            id: doc.id, ...doc.data(),
-        } as DigitalPurchase));
-        setDigitalPurchases(userDigitalPurchases);
-    });
-    unsubscribes.push(digitalUnsub);
 
     // Listener for favorite libraries
     const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', currentUserId));
