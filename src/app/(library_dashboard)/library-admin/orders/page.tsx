@@ -83,37 +83,42 @@ export default function LibraryOrdersPage() {
   const handleUpdateStatus = async (order: Order, newStatus: Order['status']) => {
     if (!db) return;
     setIsUpdatingStatus(order.id);
-    
+
     try {
+        // For digital delivery, we first need to find the related digital_purchases documents.
+        // This read operation must happen BEFORE the transaction starts.
+        let digitalPurchaseRefs: ReturnType<typeof doc>[] = [];
+        if (newStatus === 'delivered' && order.shippingMethod === 'digital') {
+            const digitalPurchasesRef = collection(db, "digital_purchases");
+            const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
+            const purchaseSnapshot = await getDocs(q);
+            purchaseSnapshot.forEach(purchaseDoc => {
+                digitalPurchaseRefs.push(purchaseDoc.ref);
+            });
+        }
+
         await runTransaction(db, async (transaction) => {
             const orderRef = doc(db, "orders", order.id);
 
-            // Handle digital purchases availability on 'delivered' status
-            if (newStatus === 'delivered' && order.shippingMethod === 'digital') {
-                const digitalPurchasesRef = collection(db, "digital_purchases");
-                const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
-                const purchaseSnapshot = await getDocs(q); // Use getDocs, not transaction.get on a query
-
-                purchaseSnapshot.forEach(purchaseDoc => {
-                    transaction.update(purchaseDoc.ref, { isAvailable: true });
+            // Now, inside the transaction, we can update the documents we found.
+            if (newStatus === 'delivered' && digitalPurchaseRefs.length > 0) {
+                digitalPurchaseRefs.forEach(purchaseRef => {
+                    transaction.update(purchaseRef, { isAvailable: true });
                 });
             }
 
-            // If cancelling, do all reads first
+            // Handle cancellation logic (reads first, then writes)
             if (newStatus === 'cancelled' && order.status !== 'cancelled') {
                 const userRef = doc(db, "users", order.buyerId);
-                const userSnap = await transaction.get(userRef); // READ FIRST
+                const userSnap = await transaction.get(userRef);
                 if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
 
-                // Now that all reads are done, we can do calculations and then writes.
                 const userData = userSnap.data() as User;
                 const pointsUsed = order.pointsUsed || 0;
                 const earnedPoints = order.pointsEarned || 0;
                 const currentPoints = userData.loyaltyPoints || 0;
-                
-                // Reverse the points: add back used points, subtract earned points
                 const finalPoints = currentPoints + pointsUsed - earnedPoints;
-                
+
                 // All writes happen now
                 transaction.update(orderRef, { status: newStatus });
                 transaction.update(userRef, { loyaltyPoints: finalPoints });
@@ -136,9 +141,8 @@ export default function LibraryOrdersPage() {
                         createdAt: serverTimestamp()
                     });
                 }
-
             } else {
-                // For any other status change, we just update the order.
+                // For any other status change, just update the order status.
                 transaction.update(orderRef, { status: newStatus });
             }
         });
@@ -153,6 +157,7 @@ export default function LibraryOrdersPage() {
       setIsUpdatingStatus(null);
     }
   };
+
 
   const statusOptions: Order['status'][] = ['pending', 'shipped', 'delivered', 'cancelled'];
   const getStatusVariant = (status: Order['status']) => {
