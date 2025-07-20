@@ -150,7 +150,7 @@ export default function DigitalCheckoutPage() {
        return;
     }
 
-    // Validate that all digital books have a file URL BEFORE the transaction
+    // Pre-transaction validation: Ensure all digital books have a file URL
     for (const item of cartItems) {
         if (item.format === 'Digital' && !item.epubFileUrl) {
             toast({ 
@@ -167,19 +167,21 @@ export default function DigitalCheckoutPage() {
     let transactionDescription = `Puntos por compra`;
     const newOrderRef = doc(collection(db, "orders"));
 
+    // --- Start of Read Operations (outside transaction) ---
+    const promotionsRef = collection(db, "promotions");
+    const now = new Date();
+    const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
+    
     try {
-        const promotionsRef = collection(db, "promotions");
-        const now = new Date();
-        const promotionsQuery = query(promotionsRef, where("isActive", "==", true));
         const promotionsSnapshot = await getDocs(promotionsQuery);
 
-        // Now run the transaction with all external data already fetched
+        // --- Start of Transaction ---
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
-            const userSnap = await transaction.get(userRef);
+            const userSnap = await transaction.get(userRef); // Read user data inside transaction for consistency
             if (!userSnap.exists()) throw new Error("El usuario no existe.");
             
-            // --- LOGIC AND CHECKS (NO MORE READS) ---
+            // --- Logic and Checks (using pre-fetched and in-transaction data) ---
             const activePromotions = promotionsSnapshot.docs
                 .map(doc => ({ id: doc.id, ...doc.data() } as Promotion))
                 .filter(p => {
@@ -277,18 +279,19 @@ export default function DigitalCheckoutPage() {
             };
             transaction.set(newOrderRef, newOrderData);
 
-            // Create records in digital_purchases
+            // Create records in digital_purchases for each digital item
             cartItems.forEach((item) => {
               if (item.format === 'Digital') {
                   const purchaseRef = doc(collection(db, 'digital_purchases'));
                   transaction.set(purchaseRef, {
                       userId: user.id,
-                      bookId: item.id, // The ID of the book from the 'books' collection
+                      bookId: item.id,
                       orderId: newOrderRef.id,
                       title: item.title,
                       author: item.authors.join(', '),
                       coverImageUrl: item.imageUrl,
-                      epubFileUrl: item.epubFileUrl, // Use the URL directly from the cart item
+                      epubFileUrl: item.epubFileUrl,
+                      isAvailable: false, // Access is not available until order is 'delivered'
                       createdAt: serverTimestamp(),
                   });
               }
@@ -320,7 +323,7 @@ export default function DigitalCheckoutPage() {
             }
         });
 
-      toast({ title: "¡Pedido Realizado con Éxito!", description: "Gracias por tu compra. Tus libros digitales ya están en tu panel." });
+      toast({ title: "¡Pedido Realizado con Éxito!", description: "Gracias por tu compra. Revisa la página de confirmación para más detalles.", duration: 7000 });
       clearCart();
       router.push(`/order-confirmation/${newOrderRef.id}`);
 

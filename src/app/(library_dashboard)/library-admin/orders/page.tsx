@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, ShoppingCart, Loader2, PackageOpen, ArrowLeft, FilterX } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { Order, User } from "@/types";
+import type { Order, User, DigitalPurchase } from "@/types";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -87,6 +87,17 @@ export default function LibraryOrdersPage() {
     try {
         await runTransaction(db, async (transaction) => {
             const orderRef = doc(db, "orders", order.id);
+
+            // Handle digital purchases availability on 'delivered' status
+            if (newStatus === 'delivered' && order.shippingMethod === 'digital') {
+                const digitalPurchasesRef = collection(db, "digital_purchases");
+                const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
+                const purchaseSnapshot = await getDocs(q); // Use getDocs, not transaction.get on a query
+
+                purchaseSnapshot.forEach(purchaseDoc => {
+                    transaction.update(purchaseDoc.ref, { isAvailable: true });
+                });
+            }
 
             // If cancelling, do all reads first
             if (newStatus === 'cancelled' && order.status !== 'cancelled') {

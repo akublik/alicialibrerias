@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, CheckCircle, ArrowRight, BookHeart, ShoppingBag } from 'lucide-react';
+import { Loader2, CheckCircle, ArrowRight, BookHeart, ShoppingBag, Clock } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { Order, OrderItem } from '@/types';
@@ -42,6 +42,7 @@ export default function OrderConfirmationPage() {
   }, [orderId]);
   
   const hasDigitalItems = order?.items.some(item => item.format === 'Digital');
+  const isDigitalOnlyOrder = order?.shippingMethod === 'digital';
 
   if (isLoading) {
     return (
@@ -80,12 +81,12 @@ export default function OrderConfirmationPage() {
                 <p><strong>Fecha:</strong> {new Date(order.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 <p><strong>Total:</strong> ${order.totalPrice.toFixed(2)}</p>
             </div>
-            {hasDigitalItems && (
+            {isDigitalOnlyOrder && (
                 <div className="bg-primary/10 p-4 rounded-md text-center">
-                    <BookHeart className="mx-auto h-8 w-8 text-primary mb-2"/>
-                    <h3 className="font-semibold text-primary">¡Tus libros digitales te esperan!</h3>
+                    <Clock className="mx-auto h-8 w-8 text-primary mb-2"/>
+                    <h3 className="font-semibold text-primary">¡Tus libros digitales casi están listos!</h3>
                     <p className="text-sm text-foreground/80 mt-1">
-                        Puedes acceder a tus libros digitales en cualquier momento desde la sección "Mis Libros Digitales" en tu panel de lector.
+                        El enlace de descarga para tus libros digitales estará disponible en tu panel (sección "Mis Libros Digitales") una vez que la librería confirme el pago y el pedido sea marcado como "Entregado".
                     </p>
                 </div>
             )}

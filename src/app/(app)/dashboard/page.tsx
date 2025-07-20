@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
-import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download, CreditCard } from "lucide-react";
+import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download, CreditCard, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -644,10 +644,11 @@ export default function DashboardPage() {
                   {digitalPurchases.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                       {digitalPurchases.map((purchase) => (
-                        <Card key={purchase.id} className="overflow-hidden group">
-                           <Link href={`/reader/${purchase.bookId}`}>
+                        <Card key={purchase.id} className="overflow-hidden group flex flex-col justify-between">
+                          <Link href={purchase.isAvailable ? `/reader/${purchase.bookId}` : '#'} className={cn(!purchase.isAvailable && "pointer-events-none")}>
                             <div className="aspect-[2/3] relative">
                                 <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
+                                {!purchase.isAvailable && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"></div>}
                             </div>
                             <div className="p-3">
                                 <h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4>
@@ -655,9 +656,16 @@ export default function DashboardPage() {
                             </div>
                           </Link>
                           <CardFooter className="p-3 pt-0">
-                             <Link href={`/reader/${purchase.bookId}`} className="w-full">
-                                <Button className="w-full">Leer Ahora</Button>
-                             </Link>
+                             {purchase.isAvailable ? (
+                                <Link href={`/reader/${purchase.bookId}`} className="w-full">
+                                  <Button className="w-full">Leer Ahora</Button>
+                                </Link>
+                              ) : (
+                                <Button className="w-full" disabled variant="outline">
+                                  <Clock className="mr-2 h-4 w-4" />
+                                  Pendiente
+                                </Button>
+                              )}
                           </CardFooter>
                         </Card>
                       ))}

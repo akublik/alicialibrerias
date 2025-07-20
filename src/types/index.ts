@@ -52,6 +52,7 @@ export interface DigitalPurchase {
   coverImageUrl: string;
   createdAt: any; // Firestore Timestamp
   epubFileUrl?: string;
+  isAvailable: boolean; // Controls if the user can access the book
 }
 
 export interface Library {
