@@ -85,62 +85,63 @@ export default function LibraryOrdersPage() {
     setIsUpdatingStatus(order.id);
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const orderRef = doc(db, "orders", order.id);
+        // Fetch associated digital purchases outside the transaction first.
+        const digitalPurchasesRef = collection(db, "digital_purchases");
+        const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
+        const purchaseSnapshot = await getDocs(q);
 
-        // Logic for 'delivered' status
-        if (newStatus === 'delivered') {
-          const digitalPurchasesRef = collection(db, "digital_purchases");
-          const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
-          const purchaseSnapshot = await getDocs(q); // This query is now OUTSIDE the transaction
-          
-          purchaseSnapshot.forEach(purchaseDoc => {
-              transaction.update(purchaseDoc.ref, { isAvailable: true });
-          });
-        }
-        
-        // Logic for 'cancelled' status
-        if (newStatus === 'cancelled' && order.status !== 'cancelled') {
-          const userRef = doc(db, "users", order.buyerId);
-          const userSnap = await transaction.get(userRef);
-          if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
+        await runTransaction(db, async (transaction) => {
+            const orderRef = doc(db, "orders", order.id);
 
-          const userData = userSnap.data() as User;
-          const pointsUsed = order.pointsUsed || 0;
-          const earnedPoints = order.pointsEarned || 0;
-          const currentPoints = userData.loyaltyPoints || 0;
-          const finalPoints = currentPoints + pointsUsed - earnedPoints;
+            // Logic for 'delivered' status: activate digital books.
+            if (newStatus === 'delivered' && !purchaseSnapshot.empty) {
+                purchaseSnapshot.forEach(purchaseDoc => {
+                    transaction.update(purchaseDoc.ref, { isAvailable: true });
+                });
+            }
+            
+            // Logic for 'cancelled' status: refund points.
+            if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+                const userRef = doc(db, "users", order.buyerId);
+                const userSnap = await transaction.get(userRef);
+                if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
 
-          transaction.update(userRef, { loyaltyPoints: finalPoints });
+                const userData = userSnap.data() as User;
+                const pointsUsed = order.pointsUsed || 0;
+                const earnedPoints = order.pointsEarned || 0;
+                const currentPoints = userData.loyaltyPoints || 0;
+                const finalPoints = currentPoints + pointsUsed - earnedPoints;
 
-          if (earnedPoints > 0) {
-            transaction.set(doc(collection(db, "pointsTransactions")), {
-              userId: order.buyerId,
-              orderId: order.id,
-              description: `Puntos deducidos por pedido cancelado #${order.id.slice(0, 7)}`,
-              points: -earnedPoints,
-              createdAt: serverTimestamp()
-            });
-          }
-          if (pointsUsed > 0) {
-            transaction.set(doc(collection(db, "pointsTransactions")), {
-              userId: order.buyerId,
-              orderId: order.id,
-              description: `Puntos devueltos por pedido cancelado #${order.id.slice(0, 7)}`,
-              points: pointsUsed,
-              createdAt: serverTimestamp()
-            });
-          }
-        }
-        
-        // Finally, update the order status itself
-        transaction.update(orderRef, { status: newStatus });
-      });
+                transaction.update(userRef, { loyaltyPoints: finalPoints });
 
-      toast({
-        title: "Estado Actualizado",
-        description: `El estado del pedido se ha cambiado a "${statusTranslations[newStatus]}".`,
-      });
+                if (earnedPoints > 0) {
+                    transaction.set(doc(collection(db, "pointsTransactions")), {
+                        userId: order.buyerId,
+                        orderId: order.id,
+                        description: `Puntos deducidos por pedido cancelado #${order.id.slice(0, 7)}`,
+                        points: -earnedPoints,
+                        createdAt: serverTimestamp()
+                    });
+                }
+                if (pointsUsed > 0) {
+                    transaction.set(doc(collection(db, "pointsTransactions")), {
+                        userId: order.buyerId,
+                        orderId: order.id,
+                        description: `Puntos devueltos por pedido cancelado #${order.id.slice(0, 7)}`,
+                        points: pointsUsed,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            }
+            
+            // Finally, update the order status itself.
+            transaction.update(orderRef, { status: newStatus });
+        });
+
+        toast({
+            title: "Estado Actualizado",
+            description: `El estado del pedido se ha cambiado a "${statusTranslations[newStatus]}".`,
+        });
     } catch (error: any) {
        toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
