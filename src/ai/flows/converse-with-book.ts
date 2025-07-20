@@ -8,7 +8,6 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
 import { Part, Role, UserMessage } from '@genkit-ai/core/lib/model';
 
@@ -45,7 +44,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         }));
         
         const response = await ai.generate({
-            model: googleAI.chat('gemini-1.5-flash'), // Corrected to use chat model
+            model: 'gemini-1.5-flash',
             system: systemPrompt,
             history: genkitHistory as Array<{ role: Role; content: Part[] }>,
         });
