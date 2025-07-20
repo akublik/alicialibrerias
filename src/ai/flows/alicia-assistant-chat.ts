@@ -80,6 +80,9 @@ const chatWithAliciaAssistantFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return {response: output!.response};
+    if (!output) {
+      throw new Error("AI did not return a valid response.");
+    }
+    return output;
   }
 );
