@@ -125,7 +125,7 @@ export function ConverseWithBookDialog({ bookTitle }: ConverseWithBookDialogProp
                         autoComplete="off"
                     />
                     <Button type="submit" disabled={isLoading || !input.trim()}>
-                        <Send className="h-4 w-4" />
+                        {isLoading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Send className="h-4 w-4" />}
                     </Button>
                 </form>
             </div>
