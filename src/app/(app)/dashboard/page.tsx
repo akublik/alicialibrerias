@@ -111,7 +111,7 @@ export default function DashboardPage() {
     return allBooks.filter(book => wishlistBookIds.has(book.id));
   }, [wishlistItems, allBooks, isWishlistLoading]);
 
-  // Effect to load all user-related data
+  // Effect to load user data and non-digital data
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     if (!authStatus) {
@@ -120,96 +120,62 @@ export default function DashboardPage() {
     }
     setIsAuthenticated(true);
     
-    if (!db) {
-      toast({ title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (!userDataString) {
+      console.error("User data missing, logging out.");
       handleLogout();
       return;
     }
-    
-    let currentUserId: string | null = null;
-    const userDataString = localStorage.getItem("aliciaLibros_user");
-    if (userDataString) {
-        try {
-            const parsedUser = JSON.parse(userDataString);
-            currentUserId = parsedUser.id;
-        } catch(e) {
-            console.error("Error parsing user data, logging out:", e);
-            handleLogout();
-            return;
-        }
-    }
-    
-    if (!currentUserId) {
-        console.error("User ID missing, logging out.");
+
+    try {
+        const parsedUser = JSON.parse(userDataString);
+        setUser(parsedUser);
+    } catch(e) {
+        console.error("Error parsing user data, logging out:", e);
         handleLogout();
         return;
     }
+  }, [router]);
+
+  // Separate effect to handle all data fetching that depends on the user ID
+  useEffect(() => {
+    if (!user?.id || !db) return;
 
     let unsubscribes: (() => void)[] = [];
-
-    // Listener for user document
-    const userRef = doc(db, "users", currentUserId);
+    
+    // Listener for user document for live updates (e.g., points)
+    const userRef = doc(db, "users", user.id);
     const userUnsub = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const liveUserData = docSnap.data();
         let joinDateStr = "Miembro reciente";
         if (liveUserData.createdAt && (liveUserData.createdAt as any).seconds) {
-          const joinDate = new Date((liveUserData.createdAt as any).seconds * 1000);
-          joinDateStr = format(joinDate, "MMMM yyyy", { locale: es });
+          joinDateStr = format(new Date((liveUserData.createdAt as any).seconds * 1000), "MMMM yyyy", { locale: es });
           joinDateStr = joinDateStr.charAt(0).toUpperCase() + joinDateStr.slice(1);
         }
-        
-        const fullUserData: UserData = {
-          ...(liveUserData as Omit<User, 'id'>),
-          id: docSnap.id,
-          joinDate: joinDateStr,
-          avatarUrl: liveUserData.avatarUrl || `https://placehold.co/150x150.png?text=${liveUserData.name.charAt(0)}`,
-          dataAiHint: liveUserData.dataAiHint || "user avatar",
-        };
-        setUser(fullUserData);
-      } else {
-        console.error("User document does not exist, logging out.");
-        handleLogout();
+        setUser(prev => ({
+            ...prev!,
+            ...(liveUserData as Omit<User, 'id'>),
+            id: docSnap.id,
+            joinDate: joinDateStr,
+            avatarUrl: liveUserData.avatarUrl || `https://placehold.co/150x150.png?text=${liveUserData.name.charAt(0)}`,
+            dataAiHint: liveUserData.dataAiHint || "user avatar",
+        }));
       }
     });
     unsubscribes.push(userUnsub);
     
-    // Listener for digital purchases
-    const digitalPurchasesRef = collection(db, "digital_purchases");
-    const qDigital = query(digitalPurchasesRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"));
-    const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
-        const userDigitalPurchases = snapshot.docs.map(doc => ({
-            id: doc.id, ...doc.data(),
-        } as DigitalPurchase));
-        setDigitalPurchases(userDigitalPurchases);
-    }, (error) => {
-        console.error("Error fetching digital purchases:", error);
-    });
-    unsubscribes.push(digitalUnsub);
-
-
-    // Listener for all libraries to augment book data
+    // Listener for all libraries and all books
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
-        const libNameMap = new Map<string, string>();
         const libInfoMap = new Map<string, {name: string, location: string}>();
-
-        libSnapshot.forEach(doc => {
-            const data = doc.data();
-            libNameMap.set(doc.id, data.name);
-            libInfoMap.set(doc.id, { name: data.name, location: data.location });
-        });
-        setLibraries(libNameMap);
+        libSnapshot.forEach(doc => libInfoMap.set(doc.id, { name: doc.data().name, location: doc.data().location }));
 
         const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
-            const augmentedBooks = booksSnapshot.docs.map(doc => {
-                const book = { id: doc.id, ...doc.data() } as Book;
+            const augmentedBooks = booksSnapshot.docs.map(bookDoc => {
+                const book = { id: bookDoc.id, ...bookDoc.data() } as Book;
                 if (book.libraryId && libInfoMap.has(book.libraryId)) {
                     const libInfo = libInfoMap.get(book.libraryId)!;
-                    return { 
-                      ...book, 
-                      libraryName: libInfo.name,
-                      libraryLocation: libInfo.location
-                    };
+                    return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
                 }
                 return book;
             });
@@ -221,28 +187,25 @@ export default function DashboardPage() {
     
     // Listener for physical orders
     const ordersRef = collection(db, "orders");
-    const qOrders = query(ordersRef, where("buyerId", "==", currentUserId));
+    const qOrders = query(ordersRef, where("buyerId", "==", user.id), where("shippingMethod", "!=", "digital"));
     const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
         let userOrders = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
         } as Order));
-        userOrders = userOrders.filter(order => order.shippingMethod !== 'digital');
         userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setOrders(userOrders);
     });
     unsubscribes.push(ordersUnsub);
 
     // Listener for favorite libraries
-    const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', currentUserId));
+    const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', user.id));
     const favsUnsub = onSnapshot(favsQuery, async (snapshot) => {
         setIsLoadingFavorites(true);
         const libraryIds = snapshot.docs.map(doc => doc.data().libraryId);
         if (libraryIds.length > 0) {
             const chunks = [];
-            for (let i = 0; i < libraryIds.length; i += 30) {
-                chunks.push(libraryIds.slice(i, i + 30));
-            }
+            for (let i = 0; i < libraryIds.length; i += 30) chunks.push(libraryIds.slice(i, i + 30));
             const libPromises = chunks.map(chunk => getDocs(query(collection(db, 'libraries'), where(documentId(), 'in', chunk))));
             const libSnapshots = await Promise.all(libPromises);
             const libs: Library[] = [];
@@ -257,7 +220,7 @@ export default function DashboardPage() {
     
     // Listener for points history
     const pointsRef = collection(db, "pointsTransactions");
-    const pointsQuery = query(pointsRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"), limit(50));
+    const pointsQuery = query(pointsRef, where("userId", "==", user.id), orderBy("createdAt", "desc"), limit(50));
     const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
         const history = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
@@ -267,11 +230,30 @@ export default function DashboardPage() {
     });
     unsubscribes.push(pointsUnsub);
 
-    return () => {
-      unsubscribes.forEach(unsub => unsub());
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, [user?.id]);
+  
+  // Dedicated effect for Digital Purchases, dependent only on user.id
+  useEffect(() => {
+    if (!user?.id || !db) return;
+    
+    const digitalPurchasesRef = collection(db, "digital_purchases");
+    const qDigital = query(digitalPurchasesRef, where("userId", "==", user.id), orderBy("createdAt", "desc"));
+    
+    const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
+        const userDigitalPurchases = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+        } as DigitalPurchase));
+        setDigitalPurchases(userDigitalPurchases);
+    }, (error) => {
+        console.error("Error fetching digital purchases:", error);
+        toast({ title: "Error al cargar libros digitales", description: error.message, variant: "destructive" });
+    });
+
+    return () => digitalUnsub();
+  }, [user?.id, toast]);
+
 
   // Effect to reset form when dialog opens
   useEffect(() => {
@@ -311,7 +293,6 @@ export default function DashboardPage() {
              id: user.id
         };
         
-        setUser(fullyUpdatedUser as UserData);
         localStorage.setItem("aliciaLibros_user", JSON.stringify(fullyUpdatedUser));
         
         toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
@@ -389,7 +370,7 @@ export default function DashboardPage() {
 
 
   if (!isAuthenticated || !user) {
-    return <div className="container mx-auto px-4 py-8 text-center">Verificando acceso...</div>;
+    return <div className="container mx-auto px-4 py-8 text-center"><Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" /></div>;
   }
 
   return (
@@ -761,5 +742,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

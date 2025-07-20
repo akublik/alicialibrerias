@@ -92,9 +92,11 @@ export default function LibraryOrdersPage() {
 
             await runTransaction(db, async (transaction) => {
                 const orderRef = doc(db, "orders", order.id);
+                // Mark associated digital purchases as available
                 purchaseSnapshot.forEach(purchaseDoc => {
                     transaction.update(purchaseDoc.ref, { isAvailable: true });
                 });
+                // Update order status
                 transaction.update(orderRef, { status: newStatus });
             });
         } else if (newStatus === 'cancelled' && order.status !== 'cancelled') {
@@ -133,6 +135,7 @@ export default function LibraryOrdersPage() {
                  transaction.update(orderRef, { status: newStatus });
             });
         } else {
+             // For 'pending' or 'shipped' status updates
              const orderRef = doc(db, "orders", order.id);
              await updateDoc(orderRef, { status: newStatus });
         }
