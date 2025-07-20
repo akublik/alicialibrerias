@@ -29,7 +29,7 @@ import { bookCategories, bookTags } from '@/lib/options';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { es } from 'date-fns/locale';
 import { BookCard } from "@/components/BookCard";
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { getBookRecommendations, type BookRecommendationsOutput } from '@/ai/flows/book-recommendations';
 import { Separator } from '@/components/ui/separator';
@@ -748,4 +748,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
