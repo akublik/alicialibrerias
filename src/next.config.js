@@ -41,6 +41,13 @@ const nextConfig = {
         pathname: '/**',
       },
       {
+        protocol: 'https',
+        hostname: 'digitalwayltda.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
         hostname: 'digitalwayltda.com',
         port: '',
         pathname: '/**',

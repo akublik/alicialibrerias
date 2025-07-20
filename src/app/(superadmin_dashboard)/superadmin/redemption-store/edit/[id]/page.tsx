@@ -21,14 +21,11 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useParams } from "next/navigation";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { RedemptionItem } from "@/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { Progress } from "@/components/ui/progress";
-import { Label } from "@/components/ui/label";
 import Image from "next/image";
 
 const itemFormSchema = z.object({
@@ -37,6 +34,7 @@ const itemFormSchema = z.object({
   pointsRequired: z.coerce.number().int().positive("Los puntos deben ser un número positivo."),
   stock: z.coerce.number().int().min(0, "El stock no puede ser negativo."),
   type: z.enum(['Libro', 'Gift Card', 'Servicio', 'Otro'], { required_error: "Debes seleccionar un tipo." }),
+  imageUrl: z.string().url("Debe ser una URL de imagen válida.").or(z.literal('')),
   dataAiHint: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -47,9 +45,6 @@ export default function EditRedemptionItemPage() {
   const [itemData, setItemData] = useState<RedemptionItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
@@ -59,7 +54,7 @@ export default function EditRedemptionItemPage() {
     resolver: zodResolver(itemFormSchema),
   });
 
-  const currentImageUrl = itemData?.imageUrl;
+  const imageUrl = form.watch('imageUrl');
 
   useEffect(() => {
     if (!itemId || !db) return;
@@ -72,13 +67,13 @@ export default function EditRedemptionItemPage() {
         if (docSnap.exists()) {
           const data = docSnap.data() as RedemptionItem;
           setItemData(data);
-          setImagePreview(data.imageUrl);
           form.reset({
             name: data.name,
             description: data.description,
             pointsRequired: data.pointsRequired,
             stock: data.stock,
             type: data.type,
+            imageUrl: data.imageUrl,
             dataAiHint: data.dataAiHint || "",
             isActive: data.isActive,
           });
@@ -95,49 +90,12 @@ export default function EditRedemptionItemPage() {
     fetchItem();
   }, [itemId, form, router, toast]);
 
-  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-        setImageFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result as string);
-        reader.readAsDataURL(file);
-    } else if (file) {
-        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
-    }
-  };
-
-  const uploadFile = (file: File, path: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (!storage) return reject(new Error("Firebase Storage no está configurado."));
-      const storageRef = ref(storage, `${path}/${Date.now()}-${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on('state_changed',
-        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-        (error) => reject(error),
-        async () => {
-          try {
-            resolve(await getDownloadURL(uploadTask.snapshot.ref));
-          } catch (error) {
-            reject(error);
-          }
-        }
-      );
-    });
-  };
-
   async function onSubmit(values: ItemFormValues) {
     if (!db || !itemData) return;
     setIsSubmitting(true);
-    setUploadProgress(0);
     try {
-      let finalImageUrl = itemData.imageUrl;
-      if (imageFile) {
-        finalImageUrl = await uploadFile(imageFile, 'redemption_items');
-      }
-
       const itemRef = doc(db, "redemptionItems", itemId);
-      await updateDoc(itemRef, { ...values, imageUrl: finalImageUrl });
+      await updateDoc(itemRef, values);
       toast({ title: "Artículo Actualizado", description: `El artículo "${values.name}" ha sido actualizado.` });
       router.push("/superadmin/redemption-store");
     } catch (error: any) {
@@ -178,22 +136,13 @@ export default function EditRedemptionItemPage() {
 
                <div className="grid sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="stock" render={({ field }) => ( <FormItem><FormLabel>Stock Disponible</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                 <div className="space-y-2">
-                    <Label htmlFor="image-file">Reemplazar Imagen</Label>
-                    <Input id="image-file" type="file" accept="image/*" onChange={handleImageFileChange} disabled={isSubmitting} />
-                 </div>
               </div>
-              {imagePreview && <Image src={imagePreview} alt="Vista previa" width={120} height={120} className="mt-2 rounded-md border object-cover aspect-square" />}
-              
+
+              <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen</FormLabel><FormControl><Input type="url" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
+              {imageUrl && <Image src={imageUrl} alt="Vista previa" width={120} height={120} className="mt-2 rounded-md border object-cover aspect-square" />}
+
               <FormField control={form.control} name="dataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (1-2 palabras)</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="isActive" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Artículo Activo</FormLabel><PageCardDescription>Permite que este artículo sea visible en la tienda.</PageCardDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )}/>
-
-              {isSubmitting && (
-                <div className="space-y-2">
-                  <Label>Subiendo imagen... {Math.round(uploadProgress)}%</Label>
-                  <Progress value={uploadProgress} />
-                </div>
-              )}
 
               <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
