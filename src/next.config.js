@@ -1,5 +1,5 @@
 /** @type {import('next').NextConfig} */
-// Added a comment to force re-reading the config file
+// This comment is to force a re-read of the configuration.
 const nextConfig = {
   /* config options here */
   images: {
@@ -20,7 +20,7 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
         port: '',
-        pathname: '/v0/b/alicia-lee.firebasestorage.app/o/**',
+        pathname: '/**',
       },
       {
         protocol: 'https',
@@ -43,14 +43,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'digitalwayltda.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'http',
         hostname: 'digitalwayltda.com',
-        port: '',
-        pathname: '/**',
       },
     ],
   },

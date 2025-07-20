@@ -26,6 +26,8 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 
 const itemFormSchema = z.object({
   name: z.string().min(2, "El nombre es requerido."),
@@ -33,7 +35,6 @@ const itemFormSchema = z.object({
   pointsRequired: z.coerce.number().int().positive("Los puntos deben ser un número positivo."),
   stock: z.coerce.number().int().min(0, "El stock no puede ser negativo."),
   type: z.enum(['Libro', 'Gift Card', 'Servicio', 'Otro'], { required_error: "Debes seleccionar un tipo." }),
-  imageUrl: z.string().url("Debe ser una URL de imagen válida.").optional().or(z.literal('')),
   dataAiHint: z.string().optional(),
   isActive: z.boolean().default(true),
 });
@@ -42,36 +43,77 @@ type ItemFormValues = z.infer<typeof itemFormSchema>;
 
 export default function NewRedemptionItemPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
   const form = useForm<ItemFormValues>({
     resolver: zodResolver(itemFormSchema),
-    defaultValues: { name: "", description: "", pointsRequired: undefined, stock: undefined, type: undefined, imageUrl: "", dataAiHint: "", isActive: true },
+    defaultValues: { name: "", description: "", pointsRequired: undefined, stock: undefined, type: undefined, dataAiHint: "", isActive: true },
   });
 
-  const imageUrl = form.watch('imageUrl');
+  const handleImageFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setImagePreview(reader.result as string);
+        reader.readAsDataURL(file);
+    } else if (file) {
+        toast({ title: "Archivo no válido", description: "Por favor, selecciona un archivo de imagen.", variant: "destructive" });
+        setImageFile(null);
+        setImagePreview(null);
+        if (event.target) event.target.value = "";
+    }
+  };
 
   async function onSubmit(values: ItemFormValues) {
+    if (!imageFile) {
+      toast({ title: "Falta la imagen", description: "Debes subir un archivo para la imagen del artículo.", variant: "destructive" });
+      return;
+    }
     if (!db) {
       toast({ title: "Error de conexión", variant: "destructive" });
       return;
     }
     setIsSubmitting(true);
-    
+    setUploadProgress(0);
+
     try {
-      const finalImageUrl = values.imageUrl || `https://placehold.co/400x400.png?text=${encodeURIComponent(values.name)}`;
-      
+      // Step 1: Upload the image via the API route
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('path', 'redemption-items');
+
+      // Simulate upload progress
+      setUploadProgress(30);
+      const response = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+      setUploadProgress(70);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Fallo en la subida de imagen.');
+      }
+
+      const { downloadURL } = await response.json();
+      setUploadProgress(100);
+
+      // Step 2: Save metadata to Firestore
       await addDoc(collection(db, "redemptionItems"), {
         ...values,
-        imageUrl: finalImageUrl,
+        imageUrl: downloadURL,
         dataAiHint: values.dataAiHint || 'product image',
         createdAt: serverTimestamp(),
       });
       toast({ title: "Artículo Creado", description: `El artículo "${values.name}" ha sido añadido a la tienda.` });
       router.push("/superadmin/redemption-store");
     } catch (error: any) {
-      toast({ title: "Error al crear", description: error.message, variant: "destructive" });
+      toast({ title: "Error al crear", description: error.message, variant: "destructive", duration: 7000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -104,12 +146,17 @@ export default function NewRedemptionItemPage() {
                 <FormField control={form.control} name="stock" render={({ field }) => ( <FormItem><FormLabel>Stock Disponible</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
               </div>
 
-              <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Imagen</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              {imageUrl && <Image src={imageUrl} alt="Vista previa" width={120} height={120} className="mt-2 rounded-md border object-cover aspect-square" />}
+              <div className="space-y-2">
+                 <Label htmlFor="image-file">Imagen del Artículo (Requerido)</Label>
+                 <Input id="image-file" type="file" accept="image/*" onChange={handleImageFileChange} disabled={isSubmitting} required />
+                 {imagePreview && <Image src={imagePreview} alt="Vista previa" width={120} height={120} className="mt-2 rounded-md border object-cover aspect-square" />}
+              </div>
 
               <FormField control={form.control} name="dataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (1-2 palabras)</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="isActive" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Artículo Activo</FormLabel><PageCardDescription>Permite que este artículo sea visible en la tienda.</PageCardDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )}/>
 
+              {isSubmitting && <Progress value={uploadProgress} className="w-full" />}
+              
               <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Crear Artículo
