@@ -16,8 +16,8 @@ import { Input } from "@/components/ui/input";
 import type { Book, Library, User, Order, BookRequest, PointsTransaction, DigitalPurchase } from "@/types";
 import { LibraryCard } from "@/components/LibraryCard";
 import { ShoppingBag, Heart, Sparkles, Edit3, LogOut, QrCode, Loader2, HelpCircle, Gift, ImagePlus, Bookmark, CalendarIcon, Download, CreditCard, Clock } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 import { useToast } from "@/hooks/use-toast";
@@ -113,8 +113,6 @@ export default function DashboardPage() {
 
   // Effect to load all user-related data
   useEffect(() => {
-    let unsubscribes: (() => void)[] = [];
-
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     if (!authStatus) {
       if (typeof window !== "undefined") router.push("/login");
@@ -146,6 +144,8 @@ export default function DashboardPage() {
         handleLogout();
         return;
     }
+
+    let unsubscribes: (() => void)[] = [];
 
     // Listener for user document
     const userRef = doc(db, "users", currentUserId);
@@ -761,3 +761,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    
