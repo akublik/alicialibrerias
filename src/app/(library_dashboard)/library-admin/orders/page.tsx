@@ -85,67 +85,57 @@ export default function LibraryOrdersPage() {
     setIsUpdatingStatus(order.id);
 
     try {
-        // For digital delivery, we first need to find the related digital_purchases documents.
-        // This read operation must happen BEFORE the transaction starts.
-        let digitalPurchaseRefs: ReturnType<typeof doc>[] = [];
-        if (newStatus === 'delivered' && order.shippingMethod === 'digital') {
-            const digitalPurchasesRef = collection(db, "digital_purchases");
-            const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
-            const purchaseSnapshot = await getDocs(q);
-            purchaseSnapshot.forEach(purchaseDoc => {
-                digitalPurchaseRefs.push(purchaseDoc.ref);
-            });
+      await runTransaction(db, async (transaction) => {
+        const orderRef = doc(db, "orders", order.id);
+
+        // Logic for 'delivered' status
+        if (newStatus === 'delivered') {
+          const digitalPurchasesRef = collection(db, "digital_purchases");
+          const q = query(digitalPurchasesRef, where("orderId", "==", order.id));
+          const purchaseSnapshot = await getDocs(q); // This query is now OUTSIDE the transaction
+          
+          purchaseSnapshot.forEach(purchaseDoc => {
+              transaction.update(purchaseDoc.ref, { isAvailable: true });
+          });
         }
+        
+        // Logic for 'cancelled' status
+        if (newStatus === 'cancelled' && order.status !== 'cancelled') {
+          const userRef = doc(db, "users", order.buyerId);
+          const userSnap = await transaction.get(userRef);
+          if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
 
-        await runTransaction(db, async (transaction) => {
-            const orderRef = doc(db, "orders", order.id);
+          const userData = userSnap.data() as User;
+          const pointsUsed = order.pointsUsed || 0;
+          const earnedPoints = order.pointsEarned || 0;
+          const currentPoints = userData.loyaltyPoints || 0;
+          const finalPoints = currentPoints + pointsUsed - earnedPoints;
 
-            // Now, inside the transaction, we can update the documents we found.
-            if (newStatus === 'delivered' && digitalPurchaseRefs.length > 0) {
-                digitalPurchaseRefs.forEach(purchaseRef => {
-                    transaction.update(purchaseRef, { isAvailable: true });
-                });
-            }
+          transaction.update(userRef, { loyaltyPoints: finalPoints });
 
-            // Handle cancellation logic (reads first, then writes)
-            if (newStatus === 'cancelled' && order.status !== 'cancelled') {
-                const userRef = doc(db, "users", order.buyerId);
-                const userSnap = await transaction.get(userRef);
-                if (!userSnap.exists()) throw new Error("El comprador de este pedido no fue encontrado.");
-
-                const userData = userSnap.data() as User;
-                const pointsUsed = order.pointsUsed || 0;
-                const earnedPoints = order.pointsEarned || 0;
-                const currentPoints = userData.loyaltyPoints || 0;
-                const finalPoints = currentPoints + pointsUsed - earnedPoints;
-
-                // All writes happen now
-                transaction.update(orderRef, { status: newStatus });
-                transaction.update(userRef, { loyaltyPoints: finalPoints });
-
-                if (earnedPoints > 0) {
-                    transaction.set(doc(collection(db, "pointsTransactions")), {
-                        userId: order.buyerId,
-                        orderId: order.id,
-                        description: `Puntos deducidos por pedido cancelado #${order.id.slice(0, 7)}`,
-                        points: -earnedPoints,
-                        createdAt: serverTimestamp()
-                    });
-                }
-                if (pointsUsed > 0) {
-                     transaction.set(doc(collection(db, "pointsTransactions")), {
-                        userId: order.buyerId,
-                        orderId: order.id,
-                        description: `Puntos devueltos por pedido cancelado #${order.id.slice(0, 7)}`,
-                        points: pointsUsed,
-                        createdAt: serverTimestamp()
-                    });
-                }
-            } else {
-                // For any other status change, just update the order status.
-                transaction.update(orderRef, { status: newStatus });
-            }
-        });
+          if (earnedPoints > 0) {
+            transaction.set(doc(collection(db, "pointsTransactions")), {
+              userId: order.buyerId,
+              orderId: order.id,
+              description: `Puntos deducidos por pedido cancelado #${order.id.slice(0, 7)}`,
+              points: -earnedPoints,
+              createdAt: serverTimestamp()
+            });
+          }
+          if (pointsUsed > 0) {
+            transaction.set(doc(collection(db, "pointsTransactions")), {
+              userId: order.buyerId,
+              orderId: order.id,
+              description: `Puntos devueltos por pedido cancelado #${order.id.slice(0, 7)}`,
+              points: pointsUsed,
+              createdAt: serverTimestamp()
+            });
+          }
+        }
+        
+        // Finally, update the order status itself
+        transaction.update(orderRef, { status: newStatus });
+      });
 
       toast({
         title: "Estado Actualizado",
@@ -157,7 +147,6 @@ export default function LibraryOrdersPage() {
       setIsUpdatingStatus(null);
     }
   };
-
 
   const statusOptions: Order['status'][] = ['pending', 'shipped', 'delivered', 'cancelled'];
   const getStatusVariant = (status: Order['status']) => {
