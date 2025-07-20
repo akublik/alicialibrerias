@@ -8,7 +8,9 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'zod';
+import { Part, Role, UserMessage } from '@genkit-ai/core/lib/model';
 
 export type ChatMessage = {
     role: 'user' | 'assistant';
@@ -27,7 +29,6 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         // Find the first user message, as the history must start with a user message.
         const firstUserIndex = history.findIndex(m => m && m.role === 'user');
         
-        // If no user message is found, do not proceed.
         if (firstUserIndex === -1) {
              return "Por favor, hazme una pregunta para empezar.";
         }
@@ -38,21 +39,19 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
 
         // Convert to the format Genkit expects for history.
-        const genkitHistory = validHistory.map((msg) => ({
+        const genkitHistory = validHistory.map((msg): UserMessage => ({
             role: msg.role === 'user' ? 'user' : 'model',
             content: [{ text: msg.content }],
         }));
         
         const response = await ai.generate({
-            model: 'googleai/gemini-1.5-flash',
+            model: googleAI.chat('gemini-1.5-flash'), // Corrected to use chat model
             system: systemPrompt,
-            history: genkitHistory,
+            history: genkitHistory as Array<{ role: Role; content: Part[] }>,
         });
 
         const text = response.text;
         
-        // IMPORTANT: Always return a string to prevent breaking the chat history.
-        // This check prevents the "cannot read properties of undefined" error.
         if (text) {
           return text;
         }
@@ -69,7 +68,6 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Error Name:", e.name);
         console.error("Error Message:", e.message);
         console.error("Error object:", JSON.stringify(e, null, 2));
-        console.error("----------------------------------------------------------");
         
         if (e.message && e.message.includes('API key')) {
              return "Lo siento, la función de chat sobre el libro no está disponible en este momento por un problema de configuración de la clave API.";

@@ -8,6 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import {z} from 'zod';
 
 const LiteraryGamesAIInputSchema = z.object({
@@ -51,7 +52,7 @@ export type LiteraryGamesAIOutput = z.infer<typeof LiteraryGamesAIOutputSchema>;
 
 export async function literaryGamesAI(input: LiteraryGamesAIInput): Promise<LiteraryGamesAIOutput> {
   const response = await ai.generate({
-    model: 'googleai/gemini-1.5-flash',
+    model: googleAI.chat('gemini-1.5-flash'), // Corrected to use chat model
     prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
 
 Basado en la siguiente solicitud, genera un juego literario.
