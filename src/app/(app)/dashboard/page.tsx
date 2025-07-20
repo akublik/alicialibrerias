@@ -111,8 +111,10 @@ export default function DashboardPage() {
     return allBooks.filter(book => wishlistBookIds.has(book.id));
   }, [wishlistItems, allBooks, isWishlistLoading]);
 
-  // Effect to load user data from localStorage and then listen for real-time updates
+  // Effect to load all user-related data
   useEffect(() => {
+    let unsubscribes: (() => void)[] = [];
+
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     if (!authStatus) {
       if (typeof window !== "undefined") router.push("/login");
@@ -125,41 +127,31 @@ export default function DashboardPage() {
       handleLogout();
       return;
     }
-    
-    if (!db) {
-        toast({title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive"});
-        handleLogout();
-        return;
-    }
 
-    let initialUserData: User;
+    if (!db) {
+      toast({ title: "Error de Conexión", description: "No se pudo conectar a la base de datos.", variant: "destructive" });
+      handleLogout();
+      return;
+    }
+    
+    let currentUserId: string | null = null;
     try {
-        initialUserData = JSON.parse(userDataString);
-    } catch (e) {
+        const parsedUser = JSON.parse(userDataString);
+        currentUserId = parsedUser.id;
+    } catch(e) {
         console.error("Error parsing user data, logging out:", e);
         handleLogout();
         return;
     }
-
-    if (initialUserData.role === 'library') {
-        router.replace('/library-admin/dashboard');
-        return;
-    }
-    if (initialUserData.role === 'superadmin') {
-        router.replace('/superadmin/dashboard');
+    
+    if (!currentUserId) {
+        console.error("User ID missing, logging out.");
+        handleLogout();
         return;
     }
 
-    if (!initialUserData.id) {
-      console.error("User ID missing, logging out.");
-      handleLogout();
-      return;
-    }
-
-    let unsubscribes: (() => void)[] = [];
-
-    // Real-time listener for user document
-    const userRef = doc(db, "users", initialUserData.id);
+    // Listener for user document
+    const userRef = doc(db, "users", currentUserId);
     const userUnsub = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const liveUserData = docSnap.data();
@@ -185,57 +177,54 @@ export default function DashboardPage() {
     });
     unsubscribes.push(userUnsub);
 
-    // Fetch other related data
+    // Listener for all libraries to augment book data
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
-      const libNameMap = new Map<string, string>();
-      const libInfoMap = new Map<string, {name: string, location: string}>();
+        const libNameMap = new Map<string, string>();
+        const libInfoMap = new Map<string, {name: string, location: string}>();
 
-      libSnapshot.forEach(doc => {
-        const data = doc.data();
-        libNameMap.set(doc.id, data.name);
-        libInfoMap.set(doc.id, { name: data.name, location: data.location });
-      });
-      setLibraries(libNameMap);
-
-      const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
-        const augmentedBooks = booksSnapshot.docs.map(doc => {
-          const book = { id: doc.id, ...doc.data() } as Book;
-          if (book.libraryId && libInfoMap.has(book.libraryId)) {
-            const libInfo = libInfoMap.get(book.libraryId)!;
-            return { 
-              ...book, 
-              libraryName: libInfo.name,
-              libraryLocation: libInfo.location
-            };
-          }
-          return book;
+        libSnapshot.forEach(doc => {
+            const data = doc.data();
+            libNameMap.set(doc.id, data.name);
+            libInfoMap.set(doc.id, { name: data.name, location: data.location });
         });
-        setAllBooks(augmentedBooks);
-      });
-      unsubscribes.push(booksUnsub);
+        setLibraries(libNameMap);
+
+        const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
+            const augmentedBooks = booksSnapshot.docs.map(doc => {
+                const book = { id: doc.id, ...doc.data() } as Book;
+                if (book.libraryId && libInfoMap.has(book.libraryId)) {
+                    const libInfo = libInfoMap.get(book.libraryId)!;
+                    return { 
+                      ...book, 
+                      libraryName: libInfo.name,
+                      libraryLocation: libInfo.location
+                    };
+                }
+                return book;
+            });
+            setAllBooks(augmentedBooks);
+        });
+        unsubscribes.push(booksUnsub);
     });
     unsubscribes.push(libUnsub);
-
-
+    
+    // Listener for physical orders
     const ordersRef = collection(db, "orders");
-    const qOrders = query(ordersRef, where("buyerId", "==", initialUserData.id));
+    const qOrders = query(ordersRef, where("buyerId", "==", currentUserId));
     const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
         let userOrders = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
         } as Order));
-
-        // Filter out digital orders for the physical purchase history
         userOrders = userOrders.filter(order => order.shippingMethod !== 'digital');
-
         userOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setOrders(userOrders);
     });
     unsubscribes.push(ordersUnsub);
-    
+
     // Listener for digital purchases
     const digitalPurchasesRef = collection(db, "digital_purchases");
-    const qDigital = query(digitalPurchasesRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"));
+    const qDigital = query(digitalPurchasesRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"));
     const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
         const userDigitalPurchases = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
@@ -244,14 +233,12 @@ export default function DashboardPage() {
     });
     unsubscribes.push(digitalUnsub);
 
-
     // Listener for favorite libraries
-    const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', initialUserData.id));
+    const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', currentUserId));
     const favsUnsub = onSnapshot(favsQuery, async (snapshot) => {
         setIsLoadingFavorites(true);
         const libraryIds = snapshot.docs.map(doc => doc.data().libraryId);
         if (libraryIds.length > 0) {
-            // Chunk the IDs to avoid 'in' query limitations
             const chunks = [];
             for (let i = 0; i < libraryIds.length; i += 30) {
                 chunks.push(libraryIds.slice(i, i + 30));
@@ -270,7 +257,7 @@ export default function DashboardPage() {
     
     // Listener for points history
     const pointsRef = collection(db, "pointsTransactions");
-    const pointsQuery = query(pointsRef, where("userId", "==", initialUserData.id), orderBy("createdAt", "desc"), limit(50));
+    const pointsQuery = query(pointsRef, where("userId", "==", currentUserId), orderBy("createdAt", "desc"), limit(50));
     const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
         const history = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
@@ -283,7 +270,6 @@ export default function DashboardPage() {
     return () => {
       unsubscribes.forEach(unsub => unsub());
     };
-
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
