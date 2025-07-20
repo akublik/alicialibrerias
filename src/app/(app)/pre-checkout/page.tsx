@@ -1,87 +1,20 @@
 // src/app/(app)/pre-checkout/page.tsx
-"use client";
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+import PreCheckoutClientPage from './client-page';
 
-import { useEffect, useState, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
-import { useCart } from '@/context/CartContext';
-
-export default function PreCheckoutPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { cartItems } = useCart();
-  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
-
-  const isDigitalOrder = useMemo(() => {
-    return cartItems.length > 0 && cartItems.every(item => item.format === 'Digital');
-  }, [cartItems]);
-  
-  const finalRedirect = searchParams.get('redirect') || (isDigitalOrder ? '/checkout-digital' : '/checkout');
-
-  useEffect(() => {
-    // Check status from localStorage. This runs only on the client.
-    const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-    if (isAuthenticated) {
-      setAuthStatus('authenticated');
-      router.replace(finalRedirect); 
-    } else {
-      setAuthStatus('unauthenticated');
-    }
-  }, [router, finalRedirect]);
-
-  // Show a loading spinner while checking auth status or during the redirection.
-  if (authStatus === 'loading' || authStatus === 'authenticated') {
-    return (
-      <div className="container mx-auto px-4 py-8 text-center flex flex-col justify-center items-center min-h-[60vh]">
-        <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
-        <p className="mt-4 text-lg text-muted-foreground">
-          {authStatus === 'loading' ? 'Verificando tu sesión...' : 'Redirigiendo al pago...'}
-        </p>
-      </div>
-    );
-  }
-
-  // If the user is unauthenticated, show the login/register options.
+function Loading() {
   return (
-    <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-      <Card className="max-w-2xl mx-auto shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="font-headline text-3xl md:text-4xl text-primary">Estás a un paso</CardTitle>
-          <CardDescription className="text-lg text-foreground/80 pt-2">
-            Para continuar, por favor, inicia sesión o crea una cuenta. Esto nos permite guardar tu historial de compras y darte un mejor servicio.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
-          <Link href={`/login?redirect=${finalRedirect}`} className="w-full">
-            <Button size="lg" className="w-full font-body text-base h-auto py-4 flex flex-col items-start text-left">
-              <div className='flex items-center'>
-                <LogIn className="mr-3 h-6 w-6" />
-                <span className='text-lg'>Iniciar Sesión</span>
-              </div>
-              <span className='font-normal text-sm text-primary-foreground/80 pt-1 whitespace-normal'>Ya tengo una cuenta en Alicia Libros.</span>
-            </Button>
-          </Link>
-          <Link href={`/register?redirect=${finalRedirect}`} className="w-full">
-            <Button size="lg" variant="outline" className="w-full font-body text-base h-auto py-4 flex flex-col items-start text-left">
-               <div className='flex items-center'>
-                <UserPlus className="mr-3 h-6 w-6" />
-                <span className='text-lg'>Crear Cuenta</span>
-              </div>
-              <span className='font-normal text-sm text-foreground/80 pt-1 whitespace-normal'>Soy nuevo/a y quiero registrarme.</span>
-            </Button>
-          </Link>
-        </CardContent>
-      </Card>
-      <div className="text-center mt-8">
-        <Link href="/cart">
-          <Button variant="link" className="text-muted-foreground">
-            Volver al carrito
-          </Button>
-        </Link>
-      </div>
+    <div className="flex justify-center items-center h-screen">
+      <Loader2 className="h-16 w-16 animate-spin text-primary" />
     </div>
   );
+}
+
+export default function PreCheckoutPage() {
+    return (
+        <Suspense fallback={<Loading />}>
+            <PreCheckoutClientPage />
+        </Suspense>
+    )
 }
