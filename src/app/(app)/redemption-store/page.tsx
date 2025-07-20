@@ -65,8 +65,7 @@ export default function RedemptionStorePage() {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, "users", user.id);
             const itemRef = doc(db, "redemptionItems", itemToRedeem.id);
-            const pointsRef = collection(db, "pointsTransactions");
-
+            
             const userDoc = await transaction.get(userRef);
             const itemDoc = await transaction.get(itemRef);
 
@@ -78,37 +77,54 @@ export default function RedemptionStorePage() {
             const currentItemData = itemDoc.data() as RedemptionItem;
             
             if ((currentUserData.loyaltyPoints || 0) < currentItemData.pointsRequired) {
-                throw new Error("No tienes suficientes puntos.");
+                throw new Error("No tienes suficientes puntos para realizar este canje.");
             }
             if (currentItemData.stock <= 0) {
-                throw new Error("Este artículo está agotado.");
+                throw new Error("Lo sentimos, este artículo está agotado.");
             }
 
             const newPoints = (currentUserData.loyaltyPoints || 0) - currentItemData.pointsRequired;
             const newStock = currentItemData.stock - 1;
 
+            // 1. Update user points
             transaction.update(userRef, { loyaltyPoints: newPoints });
+            // 2. Update item stock
             transaction.update(itemRef, { stock: newStock });
             
-            const pointsTransactionData = {
+            // 3. Create a record in pointsTransactions
+            const pointsTransactionRef = doc(collection(db, "pointsTransactions"));
+            transaction.set(pointsTransactionRef, {
                 userId: user.id,
                 description: `Canje por: ${itemToRedeem.name}`,
                 points: -itemToRedeem.pointsRequired,
                 createdAt: serverTimestamp(),
-            };
-            transaction.set(doc(pointsRef), pointsTransactionData);
+            });
+
+            // 4. Create a redemption order
+            const redemptionOrderRef = doc(collection(db, "redemptionOrders"));
+            transaction.set(redemptionOrderRef, {
+                userId: user.id,
+                userName: currentUserData.name,
+                userEmail: currentUserData.email,
+                itemId: itemToRedeem.id,
+                itemName: itemToRedeem.name,
+                pointsUsed: itemToRedeem.pointsRequired,
+                status: 'pending',
+                createdAt: serverTimestamp(),
+            });
         });
         
-        // Update local user state
+        // Update local user state for immediate UI feedback
         setUser(prevUser => prevUser ? { ...prevUser, loyaltyPoints: (prevUser.loyaltyPoints || 0) - itemToRedeem.pointsRequired } : null);
 
         toast({
             title: "¡Canje Exitoso!",
-            description: `Has canjeado "${itemToRedeem.name}". Revisa tu panel de compras o email para más detalles.`,
+            description: `Has canjeado "${itemToRedeem.name}". Nos pondremos en contacto contigo para coordinar la entrega.`,
+            duration: 8000,
         });
 
     } catch (error: any) {
-        toast({ title: "Error en el canje", description: error.message, variant: "destructive" });
+        toast({ title: "Error en el canje", description: error.message, variant: "destructive", duration: 7000 });
     } finally {
         setIsRedeeming(false);
         setItemToRedeem(null);
