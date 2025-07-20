@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// Added a comment to force re-reading the config file
 const nextConfig = {
   /* config options here */
   images: {
