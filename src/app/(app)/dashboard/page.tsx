@@ -1,5 +1,4 @@
 
-
 // src/app/(app)/dashboard/page.tsx
 "use client";
 
@@ -24,12 +23,10 @@ import { useToast } from "@/hooks/use-toast";
 import { db, auth } from "@/lib/firebase";
 import { collection, doc, onSnapshot, query, updateDoc, where, addDoc, serverTimestamp, getDocs, documentId, orderBy, limit } from "firebase/firestore";
 import { format } from 'date-fns';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { bookCategories, bookTags } from '@/lib/options';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { es } from 'date-fns/locale';
 import { BookCard } from "@/components/BookCard";
-import { Textarea } from "@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { getBookRecommendations, type BookRecommendationsOutput } from '@/ai/flows/book-recommendations';
 import { Separator } from '@/components/ui/separator';
@@ -37,6 +34,8 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
+import { bookCategories, bookTags } from "@/lib/options";
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Tu nombre debe tener al menos 2 caracteres." }),
@@ -100,8 +99,6 @@ export default function DashboardPage() {
     if (auth) {
       auth.signOut();
     }
-    // The onAuthStateChanged listener in Navbar will handle the rest:
-    // clearing localStorage and redirecting.
     router.push("/");
   };
 
@@ -110,8 +107,7 @@ export default function DashboardPage() {
     const wishlistBookIds = new Set(wishlistItems.map(item => item.bookId));
     return allBooks.filter(book => wishlistBookIds.has(book.id));
   }, [wishlistItems, allBooks, isWishlistLoading]);
-
-  // Effect to load user data and non-digital data
+  
   useEffect(() => {
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     if (!authStatus) {
@@ -122,7 +118,6 @@ export default function DashboardPage() {
     
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (!userDataString) {
-      console.error("User data missing, logging out.");
       handleLogout();
       return;
     }
@@ -135,9 +130,9 @@ export default function DashboardPage() {
         handleLogout();
         return;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
-
-  // Separate effect to handle all data fetching that depends on the user ID
+  
   useEffect(() => {
     if (!user?.id || !db) return;
 
@@ -164,12 +159,9 @@ export default function DashboardPage() {
     });
     unsubscribes.push(userUnsub);
     
-    // Listener for all libraries to get their names
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
         const libMap = new Map<string, string>();
-        libSnapshot.forEach(doc => {
-            libMap.set(doc.id, doc.data().name);
-        });
+        libSnapshot.forEach(doc => { libMap.set(doc.id, doc.data().name); });
         setLibraries(libMap);
 
         const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
@@ -228,40 +220,20 @@ export default function DashboardPage() {
     });
     unsubscribes.push(pointsUnsub);
 
-    return () => unsubscribes.forEach(unsub => unsub());
-  }, [user?.id]);
-  
-  // Dedicated listener for Digital Purchases, dependent only on user.id
-  useEffect(() => {
-    if (!user?.id || !db) return;
-    
     const digitalPurchasesRef = collection(db, "digital_purchases");
     const qDigital = query(digitalPurchasesRef, where("userId", "==", user.id));
-    
     const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
         const userDigitalPurchases = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
+            id: doc.id, ...doc.data(), createdAt: doc.data().createdAt?.toDate() || new Date(),
         } as DigitalPurchase));
-        
         userDigitalPurchases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setDigitalPurchases(userDigitalPurchases);
-    }, (error) => {
-        console.error("Error al cargar libros digitales:", error);
-        toast({ 
-          title: "Error al cargar libros digitales", 
-          description: "La consulta podría requerir un índice compuesto. Revisa la consola para más detalles.",
-          variant: "destructive",
-          duration: 10000,
-        });
     });
+    unsubscribes.push(digitalUnsub);
 
-    return () => digitalUnsub();
+    return () => unsubscribes.forEach(unsub => unsub());
   }, [user?.id, toast]);
 
-
-  // Effect to reset form when dialog opens
   useEffect(() => {
     if (user && isEditDialogOpen) {
       form.reset({
@@ -289,63 +261,37 @@ export default function DashboardPage() {
         };
 
         await updateDoc(userRef, dataForFirestore);
-
+        
         const currentDataString = localStorage.getItem("aliciaLibros_user");
         const currentUserData = currentDataString ? JSON.parse(currentDataString) : {};
-        
-        const fullyUpdatedUser = {
-             ...currentUserData,
-             ...dataForFirestore,
-             id: user.id
-        };
-        
+        const fullyUpdatedUser = { ...currentUserData, ...dataForFirestore, id: user.id };
         localStorage.setItem("aliciaLibros_user", JSON.stringify(fullyUpdatedUser));
         
-        toast({ title: "Perfil Actualizado", description: "Tu información ha sido guardada." });
+        toast({ title: "Perfil Actualizado" });
         setIsEditDialogOpen(false);
     } catch (error: any) {
         toast({ title: "Error al actualizar", description: error.message, variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
-}
+  }
 
   const handleGetRecommendations = async () => {
     if (!user) return;
     if (!preferences.trim()) {
-      toast({
-        title: "Más información, por favor",
-        description: "Escribe tus preferencias para que podamos generar recomendaciones.",
-        variant: "destructive",
-      });
+      toast({ title: "Más información, por favor", description: "Escribe tus preferencias para generar recomendaciones.", variant: "destructive" });
       return;
     }
-
     setIsLoadingAi(true);
     setFoundBooks([]);
     setNewSuggestions([]);
-
     try {
-      const result = await getBookRecommendations({
-        userId: user.id,
-        readingHistory: [],
-        preferences: preferences,
-      });
-      
-      const foundBookDetails = result.foundInInventory
-          .map(found => allBooks.find(b => b.id === found.id))
-          .filter((b): b is Book => !!b);
-      
+      const result = await getBookRecommendations({ userId: user.id, readingHistory: [], preferences: preferences });
+      const foundBookDetails = result.foundInInventory.map(found => allBooks.find(b => b.id === found.id)).filter((b): b is Book => !!b);
       setFoundBooks(foundBookDetails);
       setNewSuggestions(result.newSuggestions);
-
     } catch (error: any) {
-      console.error("Error getting recommendations:", error);
-      toast({
-        title: "Error de IA",
-        description: "No pudimos generar recomendaciones en este momento. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
+      toast({ title: "Error de IA", description: "No pudimos generar recomendaciones. Inténtalo de nuevo.", variant: "destructive" });
     } finally {
       setIsLoadingAi(false);
     }
@@ -356,16 +302,10 @@ export default function DashboardPage() {
     setIsRequesting(true);
     try {
         await addDoc(collection(db, "bookRequests"), {
-            userId: user.id,
-            userName: user.name,
-            userEmail: user.email,
-            bookTitle: values.bookTitle,
-            bookAuthor: values.bookAuthor,
-            notes: values.notes || "",
-            status: 'pending',
-            createdAt: serverTimestamp(),
+            userId: user.id, userName: user.name, userEmail: user.email, bookTitle: values.bookTitle,
+            bookAuthor: values.bookAuthor, notes: values.notes || "", status: 'pending', createdAt: serverTimestamp(),
         });
-        toast({ title: "Solicitud Enviada", description: "Hemos recibido tu solicitud. ¡Gracias!" });
+        toast({ title: "Solicitud Enviada" });
         requestForm.reset();
     } catch (error: any) {
         toast({ title: "Error al enviar", description: error.message, variant: "destructive" });
@@ -374,7 +314,6 @@ export default function DashboardPage() {
     }
   }
 
-
   if (!isAuthenticated || !user) {
     return <div className="container mx-auto px-4 py-8 text-center"><Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" /></div>;
   }
@@ -382,34 +321,18 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
       <header className="mb-8 md:mb-12">
-        <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-2">
-          Mi Espacio Lector
-        </h1>
-        <p className="text-lg text-foreground/80">
-          Bienvenido/a de nuevo, {user.name}. Aquí puedes gestionar tu actividad en Alicia Libros.
-        </p>
+        <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-2">Mi Espacio Lector</h1>
+        <p className="text-lg text-foreground/80">Bienvenido/a de nuevo, {user.name}.</p>
       </header>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-8">
           <Card className="shadow-lg">
             <CardHeader className="text-center">
-              <Image
-                src={user.avatarUrl!}
-                alt={user.name}
-                width={120}
-                height={120}
-                className="rounded-full mx-auto mb-4 border-4 border-primary/30"
-                data-ai-hint={user.dataAiHint}
-              />
+              <Image src={user.avatarUrl!} alt={user.name} width={120} height={120} className="rounded-full mx-auto mb-4 border-4 border-primary/30" data-ai-hint={user.dataAiHint} />
               <CardTitle className="font-headline text-2xl">{user.name}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
               {user.joinDate && <CardDescription>Miembro desde: {user.joinDate}</CardDescription>}
-               {user.birthdate && (
-                <CardDescription>
-                   Cumpleaños: {format(new Date(user.birthdate), 'dd MMMM', {locale: es})}
-                </CardDescription>
-              )}
+              {user.birthdate && <CardDescription>Cumpleaños: {format(new Date(user.birthdate), 'dd MMMM', {locale: es})}</CardDescription>}
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="p-4 border rounded-lg bg-muted/50 text-center">
@@ -421,146 +344,43 @@ export default function DashboardPage() {
               </div>
               <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full font-body">
-                    <Edit3 className="mr-2 h-4 w-4" /> Editar Perfil
-                  </Button>
+                  <Button variant="outline" className="w-full font-body"><Edit3 className="mr-2 h-4 w-4" /> Editar Perfil</Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px]">
-                  <DialogHeader>
-                    <DialogTitle>Editar Perfil</DialogTitle>
-                    <DialogDescription>
-                      Actualiza tu información personal y tus preferencias literarias.
-                    </DialogDescription>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle>Editar Perfil</DialogTitle><DialogDescription>Actualiza tu información personal.</DialogDescription></DialogHeader>
                    <Form {...form}>
                     <form onSubmit={form.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
                         <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                         <FormField control={form.control} name="avatarUrl" render={({ field }) => ( <FormItem><FormLabel className="flex items-center"><ImagePlus className="mr-2 h-4 w-4"/> URL de tu Avatar</FormLabel><FormControl><Input placeholder="https://ejemplo.com/tu-foto.jpg" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                         <FormField
-                            control={form.control}
-                            name="birthdate"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                  <FormLabel>Fecha de Nacimiento</FormLabel>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <FormControl>
-                                        <Button
-                                          variant={"outline"}
-                                          className={cn(
-                                            "w-full pl-3 text-left font-normal",
-                                            !field.value && "text-muted-foreground"
-                                          )}
-                                        >
-                                          {field.value ? (
-                                            format(field.value, "PPP", { locale: es })
-                                          ) : (
-                                            <span>Elige una fecha</span>
-                                          )}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                      </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        disabled={(date) =>
-                                          date > new Date() || date < new Date("1900-01-01")
-                                        }
-                                        initialFocus
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField control={form.control} name="favoriteCategories" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Géneros Favoritos</FormLabel>
-                                <FormControl>
-                                    <MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-                        <FormField control={form.control} name="favoriteTags" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Etiquetas / Temas Favoritos</FormLabel>
-                                <FormControl>
-                                    <MultiSelect placeholder="Selecciona etiquetas..." options={bookTags} value={field.value || []} onChange={field.onChange} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
-
-                        <DialogFooter>
-                          <Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button>
-                          <Button type="submit" disabled={isSubmitting}>
-                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              Guardar Cambios
-                          </Button>
-                        </DialogFooter>
+                        <FormField control={form.control} name="birthdate" render={({ field }) => ( <FormItem className="flex flex-col"><FormLabel>Fecha de Nacimiento</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal",!field.value && "text-muted-foreground")}><CalendarIcon className="ml-auto h-4 w-4 opacity-50" />{field.value ? format(field.value, "PPP", { locale: es }) : <span>Elige una fecha</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date("1900-01-01")} initialFocus /></PopoverContent></Popover><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="favoriteCategories" render={({ field }) => ( <FormItem><FormLabel>Géneros Favoritos</FormLabel><FormControl><MultiSelect placeholder="Selecciona categorías..." options={bookCategories} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="favoriteTags" render={({ field }) => ( <FormItem><FormLabel>Etiquetas / Temas Favoritos</FormLabel><FormControl><MultiSelect placeholder="Selecciona etiquetas..." options={bookTags} value={field.value || []} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
+                        <DialogFooter><Button type="button" variant="ghost" onClick={() => setIsEditDialogOpen(false)}>Cancelar</Button><Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Guardar Cambios</Button></DialogFooter>
                     </form>
                   </Form>
                 </DialogContent>
               </Dialog>
-
-              <Button variant="destructive" className="w-full font-body" onClick={handleLogout}>
-                <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
-              </Button>
+              <Button variant="destructive" className="w-full font-body" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión</Button>
             </CardContent>
           </Card>
-          
           <Card className="shadow-lg">
-            <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center">
-                    <QrCode className="mr-2 h-5 w-5 text-primary"/>
-                    Mi Código de Lealtad
-                </CardTitle>
-                 <CardDescription>Muestra este código en las librerías participantes para acumular puntos.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center items-center p-6">
-                {user.id ? (
-                    <div className="p-4 bg-white rounded-lg">
-                      <QRCodeSVG value={user.id} size={160} />
-                    </div>
-                ) : (
-                    <p className="text-muted-foreground">No se pudo generar el código.</p>
-                )}
+            <CardHeader><CardTitle className="font-headline text-xl flex items-center"><QrCode className="mr-2 h-5 w-5 text-primary"/>Mi Código de Lealtad</CardTitle><CardDescription>Muestra este código para acumular puntos.</CardDescription></CardHeader>
+            <CardContent className="flex justify-center items-center p-6">{user.id ? <div className="p-4 bg-white rounded-lg"><QRCodeSVG value={user.id} size={160} /></div> : <p className="text-muted-foreground">No se pudo generar el código.</p>}</CardContent>
+          </Card>
+          <Card className="shadow-lg">
+            <CardHeader><CardTitle className="font-headline text-xl flex items-center"><HelpCircle className="mr-2 h-5 w-5 text-primary"/>¿No encuentras un libro?</CardTitle><CardDescription>Pídelo aquí y lo comunicaremos a las librerías.</CardDescription></CardHeader>
+            <CardContent>
+              <Form {...requestForm}>
+                <form onSubmit={requestForm.handleSubmit(onBookRequestSubmit)} className="space-y-4">
+                  <FormField control={requestForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} placeholder="Ej: La vegetariana" /></FormControl><FormMessage /></FormItem> )}/>
+                  <FormField control={requestForm.control} name="bookAuthor" render={({ field }) => ( <FormItem><FormLabel>Autor(a)</FormLabel><FormControl><Input {...field} placeholder="Ej: Han Kang" /></FormControl><FormMessage /></FormItem> )}/>
+                  <FormField control={requestForm.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Cualquier detalle adicional es útil." /></FormControl><FormMessage /></FormItem> )}/>
+                  <Button type="submit" disabled={isRequesting} className="w-full sm:w-auto">{isRequesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}Enviar Solicitud</Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
-
-           <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle className="font-headline text-xl flex items-center">
-                        <HelpCircle className="mr-2 h-5 w-5 text-primary"/>
-                        ¿No encuentras un libro?
-                    </CardTitle>
-                    <CardDescription>
-                        Si hay algún libro que te gustaría ver en nuestra plataforma, dínoslo. Lo comunicaremos a las librerías.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...requestForm}>
-                        <form onSubmit={requestForm.handleSubmit(onBookRequestSubmit)} className="space-y-4">
-                            <FormField control={requestForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} placeholder="Ej: La vegetariana" /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={requestForm.control} name="bookAuthor" render={({ field }) => ( <FormItem><FormLabel>Autor(a)</FormLabel><FormControl><Input {...field} placeholder="Ej: Han Kang" /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={requestForm.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notas (Opcional)</FormLabel><FormControl><Textarea {...field} placeholder="Cualquier detalle adicional, como la editorial o el año, es útil." /></FormControl><FormMessage /></FormItem> )}/>
-                            <Button type="submit" disabled={isRequesting} className="w-full sm:w-auto">
-                                {isRequesting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                                Enviar Solicitud
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-              </Card>
-
         </div>
-
-        {/* Tabs Section */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="purchases" className="w-full">
             <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 mb-6 bg-muted/50 p-1 h-auto text-xs sm:text-sm">
@@ -570,178 +390,31 @@ export default function DashboardPage() {
               <TabsTrigger value="favorites"><Heart className="mr-2 h-4 w-4" /> Librerías Favoritas</TabsTrigger>
               <TabsTrigger value="wishlist"><Bookmark className="mr-2 h-4 w-4" /> Lista de Deseos</TabsTrigger>
             </TabsList>
-
             <TabsContent value="purchases">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">Historial de Compras Físicas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {orders.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Libro(s)</TableHead>
-                          <TableHead>Librería</TableHead>
-                          <TableHead>Fecha</TableHead>
-                          <TableHead className="text-right">Monto</TableHead>
-                          <TableHead className="text-right">Puntos</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {orders.map((order) => (
-                          <TableRow key={order.id}>
-                            <TableCell className="font-medium max-w-[200px] truncate" title={order.items.map(item => item.title).join(', ')}>
-                              {order.items.map(item => item.title).join(', ')}
-                            </TableCell>
-                            <TableCell>{libraries.get(order.libraryId) || 'Librería Desconocida'}</TableCell>
-                            <TableCell>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
-                            <TableCell className="text-right">${order.totalPrice.toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-semibold text-primary">+{order.pointsEarned || 0}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">Aún no has realizado ninguna compra de libros físicos.</p>
-                  )}
-                </CardContent>
+              <Card><CardHeader><CardTitle className="font-headline text-xl">Historial de Compras Físicas</CardTitle></CardHeader>
+                <CardContent>{orders.length > 0 ? <Table><TableHeader><TableRow><TableHead>Libro(s)</TableHead><TableHead>Librería</TableHead><TableHead>Fecha</TableHead><TableHead className="text-right">Monto</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader><TableBody>{orders.map((order) => (<TableRow key={order.id}><TableCell className="font-medium max-w-[200px] truncate" title={order.items.map(item => item.title).join(', ')}>{order.items.map(item => item.title).join(', ')}</TableCell><TableCell>{libraries.get(order.libraryId) || 'Librería Desconocida'}</TableCell><TableCell>{format(new Date(order.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell><TableCell className="text-right">${order.totalPrice.toFixed(2)}</TableCell><TableCell className="text-right font-semibold text-primary">+{order.pointsEarned || 0}</TableCell></TableRow>))}</TableBody></Table> : <p className="text-muted-foreground text-center py-4">Aún no has realizado compras físicas.</p>}</CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="digital-books">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">Mis Libros Digitales Comprados</CardTitle>
-                  <CardDescription>Aquí encontrarás todos los libros digitales que has adquirido.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {digitalPurchases.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {digitalPurchases.map((purchase) => (
-                        <Card key={purchase.id} className="overflow-hidden group flex flex-col justify-between">
-                            <Link href={purchase.isAvailable ? `/reader/${purchase.bookId}` : '#'} className={cn(!purchase.isAvailable && "pointer-events-none")}>
-                                <div className="aspect-[2/3] relative">
-                                    <Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />
-                                    {!purchase.isAvailable && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"></div>}
-                                </div>
-                                <div className="p-3">
-                                    <h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4>
-                                    <p className="text-xs text-muted-foreground truncate">{purchase.author}</p>
-                                </div>
-                            </Link>
-                            <CardFooter className="p-3 pt-0 flex-col items-stretch space-y-2">
-                                {purchase.isAvailable ? (
-                                    <>
-                                        <Link href={`/reader/${purchase.bookId}`} className="w-full">
-                                            <Button className="w-full">Leer Ahora</Button>
-                                        </Link>
-                                        <a href={purchase.epubFileUrl} download={`${purchase.title}.epub`}>
-                                            <Button variant="secondary" className="w-full">
-                                                <Download className="mr-2 h-4 w-4" />
-                                                Descargar
-                                            </Button>
-                                        </a>
-                                    </>
-                                ) : (
-                                    <Button className="w-full" disabled variant="outline">
-                                        <Clock className="mr-2 h-4 w-4" />
-                                        Pendiente
-                                    </Button>
-                                )}
-                            </CardFooter>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">No has comprado ningún libro digital todavía.</p>
-                  )}
-                </CardContent>
+              <Card><CardHeader><CardTitle className="font-headline text-xl">Mis Libros Digitales Comprados</CardTitle><CardDescription>Aquí encontrarás todos los libros digitales que has adquirido.</CardDescription></CardHeader>
+                <CardContent>{digitalPurchases.length > 0 ? <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">{digitalPurchases.map((purchase) => (<Card key={purchase.id} className="overflow-hidden group flex flex-col justify-between"><Link href={purchase.isAvailable ? `/reader/${purchase.bookId}` : '#'} className={cn(!purchase.isAvailable && "pointer-events-none")}><div className="aspect-[2/3] relative"><Image src={purchase.coverImageUrl} alt={`Portada de ${purchase.title}`} layout="fill" objectFit="cover" className="transition-transform duration-300 group-hover:scale-105" />{!purchase.isAvailable && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"></div>}</div><div className="p-3"><h4 className="font-semibold text-sm truncate group-hover:text-primary">{purchase.title}</h4><p className="text-xs text-muted-foreground truncate">{purchase.author}</p></div></Link><CardFooter className="p-3 pt-0 flex-col items-stretch space-y-2">{purchase.isAvailable ? <><Link href={`/reader/${purchase.bookId}`} className="w-full"><Button className="w-full">Leer Ahora</Button></Link><a href={purchase.epubFileUrl} download={`${purchase.title}.epub`}><Button variant="secondary" className="w-full"><Download className="mr-2 h-4 w-4" />Descargar</Button></a></> : <Button className="w-full" disabled variant="outline"><Clock className="mr-2 h-4 w-4" />Pendiente</Button>}</CardFooter></Card>))}</div> : <p className="text-muted-foreground text-center py-4">No has comprado ningún libro digital todavía.</p>}</CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="points-history">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">Historial de Puntos</CardTitle>
-                  <CardDescription>Aquí puedes ver todos los puntos que has ganado y gastado.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Puntos</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pointsHistory.length > 0 ? (
-                        pointsHistory.map((transaction) => (
-                          <TableRow key={transaction.id}>
-                            <TableCell>{format(new Date(transaction.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell>
-                            <TableCell>{transaction.description}</TableCell>
-                            <TableCell className={`text-right font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
-                              {transaction.points > 0 ? `+${transaction.points}` : transaction.points}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
-                            Aún no tienes movimientos de puntos. ¡Realiza una compra para empezar a ganar!
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
+              <Card><CardHeader><CardTitle className="font-headline text-xl">Historial de Puntos</CardTitle><CardDescription>Aquí puedes ver todos los puntos que has ganado y gastado.</CardDescription></CardHeader>
+                <CardContent><Table><TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader><TableBody>{pointsHistory.length > 0 ? pointsHistory.map((transaction) => (<TableRow key={transaction.id}><TableCell>{format(new Date(transaction.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell><TableCell>{transaction.description}</TableCell><TableCell className={`text-right font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-destructive'}`}>{transaction.points > 0 ? `+${transaction.points}` : transaction.points}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="text-center py-4 text-muted-foreground">Aún no tienes movimientos de puntos.</TableCell></TableRow>}</TableBody></Table></CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="favorites">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="font-headline text-xl">Mis Librerías Favoritas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingFavorites ? (
-                    <div className="flex justify-center items-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : favoriteLibraries.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {favoriteLibraries.map(library => <LibraryCard key={library.id} library={library} />)}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">Aún no has guardado ninguna librería como favorita.</p>
-                  )}
-                </CardContent>
+              <Card><CardHeader><CardTitle className="font-headline text-xl">Mis Librerías Favoritas</CardTitle></CardHeader>
+                <CardContent>{isLoadingFavorites ? <div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : favoriteLibraries.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{favoriteLibraries.map(library => <LibraryCard key={library.id} library={library} />)}</div> : <p className="text-muted-foreground text-center py-4">Aún no has guardado ninguna librería como favorita.</p>}</CardContent>
               </Card>
             </TabsContent>
-
             <TabsContent value="wishlist">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="font-headline text-xl">Mi Lista de Deseos</CardTitle>
-                        <CardDescription>Libros que has guardado para después.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {isWishlistLoading ? (
-                            <div className="flex justify-center items-center py-8">
-                                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                        ) : wishlistedBooks.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {wishlistedBooks.map(book => <BookCard key={book.id} book={book} />)}
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground text-center py-4">Tu lista de deseos está vacía. Busca libros y guárdalos para más tarde.</p>
-                        )}
-                    </CardContent>
-                </Card>
+              <Card><CardHeader><CardTitle className="font-headline text-xl">Mi Lista de Deseos</CardTitle><CardDescription>Libros que has guardado para después.</CardDescription></CardHeader>
+                <CardContent>{isWishlistLoading ? <div className="flex justify-center items-center py-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : wishlistedBooks.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">{wishlistedBooks.map(book => <BookCard key={book.id} book={book} />)}</div> : <p className="text-muted-foreground text-center py-4">Tu lista de deseos está vacía.</p>}</CardContent>
+              </Card>
             </TabsContent>
-
           </Tabs>
         </div>
       </div>
