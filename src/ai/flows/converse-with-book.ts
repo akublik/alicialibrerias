@@ -44,7 +44,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         }));
         
         const response = await ai.generate({
-            model: 'gemini-1.5-flash',
+            model: 'googleai/gemini-1.5-flash',
             system: systemPrompt,
             history: genkitHistory as Array<{ role: Role; content: Part[] }>,
         });

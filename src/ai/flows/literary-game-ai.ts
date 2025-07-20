@@ -52,7 +52,7 @@ export type LiteraryGamesAIOutput = z.infer<typeof LiteraryGamesAIOutputSchema>;
 
 export async function literaryGamesAI(input: LiteraryGamesAIInput): Promise<LiteraryGamesAIOutput> {
   const response = await ai.generate({
-    model: 'gemini-1.5-flash',
+    model: 'googleai/gemini-1.5-flash',
     prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
 
 Basado en la siguiente solicitud, genera un juego literario.
