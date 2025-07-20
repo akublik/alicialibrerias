@@ -42,7 +42,7 @@ const homepageContentFormSchema = z.object({
   bannerTitle: z.string().min(3, "El título es requerido."),
   bannerSubtitle: z.string().min(10, "El subtítulo es requerido."),
   bannerImageUrl: z.string().url({ message: "Debe ser una URL válida." }).optional().or(z.literal('')),
-  featuredBookIds: z.array(z.string()).max(5, "Puedes seleccionar hasta 5 libros.").optional(),
+  featuredBookIds: z.array(z.string()).max(12, "Puedes seleccionar hasta 12 libros.").optional(),
   secondaryBannerSlides: z.array(secondaryBannerSlideSchema).max(4, "Puedes tener hasta 4 slides.").optional(),
   nationalSectionTitle: z.string().optional(),
   nationalBookIds: z.array(z.string()).max(10, "Puedes seleccionar hasta 10 libros.").optional(),
@@ -56,6 +56,11 @@ export default function ManageContentPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [allBooks, setAllBooks] = useState<Book[]>([]);
     const { toast } = useToast();
+    
+    // Search states for selectors
+    const [featuredSearchTerm, setFeaturedSearchTerm] = useState("");
+    const [nationalSearchTerm, setNationalSearchTerm] = useState("");
+
 
     // State for file uploads
     const [mainBannerFile, setMainBannerFile] = useState<File | null>(null);
@@ -125,10 +130,15 @@ export default function ManageContentPage() {
 
         fetchInitialData();
     }, [homepageForm, toast]);
-
-    const bookOptions = useMemo<MultiSelectOption[]>(() => {
-        return allBooks.map(book => ({ value: book.id, label: book.title }));
-    }, [allBooks]);
+    
+    const filteredBookOptions = (searchTerm: string): MultiSelectOption[] => {
+        if (!searchTerm) {
+            return allBooks.map(book => ({ value: book.id, label: book.title }));
+        }
+        return allBooks
+            .filter(book => book.title.toLowerCase().includes(searchTerm.toLowerCase()))
+            .map(book => ({ value: book.id, label: book.title }));
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (file: File | null) => void, previewSetter: (url: string | null) => void) => {
         const file = e.target.files?.[0];
@@ -305,26 +315,34 @@ export default function ManageContentPage() {
 
                         <TabsContent value="featured-books">
                             <Card>
-                                <CardHeader><CardTitle>Libros Destacados</CardTitle><CardDescription>Selecciona hasta 5 libros para mostrar en la sección de destacados de la página principal.</CardDescription></CardHeader>
+                                <CardHeader><CardTitle>Libros Destacados</CardTitle><CardDescription>Selecciona hasta 12 libros para mostrar en la sección de destacados de la página principal.</CardDescription></CardHeader>
                                 <CardContent>
-                                    <FormField
-                                        control={homepageForm.control}
-                                        name="featuredBookIds"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Libros</FormLabel>
-                                                <FormControl>
-                                                    <MultiSelect
-                                                        placeholder="Selecciona libros..."
-                                                        options={bookOptions}
-                                                        value={field.value || []}
-                                                        onChange={field.onChange}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <div className="space-y-4">
+                                        <Input 
+                                            placeholder="Buscar libros por título para filtrar la lista..."
+                                            value={featuredSearchTerm}
+                                            onChange={(e) => setFeaturedSearchTerm(e.target.value)}
+                                            className="mb-4"
+                                        />
+                                        <FormField
+                                            control={homepageForm.control}
+                                            name="featuredBookIds"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Libros</FormLabel>
+                                                    <FormControl>
+                                                        <MultiSelect
+                                                            placeholder="Selecciona libros..."
+                                                            options={filteredBookOptions(featuredSearchTerm)}
+                                                            value={field.value || []}
+                                                            onChange={field.onChange}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
@@ -347,27 +365,35 @@ export default function ManageContentPage() {
                                             </FormItem>
                                         )}
                                     />
-                                     <FormField
-                                        control={homepageForm.control}
-                                        name="nationalBookIds"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Libros para la Sección Nacional</FormLabel>
-                                                <FormControl>
-                                                    <MultiSelect
-                                                        placeholder="Selecciona hasta 10 libros..."
-                                                        options={bookOptions}
-                                                        value={field.value || []}
-                                                        onChange={field.onChange}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    Selecciona los libros que aparecerán en esta sección.
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                     <div className="space-y-4">
+                                        <Input 
+                                            placeholder="Buscar libros por título para filtrar la lista..."
+                                            value={nationalSearchTerm}
+                                            onChange={(e) => setNationalSearchTerm(e.target.value)}
+                                            className="mb-4"
+                                        />
+                                        <FormField
+                                            control={homepageForm.control}
+                                            name="nationalBookIds"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Libros para la Sección Nacional</FormLabel>
+                                                    <FormControl>
+                                                        <MultiSelect
+                                                            placeholder="Selecciona hasta 10 libros..."
+                                                            options={filteredBookOptions(nationalSearchTerm)}
+                                                            value={field.value || []}
+                                                            onChange={field.onChange}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Selecciona los libros que aparecerán en esta sección.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                     </div>
                                 </CardContent>
                             </Card>
                         </TabsContent>
