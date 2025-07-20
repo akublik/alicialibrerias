@@ -41,18 +41,24 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             history: genkitHistory as Array<{ role: Role; content: Part[] }>,
         });
 
-        const responseText = response.candidates[0]?.message.content[0]?.text;
-        
-        if (responseText) {
-          return responseText;
+        // Robust response handling
+        const candidate = response?.candidates?.[0];
+        if (candidate?.message?.content?.[0]?.text) {
+          return candidate.message.content[0].text;
         }
-
+        
+        // If we reach here, the response was not in the expected format.
         console.error("----------- DETAILED AI CONVERSE WITH BOOK ERROR -----------");
-        console.error("Flow: converseWithBook - Response did not contain valid text.");
+        console.error("Flow: converseWithBook - Response structure was invalid or empty.");
         console.error("Timestamp:", new Date().toISOString());
         console.error("Book Title:", bookTitle);
         console.error("Full AI Response Object:", JSON.stringify(response, null, 2));
-        return "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
+        
+        let errorMessage = "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
+        if (candidate?.finishReason) {
+            errorMessage += ` (Razón: ${candidate.finishReason})`;
+        }
+        return errorMessage;
         
     } catch (e: any) {
         console.error("----------- DETAILED AI CONVERSE WITH BOOK ERROR -----------");
