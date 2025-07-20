@@ -30,12 +30,16 @@ if (apiKey) {
     throw new Error(errorMessage);
   };
   
-  ai = {
-    defineFlow: () => mockFunc,
-    definePrompt: () => mockFunc,
-    defineTool: () => mockFunc,
-    generate: mockFunc,
-  };
+  ai = new Proxy({}, {
+    get(target, prop, receiver) {
+      if (['defineFlow', 'definePrompt', 'defineTool', 'generate', 'generateStream', 'embed', 'listModels'].includes(String(prop))) {
+        return () => {
+          throw new Error(errorMessage);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    }
+  });
 }
 
 export { ai };
