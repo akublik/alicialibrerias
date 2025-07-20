@@ -58,14 +58,8 @@ export default function GamesPage() {
     setIsLoading(true);
     resetGameState();
 
-    const input: LiteraryGamesAIInput = {
-      gameType: values.gameType,
-      theme: values.theme,
-      complexity: values.complexity,
-    };
-
     try {
-      const result = await literaryGamesAI(input);
+      const result = await literaryGamesAI(values);
       setAiResponse(result);
       toast({
         title: "¡Juego Generado!",
