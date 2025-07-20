@@ -1,5 +1,3 @@
-
-
 // src/app/(app)/reader/[id]/page.tsx
 "use client";
 
