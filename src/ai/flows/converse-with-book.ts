@@ -8,8 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
-import { Part, Role, UserMessage, GenerateResponse } from '@genkit-ai/core/lib/model';
+import { GenerateResponse, Part, Role, UserMessage } from '@genkit-ai/core/lib/model';
 
 export type ChatMessage = {
     role: 'user' | 'assistant';
