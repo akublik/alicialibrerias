@@ -1,51 +1,57 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'storage.googleapis.com',
       },
       {
         protocol: 'https',
         hostname: 'alicialectura.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/v0/b/alicia-lee.firebasestorage.app/o/**',
       },
       {
         protocol: 'https',
         hostname: 'ejemplo.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'http',
         hostname: 'canal.bibliomanager.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'cardenasyabogados.com',
-        port: '',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'digitalwayltda.com',
-        port: '',
-        pathname: '/**',
+      },
+       {
+        protocol: 'http',
+        hostname: 'digitalwayltda.com',
       },
     ],
+  },
+   webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.externals.push(
+        '@opentelemetry/exporter-jaeger',
+        '@opentelemetry/instrumentation-http',
+        '@opentelemetry/instrumentation-grpc',
+        '@opentelemetry/instrumentation-fs',
+        'firebase-admin'
+      );
+    }
+    config.experiments = { ...config.experiments, topLevelAwait: true };
+    return config;
   },
 };
 
