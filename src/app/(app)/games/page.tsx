@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Gamepad2, Wand2, Brain, CheckCircle, XCircle, RefreshCw, Trophy, BookText } from "lucide-react";
-import { literaryGamesAI, type LiteraryGamesAIInput, type LiteraryGamesAIOutput, type QuizQuestion } from "@/ai/flows/literary-game-ai";
+import { literaryGamesAI, type LiteraryGamesAIOutput, type QuizQuestion } from "@/ai/flows/literary-game-ai";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
