@@ -10,16 +10,15 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 import { db } from '@/lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
-import type { Book } from '@/types';
 
 // The input for the flow only requires user data.
 const BookRecommendationsInputSchema = z.object({
   userId: z.string().describe('The ID of the user for whom to generate recommendations.'),
   readingHistory: z.array(z.string()).describe('An array of book titles the user has read.'),
-  preferences: z.string().describe('The user\u2019s stated preferences, such as preferred genres or authors.'),
+  preferences: z.string().describe('The user’s stated preferences, such as preferred genres or authors.'),
 });
 export type BookRecommendationsInput = z.infer<typeof BookRecommendationsInputSchema>;
 
@@ -41,21 +40,28 @@ const BookRecommendationsOutputSchema = z.object({
 });
 export type BookRecommendationsOutput = z.infer<typeof BookRecommendationsOutputSchema>;
 
+
 export async function getBookRecommendations(input: BookRecommendationsInput): Promise<BookRecommendationsOutput> {
-  return bookRecommendationsFlow(input);
-}
+  if (!db) throw new Error("Database connection not available");
 
-// The prompt's input needs the user data AND the inventory.
-const PromptInputSchema = BookRecommendationsInputSchema.extend({
-  inventory: z.string().describe('A JSON string of available books in the store.'),
-});
-
-const prompt = ai.definePrompt({
-  name: 'bookRecommendationsPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: PromptInputSchema},
-  output: {schema: BookRecommendationsOutputSchema},
-  prompt: `Eres un bibliotecario de clase mundial y experto en recomendaciones de libros.
+  // 1. Fetch all books from Firestore to create the inventory.
+  const booksSnapshot = await getDocs(collection(db, "books"));
+  const inventoryList = booksSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+          id: doc.id,
+          title: data.title,
+          authors: data.authors,
+          categories: data.categories || [],
+          tags: data.tags || []
+      };
+  });
+  const inventoryJson = JSON.stringify(inventoryList);
+  
+  // 2. Call the AI model with the user's input and the fetched inventory.
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres un bibliotecario de clase mundial y experto en recomendaciones de libros.
 Un usuario ha proporcionado su historial de lectura y sus preferencias. También se te ha dado una cadena JSON que representa nuestro inventario de libros actual.
 
 Tu tarea es proporcionar dos conjuntos de recomendaciones:
@@ -63,42 +69,20 @@ Tu tarea es proporcionar dos conjuntos de recomendaciones:
 2.  **newSuggestions**: Genera una lista de hasta 10 NUEVAS sugerencias de libros que NO estén en el inventario proporcionado pero que sean una excelente opción para el usuario. Para cada nueva sugerencia, proporciona un título, un autor y una 'rationale' (razón) breve y convincente en español que explique por qué el usuario disfrutaría de este libro.
 
 Preferencias del Usuario:
-- Historial de Lectura: {{readingHistory}}
-- Preferencias Declaradas: {{preferences}}
+- Historial de Lectura: ${JSON.stringify(input.readingHistory)}
+- Preferencias Declaradas: ${input.preferences}
 
 Inventario de Libros Actual (JSON):
-{{{inventory}}}
+${inventoryJson}
 `,
-});
+    output: {
+      schema: BookRecommendationsOutputSchema,
+    },
+  });
 
-const bookRecommendationsFlow = ai.defineFlow(
-  {
-    name: 'bookRecommendationsFlow',
-    inputSchema: BookRecommendationsInputSchema,
-    outputSchema: BookRecommendationsOutputSchema,
-  },
-  async (input: BookRecommendationsInput) => {
-    if (!db) throw new Error("Database connection not available");
-    
-    // 1. Fetch all books from Firestore to create the inventory.
-    const booksSnapshot = await getDocs(collection(db, "books"));
-    const inventoryList = booksSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            title: data.title,
-            authors: data.authors,
-            categories: data.categories || [],
-            tags: data.tags || []
-        };
-    });
-    const inventoryJson = JSON.stringify(inventoryList);
-
-    // 2. Call the prompt with the user's input and the fetched inventory.
-    const {output} = await prompt({
-      ...input,
-      inventory: inventoryJson,
-    });
-    return output!;
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}

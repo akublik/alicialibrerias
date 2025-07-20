@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateAutomaticTagsInputSchema = z.object({
   description: z.string().describe('The description of the book.'),
@@ -22,25 +22,17 @@ const GenerateAutomaticTagsOutputSchema = z.object({
 export type GenerateAutomaticTagsOutput = z.infer<typeof GenerateAutomaticTagsOutputSchema>;
 
 export async function generateAutomaticTags(input: GenerateAutomaticTagsInput): Promise<GenerateAutomaticTagsOutput> {
-  return generateAutomaticTagsFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateAutomaticTagsPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: GenerateAutomaticTagsInputSchema},
-  output: {schema: GenerateAutomaticTagsOutputSchema},
-  prompt: `You are an expert librarian. Generate 5 relevant tags for the following book description:\n\nDescription: {{{description}}}`,
-});
-
-const generateAutomaticTagsFlow = ai.defineFlow(
-  {
-    name: 'generateAutomaticTagsFlow',
-    inputSchema: GenerateAutomaticTagsInputSchema,
-    outputSchema: GenerateAutomaticTagsOutputSchema,
-  },
-  async (input: GenerateAutomaticTagsInput) => {
-    const {output} = await prompt(input);
-    return output!;
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `You are an expert librarian. Generate 5 relevant tags for the following book description:\n\nDescription: ${input.description}`,
+    output: {
+      schema: GenerateAutomaticTagsOutputSchema,
+    },
+  });
+  
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}

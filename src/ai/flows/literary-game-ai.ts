@@ -8,7 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const LiteraryGamesAIInputSchema = z.object({
   gameType: z.string().describe('The type of literary game to generate.'),
@@ -50,36 +50,28 @@ export type LiteraryGamesAIOutput = z.infer<typeof LiteraryGamesAIOutputSchema>;
 
 
 export async function literaryGamesAI(input: LiteraryGamesAIInput): Promise<LiteraryGamesAIOutput> {
-  return literaryGamesAIFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'literaryGamesAIPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: LiteraryGamesAIInputSchema},
-  output: {schema: LiteraryGamesAIOutputSchema},
-  prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres un diseñador de juegos literarios experto. Tu respuesta debe estar completamente en español.
 
 Basado en la siguiente solicitud, genera un juego literario.
 
-Tipo de Juego: {{{gameType}}}
-Tema: {{{theme}}}
-Complejidad: {{{complexity}}}
+Tipo de Juego: ${input.gameType}
+Tema: ${input.theme}
+Complejidad: ${input.complexity}
 
 - Si el tipo de juego es "Trivia", "Cuestionario", "Quiz" o "Adivinanzas", genera un juego de tipo 'quiz'. Debe tener un título, una descripción y una lista de 5 a 10 preguntas. Cada pregunta debe tener 4 opciones, una respuesta correcta y una explicación breve (rationale) de la respuesta.
 - Para cualquier otro tipo de juego, genera un juego de tipo 'text'. Debe tener un título, una descripción con reglas y unas instrucciones.
 
 Asegúrate de que el resultado se ajuste al esquema de salida JSON proporcionado.`,
-});
-
-const literaryGamesAIFlow = ai.defineFlow(
-  {
-    name: 'literaryGamesAIFlow',
-    inputSchema: LiteraryGamesAIInputSchema,
-    outputSchema: LiteraryGamesAIOutputSchema,
-  },
-  async (input: LiteraryGamesAIInput) => {
-    const {output} = await prompt(input);
-    return output!;
+    output: {
+      schema: LiteraryGamesAIOutputSchema,
+    },
+  });
+  
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}

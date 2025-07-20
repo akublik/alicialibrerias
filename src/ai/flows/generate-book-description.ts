@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateBookDescriptionInputSchema = z.object({
   title: z.string().describe('The title of the book.'),
@@ -23,15 +23,9 @@ const GenerateBookDescriptionOutputSchema = z.object({
 export type GenerateBookDescriptionOutput = z.infer<typeof GenerateBookDescriptionOutputSchema>;
 
 export async function generateBookDescription(input: GenerateBookDescriptionInput): Promise<GenerateBookDescriptionOutput> {
-  return generateBookDescriptionFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateBookDescriptionPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: GenerateBookDescriptionInputSchema},
-  output: {schema: GenerateBookDescriptionOutputSchema},
-  prompt: `Eres un talentoso redactor de marketing y editor de libros. Tu tarea es escribir una descripción (sinopsis) atractiva y convincente para un libro, basándote en su título y autor.
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres un talentoso redactor de marketing y editor de libros. Tu tarea es escribir una descripción (sinopsis) atractiva y convincente para un libro, basándote en su título y autor.
 
 La descripción debe ser:
 - Escrita en español.
@@ -40,20 +34,18 @@ La descripción debe ser:
 - No debe incluir spoilers importantes.
 
 Detalles del libro:
-- Título: {{{title}}}
-- Autor: {{{author}}}
+- Título: ${input.title}
+- Autor: ${input.author}
 
 Genera únicamente el texto de la descripción.`,
-});
+    output: {
+      schema: GenerateBookDescriptionOutputSchema,
+    },
+  });
 
-const generateBookDescriptionFlow = ai.defineFlow(
-  {
-    name: 'generateBookDescriptionFlow',
-    inputSchema: GenerateBookDescriptionInputSchema,
-    outputSchema: GenerateBookDescriptionOutputSchema,
-  },
-  async (input: GenerateBookDescriptionInput) => {
-    const {output} = await prompt(input);
-    return output!;
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}

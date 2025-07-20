@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateBookReviewInputSchema = z.object({
   title: z.string().describe('The title of the book.'),
@@ -26,15 +26,9 @@ const GenerateBookReviewOutputSchema = z.object({
 export type GenerateBookReviewOutput = z.infer<typeof GenerateBookReviewOutputSchema>;
 
 export async function generateBookReview(input: GenerateBookReviewInput): Promise<GenerateBookReviewOutput> {
-  return generateBookReviewFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateBookReviewPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: GenerateBookReviewInputSchema},
-  output: {schema: GenerateBookReviewOutputSchema},
-  prompt: `Eres un generador de reseñas de libros. Tu tarea es crear una reseña de libro ficticia pero convincente para fines de marketing.
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres un generador de reseñas de libros. Tu tarea es crear una reseña de libro ficticia pero convincente para fines de marketing.
 
 La reseña debe ser:
 - Positiva y entusiasta.
@@ -43,21 +37,19 @@ La reseña debe ser:
 - Íntegramente en español.
 
 Genera un nombre de usuario creíble, una calificación entre 4 y 5 estrellas, y el texto de la reseña basado en los siguientes detalles del libro:
-- Título: {{{title}}}
-- Autor: {{{author}}}
-- Descripción: {{{description}}}
+- Título: ${input.title}
+- Autor: ${input.author}
+- Descripción: ${input.description || ''}
 
 Genera solo la reseña, el nombre de usuario y la calificación.`,
-});
-
-const generateBookReviewFlow = ai.defineFlow(
-  {
-    name: 'generateBookReviewFlow',
-    inputSchema: GenerateBookReviewInputSchema,
-    outputSchema: GenerateBookReviewOutputSchema,
-  },
-  async (input: GenerateBookReviewInput) => {
-    const {output} = await prompt(input);
-    return output!;
+    output: {
+      schema: GenerateBookReviewOutputSchema,
+    },
+  });
+  
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}

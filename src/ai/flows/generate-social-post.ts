@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateSocialPostInputSchema = z.object({
   title: z.string().describe('The title of the book.'),
@@ -26,15 +26,9 @@ const GenerateSocialPostOutputSchema = z.object({
 export type GenerateSocialPostOutput = z.infer<typeof GenerateSocialPostOutputSchema>;
 
 export async function generateSocialPost(input: GenerateSocialPostInput): Promise<GenerateSocialPostOutput> {
-  return generateSocialPostFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'generateSocialPostPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: {schema: GenerateSocialPostInputSchema},
-  output: {schema: GenerateSocialPostOutputSchema},
-  prompt: `Eres un experto en marketing digital y redes sociales para librerías. Tu tarea es crear una publicación atractiva en español para anunciar un libro.
+  const response = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres un experto en marketing digital y redes sociales para librerías. Tu tarea es crear una publicación atractiva en español para anunciar un libro.
 
 La publicación debe ser:
 - Entusiasta y persuasiva.
@@ -43,23 +37,21 @@ La publicación debe ser:
 - Terminar con hashtags relevantes.
 
 Aquí están los detalles del libro:
-- Título: {{{title}}}
-- Autor: {{{author}}}
-- Descripción (úsala para inspirarte en el tono): {{{description}}}
-- Precio: {{{price}}}
-- Nombre de la Librería: {{{libraryName}}}
+- Título: ${input.title}
+- Autor: ${input.author}
+- Descripción (úsala para inspirarte en el tono): ${input.description || ''}
+- Precio: ${input.price}
+- Nombre de la Librería: ${input.libraryName}
 
 Genera solo el texto de la publicación.`,
-});
+    output: {
+      schema: GenerateSocialPostOutputSchema,
+    },
+  });
 
-const generateSocialPostFlow = ai.defineFlow(
-  {
-    name: 'generateSocialPostFlow',
-    inputSchema: GenerateSocialPostInputSchema,
-    outputSchema: GenerateSocialPostOutputSchema,
-  },
-  async (input: GenerateSocialPostInput) => {
-    const {output} = await prompt(input);
-    return output!;
+  const output = response.output;
+  if (!output) {
+    throw new Error("AI did not return a valid response.");
   }
-);
+  return output;
+}
