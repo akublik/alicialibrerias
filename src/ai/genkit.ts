@@ -1,12 +1,11 @@
-import { genkit } from 'genkit';
+import { genkit, type GenkitError } from 'genkit';
 import { googleAI } from '@genkit-ai/googleai';
 
 let ai: any;
 
-const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY;
 
 if (apiKey) {
-  // Initialize Genkit with the Google AI plugin.
   ai = genkit({
     plugins: [googleAI({ apiKey })],
   });
@@ -23,21 +22,16 @@ if (apiKey) {
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   `);
   
-  // Create a mock 'ai' object that will throw clear errors when any AI feature is used.
   const errorMessage = "La funcionalidad de IA está deshabilitada porque falta la clave de API (GEMINI_API_KEY). Por favor, configúrala en el archivo .env.";
-
-  const mockFunc = async () => {
-    throw new Error(errorMessage);
-  };
   
   ai = new Proxy({}, {
-    get(target, prop, receiver) {
+    get(target, prop) {
       if (['defineFlow', 'definePrompt', 'defineTool', 'generate', 'generateStream', 'embed', 'listModels'].includes(String(prop))) {
         return () => {
           throw new Error(errorMessage);
         };
       }
-      return Reflect.get(target, prop, receiver);
+      return Reflect.get(target, prop);
     }
   });
 }
