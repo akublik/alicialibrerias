@@ -143,7 +143,6 @@ export default function DashboardPage() {
 
     let unsubscribes: (() => void)[] = [];
     
-    // Listener for user document for live updates (e.g., points)
     const userRef = doc(db, "users", user.id);
     const userUnsub = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -165,17 +164,19 @@ export default function DashboardPage() {
     });
     unsubscribes.push(userUnsub);
     
-    // Listener for all libraries and all books
+    // Listener for all libraries to get their names
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
-        const libInfoMap = new Map<string, {name: string, location: string}>();
-        libSnapshot.forEach(doc => libInfoMap.set(doc.id, { name: doc.data().name, location: doc.data().location }));
+        const libMap = new Map<string, string>();
+        libSnapshot.forEach(doc => {
+            libMap.set(doc.id, doc.data().name);
+        });
+        setLibraries(libMap);
 
         const booksUnsub = onSnapshot(collection(db, "books"), (booksSnapshot) => {
             const augmentedBooks = booksSnapshot.docs.map(bookDoc => {
                 const book = { id: bookDoc.id, ...bookDoc.data() } as Book;
-                if (book.libraryId && libInfoMap.has(book.libraryId)) {
-                    const libInfo = libInfoMap.get(book.libraryId)!;
-                    return { ...book, libraryName: libInfo.name, libraryLocation: libInfo.location };
+                if (book.libraryId && libMap.has(book.libraryId)) {
+                    book.libraryName = libMap.get(book.libraryId)!;
                 }
                 return book;
             });
@@ -185,7 +186,6 @@ export default function DashboardPage() {
     });
     unsubscribes.push(libUnsub);
     
-    // Listener for physical orders
     const ordersRef = collection(db, "orders");
     const qOrders = query(ordersRef, where("buyerId", "==", user.id), where("shippingMethod", "!=", "digital"));
     const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
@@ -198,7 +198,6 @@ export default function DashboardPage() {
     });
     unsubscribes.push(ordersUnsub);
 
-    // Listener for favorite libraries
     const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', user.id));
     const favsUnsub = onSnapshot(favsQuery, async (snapshot) => {
         setIsLoadingFavorites(true);
@@ -218,7 +217,6 @@ export default function DashboardPage() {
     });
     unsubscribes.push(favsUnsub);
     
-    // Listener for points history
     const pointsRef = collection(db, "pointsTransactions");
     const pointsQuery = query(pointsRef, where("userId", "==", user.id), orderBy("createdAt", "desc"), limit(50));
     const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
@@ -233,7 +231,7 @@ export default function DashboardPage() {
     return () => unsubscribes.forEach(unsub => unsub());
   }, [user?.id]);
   
-  // Dedicated effect for Digital Purchases, dependent only on user.id
+  // Dedicated listener for Digital Purchases, dependent only on user.id
   useEffect(() => {
     if (!user?.id || !db) return;
     
@@ -253,7 +251,7 @@ export default function DashboardPage() {
         console.error("Error al cargar libros digitales:", error);
         toast({ 
           title: "Error al cargar libros digitales", 
-          description: "La consulta requiere un índice. Puedes crearlo aquí: " + (error as any).url,
+          description: "La consulta podría requerir un índice compuesto. Revisa la consola para más detalles.",
           variant: "destructive",
           duration: 10000,
         });
@@ -750,3 +748,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
