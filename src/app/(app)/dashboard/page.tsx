@@ -1,4 +1,5 @@
 
+
 // src/app/(app)/dashboard/page.tsx
 "use client";
 
@@ -34,7 +35,7 @@ import { useWishlist } from '@/context/WishlistContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { MultiSelect, type Option as MultiSelectOption } from "@/components/ui/multi-select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { bookCategories, bookTags } from "@/lib/options";
 
 const profileFormSchema = z.object({
@@ -138,6 +139,7 @@ export default function DashboardPage() {
 
     let unsubscribes: (() => void)[] = [];
     
+    // --- User Live Data ---
     const userRef = doc(db, "users", user.id);
     const userUnsub = onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -159,6 +161,7 @@ export default function DashboardPage() {
     });
     unsubscribes.push(userUnsub);
     
+    // --- Libraries and All Books ---
     const libUnsub = onSnapshot(collection(db, "libraries"), (libSnapshot) => {
         const libMap = new Map<string, string>();
         libSnapshot.forEach(doc => { libMap.set(doc.id, doc.data().name); });
@@ -178,6 +181,7 @@ export default function DashboardPage() {
     });
     unsubscribes.push(libUnsub);
     
+    // --- Physical Orders ---
     const ordersRef = collection(db, "orders");
     const qOrders = query(ordersRef, where("buyerId", "==", user.id), where("shippingMethod", "!=", "digital"));
     const ordersUnsub = onSnapshot(qOrders, (snapshot) => {
@@ -190,6 +194,7 @@ export default function DashboardPage() {
     });
     unsubscribes.push(ordersUnsub);
 
+    // --- Favorite Libraries ---
     const favsQuery = query(collection(db, 'userFavorites'), where('userId', '==', user.id));
     const favsUnsub = onSnapshot(favsQuery, async (snapshot) => {
         setIsLoadingFavorites(true);
@@ -209,17 +214,24 @@ export default function DashboardPage() {
     });
     unsubscribes.push(favsUnsub);
     
+    // --- Points History ---
     const pointsRef = collection(db, "pointsTransactions");
-    const pointsQuery = query(pointsRef, where("userId", "==", user.id), orderBy("createdAt", "desc"), limit(50));
+    // Removed orderBy to prevent index errors. Sorting will be done on the client.
+    const pointsQuery = query(pointsRef, where("userId", "==", user.id), limit(50));
     const pointsUnsub = onSnapshot(pointsQuery, (snapshot) => {
         const history = snapshot.docs.map(doc => ({
             id: doc.id, ...doc.data(),
             createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString(),
         } as PointsTransaction));
+        // Sort on client
+        history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         setPointsHistory(history);
+    }, (error) => {
+        console.error("Error fetching points history:", error);
     });
     unsubscribes.push(pointsUnsub);
 
+    // --- Digital Purchases ---
     const digitalPurchasesRef = collection(db, "digital_purchases");
     const qDigital = query(digitalPurchasesRef, where("userId", "==", user.id));
     const digitalUnsub = onSnapshot(qDigital, (snapshot) => {
@@ -401,8 +413,19 @@ export default function DashboardPage() {
               </Card>
             </TabsContent>
             <TabsContent value="points-history">
-              <Card><CardHeader><CardTitle className="font-headline text-xl">Historial de Puntos</CardTitle><CardDescription>Aquí puedes ver todos los puntos que has ganado y gastado.</CardDescription></CardHeader>
-                <CardContent><Table><TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader><TableBody>{pointsHistory.length > 0 ? pointsHistory.map((transaction) => (<TableRow key={transaction.id}><TableCell>{format(new Date(transaction.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell><TableCell>{transaction.description}</TableCell><TableCell className={`text-right font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-destructive'}`}>{transaction.points > 0 ? `+${transaction.points}` : transaction.points}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="text-center py-4 text-muted-foreground">Aún no tienes movimientos de puntos.</TableCell></TableRow>}</TableBody></Table></CardContent>
+              <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Historial de Puntos</CardTitle>
+                    <CardDescription>Aquí puedes ver todos los puntos que has ganado y gastado.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {pointsHistory.length > 0 ? pointsHistory.map((transaction) => (<TableRow key={transaction.id}><TableCell>{format(new Date(transaction.createdAt), "dd/MM/yyyy", { locale: es })}</TableCell><TableCell>{transaction.description}</TableCell><TableCell className={`text-right font-semibold ${transaction.points > 0 ? 'text-green-600' : 'text-destructive'}`}>{transaction.points > 0 ? `+${transaction.points}` : transaction.points}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={3} className="text-center py-4 text-muted-foreground">Aún no tienes movimientos de puntos. ¡Realiza una compra para empezar a ganar!</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </CardContent>
               </Card>
             </TabsContent>
             <TabsContent value="favorites">
@@ -421,3 +444,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
