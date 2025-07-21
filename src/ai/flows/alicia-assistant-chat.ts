@@ -78,7 +78,7 @@ const chatWithAliciaAssistantFlow = ai.defineFlow(
     inputSchema: ChatWithAliciaAssistantInputSchema,
     outputSchema: ChatWithAliciaAssistantOutputSchema,
   },
-  async input => {
+  async (input: ChatWithAliciaAssistantInput) => {
     const {output} = await prompt(input);
     if (!output || !output.response) {
       throw new Error("AI did not return a valid response object.");
