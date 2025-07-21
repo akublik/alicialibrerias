@@ -40,19 +40,6 @@ const nextConfig = {
       },
     ],
   },
-   webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.externals.push(
-        '@opentelemetry/exporter-jaeger',
-        '@opentelemetry/instrumentation-http',
-        '@opentelemetry/instrumentation-grpc',
-        '@opentelemetry/instrumentation-fs',
-        'firebase-admin'
-      );
-    }
-    config.experiments = { ...config.experiments, topLevelAwait: true };
-    return config;
-  },
 };
 
 module.exports = nextConfig;
