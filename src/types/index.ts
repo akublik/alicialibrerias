@@ -32,7 +32,6 @@ export interface DigitalBook {
   id: string;
   title: string;
   author: string;
-  isbn?: string;
   description?: string;
   coverImageUrl: string;
   epubFileUrl: string; // URL to the EPUB file in Firebase Storage

@@ -27,7 +27,6 @@ import Image from "next/image";
 const digitalBookFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
   author: z.string().min(3, "El autor es requerido."),
-  isbn: z.string().min(10, "El ISBN es requerido y debe ser válido.").optional().or(z.literal('')),
   description: z.string().optional(),
   format: z.enum(['EPUB', 'PDF', 'EPUB & PDF'], { required_error: "Debes seleccionar un formato." }),
   categories: z.array(z.string()).optional(),
@@ -48,7 +47,7 @@ export default function NewDigitalBookPage() {
   const form = useForm<DigitalBookFormValues>({
     resolver: zodResolver(digitalBookFormSchema),
     defaultValues: {
-      title: "", author: "", isbn: "", description: "", categories: [], tags: [],
+      title: "", author: "", description: "", categories: [], tags: [],
     },
   });
 
@@ -143,7 +142,6 @@ export default function NewDigitalBookPage() {
       await addDoc(collection(db, "digital_books"), {
         title: values.title,
         author: values.author,
-        isbn: values.isbn || '',
         description: values.description || '',
         format: values.format,
         categories: values.categories || [],
@@ -193,8 +191,7 @@ export default function NewDigitalBookPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="isbn" render={({ field }) => ( <FormItem><FormLabel>ISBN (Requerido)</FormLabel><FormControl><Input {...field} value={field.value ?? ''} placeholder="ISBN único del libro digital" /></FormControl><FormMessage /></FormItem> )} />
-
+              
               <FormField
                 control={form.control}
                 name="format"
