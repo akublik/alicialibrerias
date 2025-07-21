@@ -8,7 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import type { GenerateResponseData, Part, Role, UserMessage } from 'genkit/model';
+import type { GenerateResponseData, Part, Role } from 'genkit/model';
 
 export type ChatMessage = {
     role: 'user' | 'assistant';
@@ -29,7 +29,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             .slice(firstUserIndex)
             .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
 
-        const genkitHistory = validHistory.map((msg): UserMessage => ({
+        // Construct the history with the correct types expected by ai.generate
+        const genkitHistory: Array<{ role: Role; content: Part[] }> = validHistory.map((msg) => ({
             role: msg.role === 'user' ? 'user' : 'model',
             content: [{ text: msg.content }],
         }));
@@ -37,13 +38,13 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         const response: GenerateResponseData = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
             system: systemPrompt,
-            history: genkitHistory as Array<{ role: Role; content: Part[] }>,
+            history: genkitHistory,
         });
 
         // Robust response handling
-        const candidate = response?.candidates?.[0];
-        if (candidate?.message?.content?.[0]?.text) {
-          return candidate.message.content[0].text;
+        const responseText = response?.candidates?.[0]?.message?.content?.[0]?.text;
+        if (responseText) {
+          return responseText;
         }
         
         // If we reach here, the response was not in the expected format.
@@ -54,8 +55,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Full AI Response Object:", JSON.stringify(response, null, 2));
         
         let errorMessage = "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
-        if (candidate?.finishReason) {
-            errorMessage += ` (Razón: ${candidate.finishReason})`;
+        if (response?.candidates?.[0]?.finishReason) {
+            errorMessage += ` (Razón: ${response.candidates[0].finishReason})`;
         }
         return errorMessage;
         
