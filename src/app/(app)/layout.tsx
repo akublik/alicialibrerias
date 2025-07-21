@@ -17,7 +17,7 @@ export default function AppLayout({
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />
-      <AliciaAssistantWidget />
+      {/* <AliciaAssistantWidget /> */}
     </div>
   );
 }
