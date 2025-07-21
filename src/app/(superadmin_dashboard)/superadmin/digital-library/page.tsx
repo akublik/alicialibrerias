@@ -143,8 +143,8 @@ export default function ManageDigitalLibraryPage() {
                             <CardHeader className="p-4"><CardTitle className="text-base">Instrucciones</CardTitle></CardHeader>
                             <CardContent className="p-4 pt-0 text-sm space-y-2">
                                 <p>1. Comprime tus archivos `.epub` o `.pdf` en un solo archivo `.zip`.</p>
-                                <p>2. Nombra cada archivo con el formato: <br/><strong className="text-primary">Autor - Título.epub</strong></p>
-                                <p>3. El sistema extraerá el autor y el título del nombre del archivo.</p>
+                                <p>2. El sistema usará el nombre de cada archivo como el título del libro.</p>
+                                <p>3. El autor se establecerá como "Autor Desconocido" y podrá editarse luego.</p>
                             </CardContent>
                         </Card>
                         <div>

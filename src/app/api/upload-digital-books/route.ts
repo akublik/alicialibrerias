@@ -55,15 +55,14 @@ export async function POST(request: NextRequest) {
       if (entry.type === 'File' && (entry.path.endsWith('.epub') || entry.path.endsWith('.pdf'))) {
         try {
           const filename = entry.path.split('/').pop()!;
-          const nameParts = filename.split('.').slice(0, -1).join('.').split(' - ');
+          const title = filename.split('.').slice(0, -1).join('.');
+          const author = "Autor Desconocido";
           
-          if (nameParts.length < 2) {
-            errors.push(`Nombre de archivo no válido, omitiendo: ${filename}`);
+          if (!title) {
+            errors.push(`Nombre de archivo vacío o inválido, omitiendo: ${filename}`);
             continue;
           }
 
-          const author = nameParts[0].trim();
-          const title = nameParts.slice(1).join(' - ').trim();
           const fileExtension = entry.path.split('.').pop()!.toUpperCase();
 
           // Upload file to Storage
