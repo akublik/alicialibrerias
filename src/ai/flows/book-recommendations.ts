@@ -71,7 +71,7 @@ const getBookRecommendationsFlow = ai.defineFlow(
     inputSchema: BookRecommendationsInputSchema,
     outputSchema: BookRecommendationsOutputSchema,
   },
-  async (input) => {
+  async (input: BookRecommendationsInput) => {
     if (!db) throw new Error("Database connection not available");
 
     // 1. Fetch all books from Firestore to create the inventory.
