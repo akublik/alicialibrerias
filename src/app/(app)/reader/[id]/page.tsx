@@ -58,7 +58,6 @@ export default function ReaderPage() {
       try {
         let bookData: Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string } | null = null;
         
-        // First, check the main library ('digital_books')
         let bookRef = doc(db, "digital_books", bookId);
         let docSnap = await getDoc(bookRef);
 
@@ -71,7 +70,6 @@ export default function ReaderPage() {
                 epubFileUrl: data.epubFileUrl,
             };
         } else {
-            // If not found, check the physical/digital books collection ('books')
             bookRef = doc(db, "books", bookId);
             docSnap = await getDoc(bookRef);
             if(docSnap.exists()) {
@@ -95,12 +93,18 @@ export default function ReaderPage() {
         }
 
         setBook(bookData);
-
-        const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
+        
+        // Extract the file path from the full URL for the proxy
+        const url = new URL(bookData.epubFileUrl);
+        // The path is everything after the bucket name and the first slash
+        const filePath = url.pathname.split('/').slice(3).join('/');
+        
+        const proxyUrl = `/api/proxy-epub?path=${encodeURIComponent(filePath)}`;
         const response = await fetch(proxyUrl);
         
         if (!response.ok) {
-            throw new Error(`No se pudo cargar el archivo del libro (estado: ${response.status}). Inténtalo de nuevo.`);
+            const errorText = await response.text();
+            throw new Error(`No se pudo cargar el archivo del libro (estado: ${response.status}). Detalles: ${errorText}`);
         }
         
         const data = await response.arrayBuffer();

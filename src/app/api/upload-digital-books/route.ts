@@ -83,15 +83,15 @@ export async function POST(request: NextRequest) {
               .on('error', reject);
           });
           
-          await fileUpload.makePublic();
-          const downloadURL = fileUpload.publicUrl();
+          // DO NOT make the file public. We will access it via proxy.
+          const downloadURL = fileUpload.name; // Store the path, not the public URL
 
           // Create Firestore document
           const newBook = {
             title,
             author,
             coverImageUrl: `https://placehold.co/300x450.png?text=${encodeURIComponent(title)}`,
-            epubFileUrl: downloadURL,
+            epubFileUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(downloadURL)}?alt=media`, // Construct a standard URL format
             format: fileExtension as 'EPUB' | 'PDF',
             description: `Un libro fascinante de ${author}.`,
             categories: [],
