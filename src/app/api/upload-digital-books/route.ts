@@ -1,3 +1,4 @@
+
 // src/app/api/upload-digital-books/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import admin from 'firebase-admin';
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 
-    if (!file || file.type !== 'application/zip') {
+    if (!file || !file.name.toLowerCase().endsWith('.zip')) {
       return NextResponse.json({ error: 'Se requiere un archivo .zip.' }, { status: 400 });
     }
 
