@@ -8,7 +8,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import type { GenerateResponse, Part, Role, UserMessage } from 'genkit/model';
+import type { GenerateResponseData, Part, Role, UserMessage } from 'genkit/model';
 
 export type ChatMessage = {
     role: 'user' | 'assistant';
@@ -34,7 +34,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             content: [{ text: msg.content }],
         }));
         
-        const response: GenerateResponse = await ai.generate({
+        const response: GenerateResponseData = await ai.generate({
             model: 'googleai/gemini-1.5-flash',
             system: systemPrompt,
             history: genkitHistory as Array<{ role: Role; content: Part[] }>,
