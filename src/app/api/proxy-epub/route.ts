@@ -39,20 +39,12 @@ export async function GET(request: NextRequest) {
 
   let filePath = "";
   try {
-    // ** THE FIX IS HERE **
-    // 1. Decode the full URL from the search params.
-    const decodedUrl = decodeURIComponent(fileUrl);
-    // 2. Use URL object to reliably parse the pathname.
-    const urlObject = new URL(decodedUrl);
-    // 3. Extract the object path after the bucket name and the '/o/' marker.
-    const pathName = urlObject.pathname;
+    // FIX: A robust way to parse the Firebase Storage URL and get the object path.
+    const urlObject = new URL(fileUrl);
     // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.epub
-    const objectPathIndex = pathName.indexOf('/o/');
-    if (objectPathIndex === -1) {
-      throw new Error("URL de Firebase Storage no válida: no se encontró '/o/'.");
-    }
+    const pathName = urlObject.pathname;
     // Get the part after /o/ and decode it. e.g. "epubs%2Ffile.epub" -> "epubs/file.epub"
-    filePath = decodeURIComponent(pathName.substring(objectPathIndex + 3));
+    filePath = decodeURIComponent(pathName.substring(pathName.indexOf('/o/') + 3));
 
   } catch (e: any) {
     return new NextResponse(`URL inválida: ${e.message}`, { status: 400 });
