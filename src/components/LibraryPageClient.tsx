@@ -258,14 +258,13 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-    if (!event || !event.date) {
-      return '#';
-    }
+    if (!event || !event.date) return '#';
+    
     const startTime = new Date(event.date);
     // Check if startTime is a valid date.
     if (isNaN(startTime.getTime())) {
       console.error("Invalid date provided for calendar link:", event.date);
-      return '#'; // Return a safe, non-functional link.
+      return '#';
     }
     
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
