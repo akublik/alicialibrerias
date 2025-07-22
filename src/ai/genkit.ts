@@ -24,13 +24,14 @@ if (apiKey) {
   
   const errorMessage = "La funcionalidad de IA está deshabilitada porque falta la clave de API (GEMINI_API_KEY). Por favor, configúrala en el archivo .env.";
   
+  // This proxy will throw a specific, helpful error when any AI function is called without an API key.
   ai = new Proxy({}, {
     get(target, prop) {
       if (['defineFlow', 'definePrompt', 'defineTool', 'generate', 'generateStream', 'embed', 'listModels'].includes(String(prop))) {
-        return () => {
-          throw new Error(errorMessage);
-        };
+        // For functions that return a promise, we must return a function that returns a rejected promise.
+        return () => Promise.reject(new Error(errorMessage));
       }
+      // For other properties, just return undefined or a specific handler if needed.
       return Reflect.get(target, prop);
     }
   });
