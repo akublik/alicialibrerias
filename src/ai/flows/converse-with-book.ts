@@ -27,7 +27,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
 
         const validHistory = history
             .slice(firstUserIndex)
-            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string');
+            // This robust filter ensures we only process valid, complete messages.
+            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string' && m.content.trim() !== '');
 
         // Construct the history with the correct types expected by ai.generate
         const genkitHistory: Array<{ role: Role; content: Part[] }> = validHistory.map((msg) => ({
