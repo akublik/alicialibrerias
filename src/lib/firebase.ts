@@ -24,8 +24,6 @@ let storage: FirebaseStorage;
 let auth: Auth;
 
 if (!isFirebaseConfigComplete(firebaseConfig)) {
-    // This will cause a loud error during build if env vars are missing, which is what we want.
-    // The build should not proceed without a valid config.
     console.error(`
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !!! ATENCIÓN: CONFIGURACIÓN DE FIREBASE INCOMPLETA O INVÁLIDA !!!
@@ -42,21 +40,28 @@ if (!isFirebaseConfigComplete(firebaseConfig)) {
     - appId: ${firebaseConfig.appId}
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     `);
-    // Throwing an error here is intentional to stop the build process.
     throw new Error("Firebase config is incomplete. Check your NEXT_PUBLIC_FIREBASE_* environment variables.");
 }
 
 // If the config is valid, we can proceed with initialization.
-// This guarantees that 'app', 'db', and 'storage' will be assigned.
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
 } else {
   app = getApp();
 }
 
+// --- DIAGNOSTIC LOG ---
+// This will print the Project ID being used to the server console when the app starts.
+// This helps verify which Google Cloud project you need to configure.
+console.log('======================================================================');
+console.log('>>> FIREBASE CONFIGURATION CHECK <<<');
+console.log(`>>> Using Firebase Project ID: ${app.options.projectId}`);
+console.log('>>> Please ensure the "Maps Embed API" is enabled in THIS project <<<');
+console.log('======================================================================');
+
+
 db = getFirestore(app);
 storage = getStorage(app);
 auth = getAuth(app);
 
-// Now db and storage are guaranteed to be initialized and are not nullable.
 export { db, storage, auth };
