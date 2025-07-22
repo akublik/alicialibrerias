@@ -258,11 +258,14 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
+    if (!event || !event.date) {
+      return '#';
+    }
     const startTime = new Date(event.date);
-    // Rigorous validation: Check if startTime is a valid date object
+    // Check if startTime is a valid date.
     if (isNaN(startTime.getTime())) {
-        console.error("Invalid date for event:", event.title, event.date);
-        return '#'; // Return a safe link if the date is invalid to prevent crash
+      console.error("Invalid date provided for calendar link:", event.date);
+      return '#'; // Return a safe, non-functional link.
     }
     
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
@@ -277,6 +280,7 @@ export default function LibraryPageClient() {
 
     return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${toGoogleFormat(startTime)}/${toGoogleFormat(endTime)}&details=${eventDetails}&location=${eventLocation}`;
   };
+
 
   if (isLoading) {
     return (
