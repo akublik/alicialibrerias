@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit, setDoc, increment } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-import { format, isValid } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -258,26 +258,10 @@ export default function LibraryPageClient() {
   };
   
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-    if (!event || !event.date) {
-        return '#';
-    }
-
     const startTime = new Date(event.date);
-    if (!isValid(startTime)) {
-        console.error("Invalid start time for event:", event.title);
-        return '#';
-    }
-
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour
-    if (!isValid(endTime)) {
-        console.error("Could not calculate valid end time for event:", event.title);
-        return '#';
-    }
-
-    const toGoogleFormat = (date: Date) => {
-        // Only call toISOString on a valid date object
-        return date.toISOString().replace(/-|:|\.\d{3}/g, '');
-    };
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
+    
+    const toGoogleFormat = (date: Date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
 
     const googleStartTime = toGoogleFormat(startTime);
     const googleEndTime = toGoogleFormat(endTime);
