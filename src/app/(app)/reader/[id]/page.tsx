@@ -206,140 +206,144 @@ export default function ReaderPage() {
     }
     return <><Volume2 className="mr-2 h-4 w-4" />Leer en voz alta</>;
   };
-
+  
   const renderContent = () => {
     if (isLoading) {
-        return (
-            <div className="flex flex-col justify-center items-center h-screen bg-muted">
-                <Loader2 className="h-16 w-16 animate-spin text-primary" />
-                <p className="mt-4 text-muted-foreground">
-                    Cargando libro...
-                </p>
-            </div>
-        );
+      return (
+        <div className="flex flex-col justify-center items-center h-screen bg-muted">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Cargando libro...</p>
+        </div>
+      );
     }
-    
+  
     if (error) {
       return (
         <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
           <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
           <h1 className="text-2xl font-bold text-destructive mb-2">Ocurrió un error</h1>
           <p className="text-muted-foreground max-w-lg whitespace-pre-wrap">{error}</p>
-          <Button onClick={() => router.push('/my-library')} className="mt-6">
-            Volver a la Biblioteca
+          <Button onClick={() => router.push('/dashboard')} className="mt-6">
+            Volver a Mi Panel
           </Button>
         </div>
       );
     }
-
-    if (epubData) {
-        return (
-            <div className="flex flex-col h-screen w-screen bg-muted overflow-hidden">
-                <header className="flex-shrink-0 bg-background shadow-md z-30">
-                    <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Link href="/dashboard" passHref>
-                              <Button variant="outline" size="sm">
-                                  <ArrowLeft className="mr-2 h-4 w-4" />
-                                  Mi Panel
-                              </Button>
-                          </Link>
-                           <Button variant="outline" size="sm" onClick={() => setIsTocVisible(!isTocVisible)}>
-                            <BookOpen className="mr-2 h-4 w-4" />
-                            Índice
+  
+    if (!isLoading && epubData) {
+      return (
+        <div className="flex flex-col h-screen w-screen bg-muted overflow-hidden">
+          <header className="flex-shrink-0 bg-background shadow-md z-30">
+              <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Link href="/dashboard" passHref>
+                        <Button variant="outline" size="sm">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Mi Panel
+                        </Button>
+                    </Link>
+                     <Button variant="outline" size="sm" onClick={() => setIsTocVisible(!isTocVisible)}>
+                      <BookOpen className="mr-2 h-4 w-4" />
+                      Índice
+                    </Button>
+                  </div>
+                  <div className="text-center hidden sm:block mx-4 overflow-hidden">
+                      <h1 className="font-headline text-xl font-bold text-primary truncate">{book?.title}</h1>
+                      <p className="text-sm text-muted-foreground truncate">{book?.author}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <a href={book?.epubFileUrl} download={`${book?.title}.epub`}>
+                          <Button variant="outline" size="sm">
+                              <Download className="mr-2 h-4 w-4" />
+                              Descargar EPUB
                           </Button>
-                        </div>
-                        <div className="text-center hidden sm:block mx-4 overflow-hidden">
-                            <h1 className="font-headline text-xl font-bold text-primary truncate">{book?.title}</h1>
-                            <p className="text-sm text-muted-foreground truncate">{book?.author}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <a href={book?.epubFileUrl} download={`${book?.title}.epub`}>
-                                <Button variant="outline" size="sm">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Descargar EPUB
-                                </Button>
-                            </a>
-                            <Select value={selectedVoice} onValueChange={setSelectedVoice}>
-                              <SelectTrigger className="w-[120px] h-9 text-xs">
-                                <SelectValue placeholder="Selecciona una voz" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {availableVoices.map(voice => (
-                                  <SelectItem key={voice} value={voice}>{voice}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="sm" onClick={handleTextToSpeech} disabled={isLoadingAudio}>
-                              {getButtonContent()}
-                            </Button>
-                        </div>
-                    </div>
-                </header>
-                
-                <div className="flex-grow flex relative">
-                    <aside className={cn(
-                        "absolute sm:relative top-0 left-0 h-full bg-background z-20 transition-transform duration-300 ease-in-out w-72 border-r shadow-lg",
-                        isTocVisible ? "translate-x-0" : "-translate-x-full"
-                    )}>
-                         <div className="flex items-center justify-between p-4 border-b">
-                            <h2 className="font-headline text-lg text-primary">Índice</h2>
-                            <Button variant="ghost" size="icon" onClick={() => setIsTocVisible(false)}>
-                                <X className="h-5 w-5"/>
-                            </Button>
-                         </div>
-                         <ScrollArea className="h-[calc(100%-4.5rem)]">
-                            <ul className="p-2">
-                            {toc.map((item, index) => (
-                                <li key={index}>
-                                    <button
-                                        onClick={() => onTocLocationChanges(item.href)}
-                                        className="block w-full text-left p-2 rounded-md hover:bg-muted text-sm text-foreground/80"
-                                    >
-                                        {item.label.trim()}
-                                    </button>
-                                </li>
-                            ))}
-                            </ul>
-                         </ScrollArea>
-                    </aside>
-    
-                    <div className="flex-grow h-full relative" id="reader-wrapper">
-                        <ReactReader
-                            key={book?.id}
-                            url={epubData}
-                            location={location}
-                            locationChanged={handleLocationChanged}
-                            getRendition={(rendition) => {
-                                renditionRef.current = rendition;
-                                // @ts-ignore
-                                rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
-                                    setToc(bookToc);
-                                });
-                            }}
-                        />
-                    </div>
-                </div>
-                
-                <div 
-                    className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-                    onClick={() => renditionRef.current?.prev()}
-                >
-                    <ArrowLeft className="fixed left-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
-                </div>
-                <div 
-                    className="fixed right-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
-                    onClick={() => renditionRef.current?.next()}
-                >
-                    <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
-                </div>
-                <audio ref={audioRef} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} />
-                {book && <ConverseWithBookTrigger bookTitle={book.title} />}
-            </div>
-        );
+                      </a>
+                      <Select value={selectedVoice} onValueChange={setSelectedVoice}>
+                        <SelectTrigger className="w-[120px] h-9 text-xs">
+                          <SelectValue placeholder="Selecciona una voz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableVoices.map(voice => (
+                            <SelectItem key={voice} value={voice}>{voice}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="sm" onClick={handleTextToSpeech} disabled={isLoadingAudio}>
+                        {getButtonContent()}
+                      </Button>
+                  </div>
+              </div>
+          </header>
+          
+          <div className="flex-grow flex relative">
+              <aside className={cn(
+                  "absolute sm:relative top-0 left-0 h-full bg-background z-20 transition-transform duration-300 ease-in-out w-72 border-r shadow-lg",
+                  isTocVisible ? "translate-x-0" : "-translate-x-full"
+              )}>
+                   <div className="flex items-center justify-between p-4 border-b">
+                      <h2 className="font-headline text-lg text-primary">Índice</h2>
+                      <Button variant="ghost" size="icon" onClick={() => setIsTocVisible(false)}>
+                          <X className="h-5 w-5"/>
+                      </Button>
+                   </div>
+                   <ScrollArea className="h-[calc(100%-4.5rem)]">
+                      <ul className="p-2">
+                      {toc.map((item, index) => (
+                          <li key={index}>
+                              <button
+                                  onClick={() => onTocLocationChanges(item.href)}
+                                  className="block w-full text-left p-2 rounded-md hover:bg-muted text-sm text-foreground/80"
+                              >
+                                  {item.label.trim()}
+                              </button>
+                          </li>
+                      ))}
+                      </ul>
+                   </ScrollArea>
+              </aside>
+
+              <div className="flex-grow h-full relative" id="reader-wrapper">
+                  <ReactReader
+                      key={book?.id}
+                      url={epubData}
+                      location={location}
+                      locationChanged={handleLocationChanged}
+                      getRendition={(rendition) => {
+                          renditionRef.current = rendition;
+                          // @ts-ignore
+                          rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
+                              setToc(bookToc);
+                          });
+                      }}
+                  />
+              </div>
+          </div>
+          
+          <div 
+              className="fixed left-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
+              onClick={() => renditionRef.current?.prev()}
+          >
+              <ArrowLeft className="fixed left-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"/>
+          </div>
+          <div 
+              className="fixed right-0 top-16 h-[calc(100%-4rem)] w-1/4 z-10 cursor-pointer group"
+              onClick={() => renditionRef.current?.next()}
+          >
+              <ArrowLeft className="fixed right-4 top-1/2 -translate-y-1/2 h-16 w-16 text-primary/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform rotate-180"/>
+          </div>
+          <audio ref={audioRef} onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onEnded={() => setIsPlaying(false)} />
+          {book && <ConverseWithBookTrigger bookTitle={book.title} />}
+        </div>
+      );
     }
     
-    return null; // Should not happen if isLoading is false and no error
+    // Fallback if neither loading, error, nor data is ready
+    return (
+        <div className="flex flex-col justify-center items-center h-screen bg-muted">
+          <Loader2 className="h-16 w-16 animate-spin text-primary" />
+          <p className="mt-4 text-muted-foreground">Inicializando lector...</p>
+        </div>
+    );
   }
 
   return renderContent();
