@@ -1,5 +1,3 @@
-
-
 // src/components/LibraryPageClient.tsx
 "use client";
 
@@ -249,9 +247,13 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-    if (!event.date || isNaN(new Date(event.date).getTime())) return '#';
     const startTime = new Date(event.date);
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
+    if (isNaN(startTime.getTime())) {
+        console.error("Invalid date for event:", event.title, event.date);
+        return '#'; // Return a safe link if the date is invalid
+    }
+    
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
 
     const toGoogleFormat = (date: Date) => {
         return date.toISOString().replace(/-|:|\.\d{3}/g, '');
