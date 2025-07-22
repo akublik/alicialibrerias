@@ -31,10 +31,16 @@ function initializeAdminApp() {
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const filePath = searchParams.get('path'); // We now expect a path, not a full URL
+  let filePath = searchParams.get('path'); 
 
   if (!filePath) {
     return new NextResponse('Missing file path', { status: 400 });
+  }
+  
+  // *** THE FIX IS HERE ***
+  // Ensure the filePath doesn't start with a leading slash, as bucket.file() doesn't expect it.
+  if (filePath.startsWith('/')) {
+    filePath = filePath.substring(1);
   }
 
   try {
