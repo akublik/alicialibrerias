@@ -249,7 +249,7 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-    if (!event.date) return '#';
+    if (!event.date || isNaN(new Date(event.date).getTime())) return '#';
     const startTime = new Date(event.date);
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000);
 
@@ -459,7 +459,7 @@ export default function LibraryPageClient() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
+                  <CardTitle className="font-headline text-xl">Eventos en ${name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {events.length > 0 ? (
