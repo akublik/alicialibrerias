@@ -50,7 +50,3 @@ console.log('===================================================================
 
 
 db = getFirestore(app);
-storage = getStorage(app);
-auth = getAuth(app);
-
-export { db, storage, auth };
