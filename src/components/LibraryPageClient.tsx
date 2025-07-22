@@ -258,26 +258,33 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-    if (!event || !event.date) return '#';
-    
-    const startTime = new Date(event.date);
-    // Check if startTime is a valid date.
-    if (isNaN(startTime.getTime())) {
-      console.error("Invalid date provided for calendar link:", event.date);
-      return '#';
-    }
-    
-    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
+      if (!event || !event.date) return '#';
+      
+      const startTime = new Date(event.date);
+      // Robust date validation
+      if (isNaN(startTime.getTime())) {
+          console.error("Invalid date provided for calendar link:", event.date);
+          return '#';
+      }
+      
+      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour
 
-    const toGoogleFormat = (date: Date) => {
-        return date.toISOString().replace(/-|:|\.\d{3}/g, '');
-    };
+      const toGoogleFormat = (date: Date) => {
+          // Check if date is valid before calling toISOString
+          if (isNaN(date.getTime())) return '';
+          return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+      };
 
-    const eventTitle = encodeURIComponent(event.title);
-    const eventDetails = encodeURIComponent(event.description);
-    const eventLocation = encodeURIComponent(libraryAddress);
+      const googleStartTime = toGoogleFormat(startTime);
+      const googleEndTime = toGoogleFormat(endTime);
+      
+      if (!googleStartTime || !googleEndTime) return '#';
 
-    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${toGoogleFormat(startTime)}/${toGoogleFormat(endTime)}&details=${eventDetails}&location=${eventLocation}`;
+      const eventTitle = encodeURIComponent(event.title);
+      const eventDetails = encodeURIComponent(event.description);
+      const eventLocation = encodeURIComponent(libraryAddress);
+
+      return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${googleStartTime}/${googleEndTime}&details=${eventDetails}&location=${eventLocation}`;
   };
 
 
