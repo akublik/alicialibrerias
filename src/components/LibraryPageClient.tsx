@@ -489,7 +489,7 @@ export default function LibraryPageClient() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
+                  <CardTitle className="font-headline text-xl">Eventos en ${name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {events.length > 0 ? (
@@ -500,14 +500,14 @@ export default function LibraryPageClient() {
                             <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint={event.dataAiHint || 'event promo'}/>
                           </div>
                           <CardHeader className="p-4 pb-2">
-                              <CardTitle className="font-headline text-lg text-primary">{event.title}</CardTitle>
+                              <CardTitle className="font-headline text-lg text-primary">${event.title}</CardTitle>
                               <CardDescription className="text-sm text-muted-foreground font-medium flex items-center pt-1">
                                   <CalendarDaysIcon className="mr-2 h-4 w-4" />
                                   {format(new Date(event.date), "PPP 'a las' p", { locale: es })}
                               </CardDescription>
                           </CardHeader>
                           <CardContent className="p-4 pt-0">
-                              <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{event.description}</p>
+                              <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">${event.description}</p>
                           </CardContent>
                           <CardFooter className="p-4 pt-0 mt-auto flex-col sm:flex-row gap-2">
                               <Button variant="default" className="w-full font-body" onClick={() => setSelectedEvent(event)}>
@@ -547,7 +547,7 @@ export default function LibraryPageClient() {
        <Dialog open={!!selectedEvent} onOpenChange={(isOpen) => { if (!isOpen) setSelectedEvent(null); }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Registrarme en "{selectedEvent?.title}"</DialogTitle>
+              <DialogTitle>Registrarme en "${selectedEvent?.title}"</DialogTitle>
               <DialogDescription>
                 Deja tus datos para que la librería sepa que estás interesado/a.
               </DialogDescription>
