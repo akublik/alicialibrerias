@@ -25,7 +25,6 @@ import { Label } from '@/components/ui/label';
 import { QRCodeSVG } from 'qrcode.react';
 import { Separator } from '@/components/ui/separator';
 
-const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const ITEMS_PER_LOAD = 12;
 
 // SVG Icons for social media
@@ -339,7 +338,9 @@ export default function LibraryPageClient() {
             <CardContent className="space-y-3 text-sm">
               <div className="flex items-start">
                 <MapPin className="mr-3 h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                <span className="text-foreground/80">{address}</span>
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address || name)}`} target="_blank" rel="noopener noreferrer" className="text-foreground/80 hover:text-primary hover:underline">
+                  {address}
+                </a>
               </div>
               <div className="flex items-center">
                 <Clock className="mr-3 h-5 w-5 text-primary flex-shrink-0" />
@@ -385,37 +386,6 @@ export default function LibraryPageClient() {
                 ) : (
                     <p className="text-muted-foreground">No se pudo generar el código.</p>
                 )}
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline text-xl">Ubicación en el Mapa</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-                <div className="relative w-full aspect-video rounded-b-lg overflow-hidden bg-muted">
-                    {googleMapsApiKey ? (
-                        <iframe
-                            width="100%"
-                            height="100%"
-                            style={{ border: 0 }}
-                            loading="lazy"
-                            allowFullScreen
-                            referrerPolicy="no-referrer-when-downgrade"
-                            src={`https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(address || name)}`}
-                            title={`Ubicación de ${name}`}
-                            aria-label={`Ubicación de ${name}`}
-                        ></iframe>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                            <MapPin className="h-10 w-10 text-muted-foreground mb-2" />
-                            <p className="text-sm font-semibold text-foreground">Mapa no disponible</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                No se ha proporcionado una clave de API de Google Maps. Asegúrate de que la variable <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> esté en tu archivo <code>.env</code>.
-                            </p>
-                        </div>
-                    )}
-                </div>
             </CardContent>
           </Card>
         </div>
@@ -489,7 +459,7 @@ export default function LibraryPageClient() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Eventos en ${name}</CardTitle>
+                  <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {events.length > 0 ? (
@@ -500,14 +470,14 @@ export default function LibraryPageClient() {
                             <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint={event.dataAiHint || 'event promo'}/>
                           </div>
                           <CardHeader className="p-4 pb-2">
-                              <CardTitle className="font-headline text-lg text-primary">${event.title}</CardTitle>
+                              <CardTitle className="font-headline text-lg text-primary">{event.title}</CardTitle>
                               <CardDescription className="text-sm text-muted-foreground font-medium flex items-center pt-1">
                                   <CalendarDaysIcon className="mr-2 h-4 w-4" />
                                   {format(new Date(event.date), "PPP 'a las' p", { locale: es })}
                               </CardDescription>
                           </CardHeader>
                           <CardContent className="p-4 pt-0">
-                              <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">${event.description}</p>
+                              <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{event.description}</p>
                           </CardContent>
                           <CardFooter className="p-4 pt-0 mt-auto flex-col sm:flex-row gap-2">
                               <Button variant="default" className="w-full font-body" onClick={() => setSelectedEvent(event)}>
@@ -547,7 +517,7 @@ export default function LibraryPageClient() {
        <Dialog open={!!selectedEvent} onOpenChange={(isOpen) => { if (!isOpen) setSelectedEvent(null); }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Registrarme en "${selectedEvent?.title}"</DialogTitle>
+              <DialogTitle>Registrarme en "{selectedEvent?.title}"</DialogTitle>
               <DialogDescription>
                 Deja tus datos para que la librería sepa que estás interesado/a.
               </DialogDescription>
