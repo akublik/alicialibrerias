@@ -31,29 +31,41 @@ function initializeAdminApp() {
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  let filePath = searchParams.get('path'); 
+  const fileUrl = searchParams.get('url');
 
-  if (!filePath) {
-    return new NextResponse('Missing file path', { status: 400 });
+  if (!fileUrl) {
+    return new NextResponse('Missing file URL', { status: 400 });
   }
 
-  // **THE FIX IS HERE**
-  // 1. Decode the URL component in case it's encoded (e.g., %2F for /).
-  // 2. Remove any leading slash that might be present.
-  let decodedPath = decodeURIComponent(filePath);
-  if (decodedPath.startsWith('/')) {
-    decodedPath = decodedPath.substring(1);
+  let filePath = "";
+  try {
+    // ** THE FIX IS HERE **
+    // 1. Decode the full URL from the search params.
+    const decodedUrl = decodeURIComponent(fileUrl);
+    // 2. Use URL object to reliably parse the pathname.
+    const urlObject = new URL(decodedUrl);
+    // 3. Extract the object path after the bucket name and the '/o/' marker.
+    const pathName = urlObject.pathname;
+    const objectPathIndex = pathName.indexOf('/o/');
+    if (objectPathIndex === -1) {
+      throw new Error("URL de Firebase Storage no válida: no se encontró '/o/'.");
+    }
+    filePath = decodeURIComponent(pathName.substring(objectPathIndex + 3));
+
+  } catch (e: any) {
+    return new NextResponse(`URL inválida: ${e.message}`, { status: 400 });
   }
+
 
   try {
     const adminApp = initializeAdminApp();
     const storage = getStorage(adminApp);
     const bucket = storage.bucket();
-    const file = bucket.file(decodedPath);
+    const file = bucket.file(filePath);
 
     const [exists] = await file.exists();
     if (!exists) {
-        return new NextResponse(`File not found at path: ${decodedPath}`, { status: 404 });
+        return new NextResponse(`File not found at path: ${filePath}`, { status: 404 });
     }
 
     const [fileBuffer] = await file.download();

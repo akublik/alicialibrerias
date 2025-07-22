@@ -94,11 +94,10 @@ export default function ReaderPage() {
 
         setBook(bookData);
         
-        const urlObject = new URL(bookData.epubFileUrl);
-        const pathName = urlObject.pathname;
-        const filePath = pathName.substring(pathName.indexOf('/o/') + 3);
-
-        const proxyUrl = `/api/proxy-epub?path=${filePath}`;
+        // ** THE FIX IS HERE **
+        // Pass the full URL to the proxy, which will handle extracting the path.
+        // This is much safer than trying to parse the URL on the client.
+        const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
         const response = await fetch(proxyUrl);
         
         if (!response.ok) {
@@ -220,7 +219,7 @@ export default function ReaderPage() {
       );
     }
 
-    if (isLoading || !book || !epubData) {
+    if (!epubData) {
         return (
             <div className="flex flex-col justify-center items-center h-screen bg-muted">
                 <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -248,11 +247,11 @@ export default function ReaderPage() {
                       </Button>
                     </div>
                     <div className="text-center hidden sm:block mx-4 overflow-hidden">
-                        <h1 className="font-headline text-xl font-bold text-primary truncate">{book.title}</h1>
-                        <p className="text-sm text-muted-foreground truncate">{book.author}</p>
+                        <h1 className="font-headline text-xl font-bold text-primary truncate">{book?.title}</h1>
+                        <p className="text-sm text-muted-foreground truncate">{book?.author}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <a href={book.epubFileUrl} download={`${book.title}.epub`}>
+                        <a href={book?.epubFileUrl} download={`${book?.title}.epub`}>
                             <Button variant="outline" size="sm">
                                 <Download className="mr-2 h-4 w-4" />
                                 Descargar EPUB
@@ -304,7 +303,7 @@ export default function ReaderPage() {
 
                 <div className="flex-grow h-full relative" id="reader-wrapper">
                     <ReactReader
-                        key={book.id}
+                        key={book?.id}
                         url={epubData}
                         location={location}
                         locationChanged={handleLocationChanged}
