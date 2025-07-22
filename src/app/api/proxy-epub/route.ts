@@ -39,16 +39,32 @@ export async function GET(request: NextRequest) {
 
   let filePath = "";
   try {
-    // This is a robust way to parse the Firebase Storage URL and get the object path.
     const urlObject = new URL(fileUrl);
-    // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.epub
-    const pathName = urlObject.pathname;
-    // Get the part after /o/ and decode it. e.g., "epubs%2Ffile.epub" -> "epubs/file.epub"
-    const encodedPath = pathName.substring(pathName.indexOf('/o/') + 3);
-    filePath = decodeURIComponent(encodedPath);
+    let pathName = urlObject.pathname;
+
+    // The two known Firebase Storage URL formats are:
+    // 1. /v0/b/bucket-name/o/path%2Fto%2Ffile.epub  (from Firebase Console)
+    // 2. /bucket-name/path/to/file.epub            (from file.publicUrl())
+
+    // Find the part of the path that contains the actual file path
+    if (pathName.includes('/o/')) {
+        // Format 1
+        pathName = pathName.substring(pathName.indexOf('/o/') + 3);
+    } else {
+        // Format 2: Find the first slash after the initial one and take the rest.
+        const bucketEndIndex = pathName.indexOf('/', 1);
+        if (bucketEndIndex !== -1) {
+            pathName = pathName.substring(bucketEndIndex + 1);
+        } else if (pathName.startsWith('/')) {
+            // Fallback for cases like /file.epub (unlikely but safe)
+            pathName = pathName.substring(1);
+        }
+    }
+    
+    filePath = decodeURIComponent(pathName);
 
   } catch (e: any) {
-    return new NextResponse(`URL inválida: ${e.message}`, { status: 400 });
+    return new NextResponse(`URL inválida o error de parsing: ${e.message}`, { status: 400 });
   }
 
 
@@ -64,6 +80,10 @@ export async function GET(request: NextRequest) {
     }
 
     const [fileBuffer] = await file.download();
+
+    if (fileBuffer.byteLength === 0) {
+        return new NextResponse(`File found but is empty at path: ${filePath}`, { status: 404 });
+    }
 
     const headers = new Headers();
     headers.set('Content-Type', 'application/epub+zip');

@@ -94,8 +94,6 @@ export default function ReaderPage() {
 
         setBook(bookData);
         
-        // FIX: Directly construct the correct proxy URL from the full epubFileUrl.
-        // This avoids any client-side path manipulation.
         const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
         const response = await fetch(proxyUrl);
         
@@ -105,6 +103,11 @@ export default function ReaderPage() {
         }
         
         const data = await response.arrayBuffer();
+        
+        if (data.byteLength === 0) {
+          throw new Error("El archivo del libro está vacío o no se pudo cargar correctamente.");
+        }
+
         setEpubData(data);
 
       } catch (e: any) {
