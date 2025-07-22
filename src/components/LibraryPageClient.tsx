@@ -262,18 +262,28 @@ export default function LibraryPageClient() {
     
     const startTime = new Date(event.date);
 
-    // Rigorous date validation
     if (isNaN(startTime.getTime())) {
-        console.error("Invalid event date provided to createGoogleCalendarLink:", event.date);
-        return "#";
+      console.error("Invalid event date provided to createGoogleCalendarLink:", event.date);
+      return "#";
     }
 
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
     
-    const toGoogleFormat = (date: Date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
+    const toGoogleFormat = (date: Date) => {
+      // This check is the definitive fix.
+      if (isNaN(date.getTime())) {
+        return '';
+      }
+      return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+    };
 
     const googleStartTime = toGoogleFormat(startTime);
     const googleEndTime = toGoogleFormat(endTime);
+
+    // If formatting fails, don't generate a broken link.
+    if (!googleStartTime || !googleEndTime) {
+      return "#";
+    }
 
     const eventTitle = encodeURIComponent(event.title);
     const eventDetails = encodeURIComponent(event.description);
@@ -477,7 +487,7 @@ export default function LibraryPageClient() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
+                  <CardTitle className="font-headline text-xl">Eventos en ${name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {events.length > 0 ? (
