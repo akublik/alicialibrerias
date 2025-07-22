@@ -15,7 +15,7 @@ import { db } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit, setDoc, increment } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -258,33 +258,26 @@ export default function LibraryPageClient() {
   };
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
-      if (!event || !event.date) return '#';
-      
-      const startTime = new Date(event.date);
-      // Robust date validation
-      if (isNaN(startTime.getTime())) {
-          console.error("Invalid date provided for calendar link:", event.date);
-          return '#';
-      }
-      
-      const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour
+    if (!event || !event.date) return '#';
+    
+    const startTime = new Date(event.date);
+    if (!isValid(startTime)) {
+        console.error("Invalid date provided for calendar link:", event.date);
+        return '#';
+    }
 
-      const toGoogleFormat = (date: Date) => {
-          // Check if date is valid before calling toISOString
-          if (isNaN(date.getTime())) return '';
-          return date.toISOString().replace(/-|:|\.\d{3}/g, '');
-      };
+    const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour
 
-      const googleStartTime = toGoogleFormat(startTime);
-      const googleEndTime = toGoogleFormat(endTime);
-      
-      if (!googleStartTime || !googleEndTime) return '#';
+    const toGoogleFormat = (date: Date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
 
-      const eventTitle = encodeURIComponent(event.title);
-      const eventDetails = encodeURIComponent(event.description);
-      const eventLocation = encodeURIComponent(libraryAddress);
+    const googleStartTime = toGoogleFormat(startTime);
+    const googleEndTime = toGoogleFormat(endTime);
 
-      return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${googleStartTime}/${googleEndTime}&details=${eventDetails}&location=${eventLocation}`;
+    const eventTitle = encodeURIComponent(event.title);
+    const eventDetails = encodeURIComponent(event.description);
+    const eventLocation = encodeURIComponent(libraryAddress);
+
+    return `https://www.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${googleStartTime}/${googleEndTime}&details=${eventDetails}&location=${eventLocation}`;
   };
 
 
