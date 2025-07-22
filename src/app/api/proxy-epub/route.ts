@@ -39,12 +39,13 @@ export async function GET(request: NextRequest) {
 
   let filePath = "";
   try {
-    // FIX: A robust way to parse the Firebase Storage URL and get the object path.
+    // This is a robust way to parse the Firebase Storage URL and get the object path.
     const urlObject = new URL(fileUrl);
     // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.epub
     const pathName = urlObject.pathname;
-    // Get the part after /o/ and decode it. e.g. "epubs%2Ffile.epub" -> "epubs/file.epub"
-    filePath = decodeURIComponent(pathName.substring(pathName.indexOf('/o/') + 3));
+    // Get the part after /o/ and decode it. e.g., "epubs%2Ffile.epub" -> "epubs/file.epub"
+    const encodedPath = pathName.substring(pathName.indexOf('/o/') + 3);
+    filePath = decodeURIComponent(encodedPath);
 
   } catch (e: any) {
     return new NextResponse(`URL inválida: ${e.message}`, { status: 400 });
