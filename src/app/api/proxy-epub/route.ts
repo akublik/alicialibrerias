@@ -46,10 +46,12 @@ export async function GET(request: NextRequest) {
     const urlObject = new URL(decodedUrl);
     // 3. Extract the object path after the bucket name and the '/o/' marker.
     const pathName = urlObject.pathname;
+    // The pathname is like /v0/b/bucket-name.appspot.com/o/path%2Fto%2Ffile.epub
     const objectPathIndex = pathName.indexOf('/o/');
     if (objectPathIndex === -1) {
       throw new Error("URL de Firebase Storage no válida: no se encontró '/o/'.");
     }
+    // Get the part after /o/ and decode it. e.g. "epubs%2Ffile.epub" -> "epubs/file.epub"
     filePath = decodeURIComponent(pathName.substring(objectPathIndex + 3));
 
   } catch (e: any) {
