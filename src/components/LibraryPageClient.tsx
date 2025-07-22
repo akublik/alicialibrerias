@@ -263,16 +263,21 @@ export default function LibraryPageClient() {
     }
 
     const startTime = new Date(event.date);
-
-    // Rigorous date validation
-    if (!(startTime instanceof Date) || isNaN(startTime.getTime())) {
-        console.error("Invalid date provided for calendar link:", event.date);
+    if (!isValid(startTime)) {
+        console.error("Invalid start time for event:", event.title);
         return '#';
     }
 
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour
+    if (!isValid(endTime)) {
+        console.error("Could not calculate valid end time for event:", event.title);
+        return '#';
+    }
 
-    const toGoogleFormat = (date: Date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
+    const toGoogleFormat = (date: Date) => {
+        // Only call toISOString on a valid date object
+        return date.toISOString().replace(/-|:|\.\d{3}/g, '');
+    };
 
     const googleStartTime = toGoogleFormat(startTime);
     const googleEndTime = toGoogleFormat(endTime);
