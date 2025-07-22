@@ -104,7 +104,12 @@ export default function LibraryPageClient() {
       // Get user from localStorage
       const userDataString = localStorage.getItem("aliciaLibros_user");
       if (userDataString) {
-          setUser(JSON.parse(userDataString));
+          try {
+              setUser(JSON.parse(userDataString));
+          } catch(e) {
+              console.error("Failed to parse user data", e);
+              setUser(null);
+          }
       }
       
       setIsLoading(true);
@@ -148,13 +153,19 @@ export default function LibraryPageClient() {
               // Check favorite status from Firestore if user is logged in
               const currentUserData = localStorage.getItem("aliciaLibros_user");
               if (currentUserData) {
-                  const currentUser = JSON.parse(currentUserData);
-                  const favRef = collection(db, 'userFavorites');
-                  const qFav = query(favRef, where('userId', '==', currentUser.id), where('libraryId', '==', libraryId), limit(1));
-                  const favSnapshot = await getDocs(qFav);
-                  if (!favSnapshot.empty) {
-                      setIsFavorite(true);
-                      setFavoriteDocId(favSnapshot.docs[0].id);
+                  try {
+                      const currentUser = JSON.parse(currentUserData);
+                      if (currentUser && currentUser.id) {
+                          const favRef = collection(db, 'userFavorites');
+                          const qFav = query(favRef, where('userId', '==', currentUser.id), where('libraryId', '==', libraryId), limit(1));
+                          const favSnapshot = await getDocs(qFav);
+                          if (!favSnapshot.empty) {
+                              setIsFavorite(true);
+                              setFavoriteDocId(favSnapshot.docs[0].id);
+                          }
+                      }
+                  } catch (e) {
+                      console.error("Failed to check favorite status", e);
                   }
               }
           } else {
@@ -248,9 +259,10 @@ export default function LibraryPageClient() {
 
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
     const startTime = new Date(event.date);
+    // Rigorous validation: Check if startTime is a valid date object
     if (isNaN(startTime.getTime())) {
         console.error("Invalid date for event:", event.title, event.date);
-        return '#'; // Return a safe link if the date is invalid
+        return '#'; // Return a safe link if the date is invalid to prevent crash
     }
     
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
@@ -461,7 +473,7 @@ export default function LibraryPageClient() {
             <TabsContent value="events">
               <Card>
                 <CardHeader>
-                  <CardTitle className="font-headline text-xl">Eventos en ${name}</CardTitle>
+                  <CardTitle className="font-headline text-xl">Eventos en {name}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {events.length > 0 ? (
