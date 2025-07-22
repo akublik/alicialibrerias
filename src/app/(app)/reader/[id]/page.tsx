@@ -94,12 +94,16 @@ export default function ReaderPage() {
 
         setBook(bookData);
         
-        // Extract the file path from the full URL for the proxy
-        const url = new URL(bookData.epubFileUrl);
-        // The path is everything after the bucket name and the first slash
-        const filePath = url.pathname.split('/').slice(3).join('/');
-        
-        const proxyUrl = `/api/proxy-epub?path=${encodeURIComponent(filePath)}`;
+        // ** THE FIX IS HERE **
+        // The path needs to be extracted correctly from the full storage URL
+        // and passed to the proxy.
+        const urlObject = new URL(bookData.epubFileUrl);
+        const pathName = urlObject.pathname;
+        const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+        // The file path is everything after "/o/"
+        const filePath = pathName.substring(pathName.indexOf('/o/') + 3);
+
+        const proxyUrl = `/api/proxy-epub?path=${filePath}`;
         const response = await fetch(proxyUrl);
         
         if (!response.ok) {

@@ -36,22 +36,24 @@ export async function GET(request: NextRequest) {
   if (!filePath) {
     return new NextResponse('Missing file path', { status: 400 });
   }
-  
-  // *** THE FIX IS HERE ***
-  // Ensure the filePath doesn't start with a leading slash, as bucket.file() doesn't expect it.
-  if (filePath.startsWith('/')) {
-    filePath = filePath.substring(1);
+
+  // **THE FIX IS HERE**
+  // 1. Decode the URL component in case it's encoded (e.g., %2F for /).
+  // 2. Remove any leading slash that might be present.
+  let decodedPath = decodeURIComponent(filePath);
+  if (decodedPath.startsWith('/')) {
+    decodedPath = decodedPath.substring(1);
   }
 
   try {
     const adminApp = initializeAdminApp();
     const storage = getStorage(adminApp);
     const bucket = storage.bucket();
-    const file = bucket.file(decodeURIComponent(filePath));
+    const file = bucket.file(decodedPath);
 
     const [exists] = await file.exists();
     if (!exists) {
-        return new NextResponse('File not found', { status: 404 });
+        return new NextResponse(`File not found at path: ${decodedPath}`, { status: 404 });
     }
 
     const [fileBuffer] = await file.download();
