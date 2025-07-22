@@ -50,3 +50,22 @@ console.log('===================================================================
 
 
 db = getFirestore(app);
+storage = getStorage(app);
+auth = getAuth(app);
+
+let googleMapsApiKey: string | undefined;
+
+// This function is designed to run on the client-side, where process.env is populated by Next.js
+// It will be undefined on the server-side, which is expected.
+function initializeGoogleMaps() {
+    googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!googleMapsApiKey) {
+        console.warn('Google Maps API Key (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) not found. Maps functionality will be disabled.');
+    }
+}
+
+// Call the function to initialize the key.
+// This approach ensures the environment variable is read in the client's context.
+initializeGoogleMaps();
+
+export { db, storage, auth, app, googleMapsApiKey };
