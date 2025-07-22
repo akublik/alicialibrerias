@@ -258,7 +258,16 @@ export default function LibraryPageClient() {
   };
   
   const createGoogleCalendarLink = (event: LibraryEvent, libraryAddress: string) => {
+    if (!event || !event.date) return "#";
+    
     const startTime = new Date(event.date);
+
+    // Rigorous date validation
+    if (isNaN(startTime.getTime())) {
+        console.error("Invalid event date provided to createGoogleCalendarLink:", event.date);
+        return "#";
+    }
+
     const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Assume 1 hour duration
     
     const toGoogleFormat = (date: Date) => date.toISOString().replace(/-|:|\.\d{3}/g, '');
