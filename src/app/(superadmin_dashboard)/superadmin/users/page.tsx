@@ -47,7 +47,7 @@ function PointsHistoryTable({ transactions, libraries, isLoading }: PointsHistor
                     <TableRow key={t.id}>
                         <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                         <TableCell className="text-xs">{t.description}</TableCell>
-                        <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Sistema' : 'Sistema'}</TableCell>
+                        <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería Desconocida' : 'Sistema'}</TableCell>
                         <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                             {t.points > 0 ? `+${t.points}` : t.points}
                         </TableCell>
@@ -89,33 +89,22 @@ export default function ManageUsersPage() {
       return;
     }
     
-    let loadedCount = 0;
-    const totalCollections = 2; // users and libraries
-    const checkAllLoaded = () => {
-        loadedCount++;
-        if (loadedCount === totalCollections) {
-            setIsLoading(false);
-        }
-    };
-    
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      checkAllLoaded();
+      setIsLoading(false); // Set loading to false once users are loaded
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
-      checkAllLoaded();
+      setIsLoading(false);
     });
     
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
-        checkAllLoaded();
     }, (error) => {
       console.error("Error fetching libraries:", error);
-      checkAllLoaded();
     });
 
     return () => {
@@ -128,7 +117,6 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    // Remove orderBy to avoid composite index requirement. We will sort on the client.
     const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -138,7 +126,6 @@ export default function ManageUsersPage() {
         createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
 
-      // Sort on the client side
       history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setPointsHistory(history);
