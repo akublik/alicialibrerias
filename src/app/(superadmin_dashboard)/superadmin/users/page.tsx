@@ -294,7 +294,14 @@ export default function ManageUsersPage() {
                     <CardContent className="h-[300px] overflow-y-auto">
                         {isLoadingHistory ? <div className="flex justify-center items-center h-full"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
                            <Table>
-                                <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead>Origen</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Descripción</TableHead>
+                                    <TableHead>Origen</TableHead>
+                                    <TableHead className="text-right">Puntos</TableHead>
+                                  </TableRow>
+                                </TableHeader>
                                 <TableBody>
                                     {pointsHistory.length > 0 ? pointsHistory.map(t => (
                                         <TableRow key={t.id}>
