@@ -310,6 +310,7 @@ export default function CheckoutPage() {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
                     userId: user.id,
                     orderId: newOrderRef.id,
+                    libraryId: libraryId,
                     description: `Canje de puntos en pedido #${newOrderRef.id.slice(0, 7)}`,
                     points: -pointsToApply,
                     createdAt: serverTimestamp()
@@ -320,7 +321,7 @@ export default function CheckoutPage() {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
                     userId: user.id,
                     orderId: newOrderRef.id,
-                    libraryId: libraryId, // <--- Correctly adding libraryId here
+                    libraryId: libraryId,
                     description: transactionDescription,
                     points: pointsToAward,
                     createdAt: serverTimestamp()
