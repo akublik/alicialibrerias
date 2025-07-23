@@ -54,7 +54,7 @@ export default function ManageUsersPage() {
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      if(libraries.size > 0) setIsLoading(false);
+      setIsLoading(false); // Stop loading as soon as users are fetched
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
@@ -66,16 +66,13 @@ export default function ManageUsersPage() {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
-        if(users.length > 0 || snapshot.metadata.fromCache) setIsLoading(false);
     }, (error) => {
       console.error("Error fetching libraries:", error);
       toast({ title: "Error al cargar librerías", variant: "destructive" });
-      setIsLoading(false);
     });
     unsubscribes.push(librariesUnsubscribe);
 
     return () => unsubscribes.forEach(unsub => unsub());
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
   
   useEffect(() => {
