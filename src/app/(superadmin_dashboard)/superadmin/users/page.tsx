@@ -1,4 +1,3 @@
-
 // src/app/(superadmin_dashboard)/superadmin/users/page.tsx
 "use client";
 
@@ -25,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -39,42 +38,42 @@ export default function ManageUsersPage() {
   useEffect(() => {
     const userDataString = localStorage.getItem("aliciaLibros_user");
     if (userDataString) {
-      setCurrentAdminId(JSON.parse(userDataString).id);
+      try {
+        setCurrentAdminId(JSON.parse(userDataString).id);
+      } catch (e) {
+        console.error("Error parsing user data for admin ID:", e);
+      }
     }
   }, []);
 
   useEffect(() => {
     if (!db) {
-      setIsLoading(false);
+      setIsLoadingUsers(false);
       return;
     }
 
-    const unsubscribes: (() => void)[] = [];
-
-    // Fetch users first and set loading to false as soon as they arrive.
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false); // <--- Key fix: Stop loading once main data is here
+      setIsLoadingUsers(false);
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
-      setIsLoading(false);
+      setIsLoadingUsers(false);
     });
-    unsubscribes.push(usersUnsubscribe);
-    
-    // Fetch libraries in the background. The page is already visible.
+
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
     }, (error) => {
       console.error("Error fetching libraries:", error);
-      // Don't toast here as it's not critical for the page to function
     });
-    unsubscribes.push(librariesUnsubscribe);
 
-    return () => unsubscribes.forEach(unsub => unsub());
+    return () => {
+      usersUnsubscribe();
+      librariesUnsubscribe();
+    };
   }, [toast]);
   
   useEffect(() => {
@@ -190,7 +189,7 @@ export default function ManageUsersPage() {
           <CardDescription>Mostrando {users.length} usuarios registrados en la plataforma.</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isLoadingUsers ? (
             <div className="flex justify-center items-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
