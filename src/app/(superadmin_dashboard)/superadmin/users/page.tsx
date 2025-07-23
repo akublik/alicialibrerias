@@ -6,13 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users, Gift, MoreHorizontal, Edit, AlertCircle, PlusCircle, MinusCircle, Store } from "lucide-react";
+import { Loader2, Users, Gift, MoreHorizontal, Edit, PlusCircle } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, orderBy, where } from "firebase/firestore";
+import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { User, PointsTransaction, Library } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,43 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+interface PointsHistoryTableProps {
+    transactions: PointsTransaction[];
+    libraries: Map<string, string>;
+    isLoading: boolean;
+}
+
+function PointsHistoryTable({ transactions, libraries, isLoading }: PointsHistoryTableProps) {
+    if (isLoading) {
+        return <div className="flex justify-center items-center h-full"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div>;
+    }
+
+    return (
+        <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Origen</TableHead>
+                <TableHead className="text-right">Puntos</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+                {transactions.length > 0 ? transactions.map(t => (
+                    <TableRow key={t.id}>
+                        <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
+                        <TableCell className="text-xs">{t.description}</TableCell>
+                        <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería Desconocida' : 'Sistema'}</TableCell>
+                        <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
+                            {t.points > 0 ? `+${t.points}` : t.points}
+                        </TableCell>
+                    </TableRow>
+                )) : <TableRow><TableCell colSpan={4} className="text-center py-4">No hay historial.</TableCell></TableRow>}
+            </TableBody>
+       </Table>
+    );
+}
 
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -292,30 +329,7 @@ export default function ManageUsersPage() {
                 <Card>
                     <CardHeader><CardTitle>Historial de Puntos</CardTitle></CardHeader>
                     <CardContent className="h-[300px] overflow-y-auto">
-                        {isLoadingHistory ? <div className="flex justify-center items-center h-full"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
-                           <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Fecha</TableHead>
-                                    <TableHead>Descripción</TableHead>
-                                    <TableHead>Origen</TableHead>
-                                    <TableHead className="text-right">Puntos</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {pointsHistory.length > 0 ? pointsHistory.map(t => (
-                                        <TableRow key={t.id}>
-                                            <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
-                                            <TableCell className="text-xs">{t.description}</TableCell>
-                                            <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería Desconocida' : 'Sistema'}</TableCell>
-                                            <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
-                                                {t.points > 0 ? `+${t.points}` : t.points}
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : <TableRow><TableCell colSpan={4} className="text-center py-4">No hay historial.</TableCell></TableRow>}
-                                </TableBody>
-                           </Table>
-                        )}
+                        <PointsHistoryTable transactions={pointsHistory} libraries={libraries} isLoading={isLoadingHistory} />
                     </CardContent>
                 </Card>
             </div>
