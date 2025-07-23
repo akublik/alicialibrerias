@@ -1,4 +1,5 @@
 
+
 // src/app/(library_dashboard)/library-admin/books/page.tsx
 "use client";
 
@@ -261,18 +262,18 @@ export default function LibraryBooksPage() {
 
   const handleImportCSV = async () => {
     if (!csvFile) {
-      toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
-      return;
+        toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
+        return;
     }
     if (!db || !libraryId) {
-      toast({ title: "Error de conexión o de librería", variant: "destructive" });
-      return;
+        toast({ title: "Error de conexión o de librería", variant: "destructive" });
+        return;
     }
     
     const libraryDataString = localStorage.getItem("aliciaLibros_registeredLibrary");
     if (!libraryDataString) {
-      toast({ title: "Error de librería", description: "No se pudo encontrar la información de la librería registrada.", variant: "destructive" });
-      return;
+        toast({ title: "Error de librería", description: "No se pudo encontrar la información de la librería registrada.", variant: "destructive" });
+        return;
     }
     const libraryData = JSON.parse(libraryDataString);
     const { name: libraryName, location: libraryLocation } = libraryData;
@@ -280,99 +281,104 @@ export default function LibraryBooksPage() {
     setIsImporting(true);
 
     Papa.parse<Record<string, any>>(csvFile, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
-      complete: async (results) => {
-        if (results.errors.length > 0) {
-           toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
-           setIsImporting(false);
-           return;
-        }
-        
-        const booksCollectionRef = collection(db, "books");
-        const validationErrors: string[] = [];
-        let booksToProcess = 0;
-        let booksProcessed = 0;
-        
-        for (const row of results.data) {
-          try {
-            if (!applyRules(row, libraryImportRules)) {
-              continue; // Skip row if it doesn't match rules
+        header: true,
+        skipEmptyLines: true,
+        transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
+        complete: async (results) => {
+            const validationErrors: string[] = [];
+            
+            if (results.errors.length > 0) {
+                toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
+                setIsImporting(false);
+                return;
+            }
+            if (!results.meta.fields?.includes('isbn13')) {
+                toast({ title: "Formato Incorrecto", description: "El archivo CSV debe contener una columna 'isbn13'.", variant: "destructive" });
+                setIsImporting(false);
+                return;
+            }
+
+            const booksCollectionRef = collection(db, "books");
+            const batch = writeBatch(db);
+            let operationsCount = 0;
+
+            for (const row of results.data) {
+                if (!applyRules(row, libraryImportRules)) {
+                    continue; // Skip row if it doesn't match rules
+                }
+                
+                const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
+                if (!isbn) {
+                    validationErrors.push(`Una fila fue omitida por no tener ISBN.`);
+                    continue;
+                }
+
+                const formatValue = (row.formato || "").toLowerCase();
+                const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
+
+                const bookData = {
+                    title: row.titulo || 'Sin Título',
+                    authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
+                    price: parseFloat(row.pvp) || 0,
+                    stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
+                    isbn: isbn,
+                    description: row.resumen || '',
+                    categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
+                    tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
+                    imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.titulo || 'Libro')}`,
+                    pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
+                    coverType: row.formato || null,
+                    publisher: row.editor || row.sello || null,
+                    condition: 'Nuevo' as const,
+                    format: bookFormat,
+                    libraryId: libraryId,
+                    libraryName: libraryName,
+                    libraryLocation: libraryLocation,
+                    status: 'published' as const,
+                    updatedAt: serverTimestamp(),
+                };
+
+                const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn));
+                const existingBookSnapshot = await getDocs(existingBookQuery);
+
+                if (!existingBookSnapshot.empty) {
+                    const bookDoc = existingBookSnapshot.docs[0];
+                    batch.update(doc(db, "books", bookDoc.id), bookData);
+                } else {
+                    const newBookRef = doc(collection(db, "books"));
+                    batch.set(newBookRef, { ...bookData, createdAt: serverTimestamp() });
+                }
+                operationsCount++;
+            }
+
+            if (validationErrors.length > 0) {
+              toast({
+                title: `Avisos de Validación (${validationErrors.length})`,
+                description: "Algunas filas fueron omitidas. Revisa la consola para más detalles.",
+                variant: "destructive",
+              });
+              console.warn("Validation warnings during CSV import:", validationErrors);
             }
             
-            const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
-            if (!isbn) {
-                validationErrors.push(`Fila ${booksToProcess + 2}: Falta ISBN. El libro será omitido.`);
-                continue;
-            }
-            booksToProcess++;
-            
-            const formatValue = (row.formato || "").toLowerCase();
-            const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
-
-            const bookData = {
-                title: row.titulo || 'Sin Título',
-                authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
-                price: parseFloat(row.pvp) || 0,
-                stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
-                isbn: isbn,
-                description: row.resumen || '',
-                categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
-                tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
-                imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.titulo || 'Libro')}`,
-                pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
-                coverType: row.formato || null,
-                publisher: row.editor || row.sello || null,
-                condition: 'Nuevo' as const,
-                format: bookFormat, // Correctly set the format
-                libraryId: libraryId,
-                libraryName: libraryName,
-                libraryLocation: libraryLocation,
-                status: 'published' as const,
-                updatedAt: serverTimestamp(),
-            };
-
-            const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn));
-            const existingBookSnapshot = await getDocs(existingBookQuery);
-
-            if (!existingBookSnapshot.empty) {
-                // Update existing book
-                const bookDoc = existingBookSnapshot.docs[0];
-                await updateDoc(doc(db, "books", bookDoc.id), bookData);
+            if (operationsCount > 0) {
+                try {
+                    await batch.commit();
+                    toast({ title: "¡Importación Completada!", description: `Se han procesado ${operationsCount} libros.` });
+                    setIsImportDialogOpen(false);
+                    setCsvFile(null);
+                } catch (e: any) {
+                    toast({ title: "Error al Guardar", description: `Error al procesar el lote: ${e.message}`, variant: "destructive" });
+                }
             } else {
-                // Create new book
-                await addDoc(booksCollectionRef, { ...bookData, createdAt: serverTimestamp() });
+               toast({ title: "Nada que importar", description: "No se encontraron libros que procesar en el archivo." });
             }
-            booksProcessed++;
-          } catch (e: any) {
-              validationErrors.push(`Fila ${booksToProcess + 2}: Error al procesar - ${e.message}`);
-          }
-        } // end for loop
-
-        if (validationErrors.length > 0) {
-          toast({
-            title: `Errores de Validación (${validationErrors.length})`,
-            description: ( <ScrollArea className="h-40"><ul className="list-disc list-inside">{validationErrors.slice(0, 10).map((e, i) => <li key={i}>{e}</li>)}</ul></ScrollArea>),
-            variant: "destructive",
-            duration: 15000,
-          });
+            
+            setIsImporting(false);
+        },
+        error: (error: any) => {
+            toast({ title: "Error al leer el archivo", description: error.message, variant: "destructive" });
+            setIsImporting(false);
         }
-        
-        if (booksProcessed > 0) {
-          toast({ title: "¡Importación Completada!", description: `Se han procesado ${booksProcessed} de ${booksToProcess} libros filtrados.` });
-          setIsImportDialogOpen(false);
-          setCsvFile(null);
-        } else if (validationErrors.length === 0) {
-           toast({ title: "Nada que importar", description: "No se encontraron libros que cumplan los criterios de importación." });
-        }
-
-        setIsImporting(false);
-      },
-      error: (error: any) => {
-          toast({ title: "Error al leer el archivo", description: error.message, variant: "destructive" });
-          setIsImporting(false);
-      }
     });
   };
 
