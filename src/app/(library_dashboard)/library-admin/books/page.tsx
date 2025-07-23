@@ -261,7 +261,7 @@ export default function LibraryBooksPage() {
       URL.revokeObjectURL(url);
   };
 
-  const handleImportCSV = async () => {
+  const handleImportCSV = () => {
     if (!csvFile) {
         toast({ title: "No se ha seleccionado ningún archivo", variant: "destructive" });
         return;
