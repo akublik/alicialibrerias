@@ -7,11 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users, Gift, MoreHorizontal, Edit, AlertCircle, PlusCircle, MinusCircle } from "lucide-react";
+import { Loader2, Users, Gift, MoreHorizontal, Edit, AlertCircle, PlusCircle, MinusCircle, Store } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, orderBy, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import type { User, PointsTransaction } from "@/types";
+import type { User, PointsTransaction, Library } from "@/types";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
@@ -48,24 +49,40 @@ export default function ManageUsersPage() {
       return;
     }
 
+    const unsubscribes: (() => void)[] = [];
+
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false);
+      if(libraries.size > 0) setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
       setIsLoading(false);
     });
+    unsubscribes.push(usersUnsubscribe);
+    
+    const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
+        const libMap = new Map<string, string>();
+        snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
+        setLibraries(libMap);
+        if(users.length > 0 || snapshot.metadata.fromCache) setIsLoading(false);
+    }, (error) => {
+      console.error("Error fetching libraries:", error);
+      toast({ title: "Error al cargar librerías", variant: "destructive" });
+      setIsLoading(false);
+    });
+    unsubscribes.push(librariesUnsubscribe);
 
-    return () => usersUnsubscribe();
+    return () => unsubscribes.forEach(unsub => unsub());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast]);
   
   useEffect(() => {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ 
@@ -73,9 +90,6 @@ export default function ManageUsersPage() {
         ...doc.data(), 
         createdAt: doc.data().createdAt?.toDate() || new Date() 
       } as PointsTransaction));
-      
-      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
@@ -279,17 +293,18 @@ export default function ManageUsersPage() {
                     <CardContent className="h-[300px] overflow-y-auto">
                         {isLoadingHistory ? <div className="flex justify-center items-center h-full"><Loader2 className="mx-auto h-6 w-6 animate-spin"/></div> : (
                            <Table>
-                                <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Descripción</TableHead><TableHead>Origen</TableHead><TableHead className="text-right">Puntos</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {pointsHistory.length > 0 ? pointsHistory.map(t => (
                                         <TableRow key={t.id}>
                                             <TableCell className="text-xs">{format(new Date(t.createdAt), 'dd/MM/yy', { locale: es })}</TableCell>
                                             <TableCell className="text-xs">{t.description}</TableCell>
+                                            <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería' : 'Sistema'}</TableCell>
                                             <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                                                 {t.points > 0 ? `+${t.points}` : t.points}
                                             </TableCell>
                                         </TableRow>
-                                    )) : <TableRow><TableCell colSpan={3} className="text-center py-4">No hay historial.</TableCell></TableRow>}
+                                    )) : <TableRow><TableCell colSpan={4} className="text-center py-4">No hay historial.</TableCell></TableRow>}
                                 </TableBody>
                            </Table>
                         )}

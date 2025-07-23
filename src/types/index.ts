@@ -294,6 +294,7 @@ export interface PointsTransaction {
   id: string;
   userId: string;
   orderId?: string;
+  libraryId?: string;
   description: string;
   points: number;
   createdAt: any;
