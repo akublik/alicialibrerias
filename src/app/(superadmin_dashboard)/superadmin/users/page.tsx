@@ -51,10 +51,11 @@ export default function ManageUsersPage() {
 
     const unsubscribes: (() => void)[] = [];
 
+    // Fetch users first and set loading to false as soon as they arrive.
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false);
+      setIsLoading(false); // <--- Key fix: Stop loading once main data is here
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
@@ -62,13 +63,14 @@ export default function ManageUsersPage() {
     });
     unsubscribes.push(usersUnsubscribe);
     
+    // Fetch libraries in the background. The page is already visible.
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
     }, (error) => {
       console.error("Error fetching libraries:", error);
-      toast({ title: "Error al cargar librerías", variant: "destructive" });
+      // Don't toast here as it's not critical for the page to function
     });
     unsubscribes.push(librariesUnsubscribe);
 
