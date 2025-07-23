@@ -37,8 +37,10 @@ const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
   for (const rule of rules) {
     const rowValue = row[rule.field];
 
-    // If the field for a rule doesn't exist in the row, the rule fails.
-    if (rowValue === undefined || rowValue === null) return false;
+    if (rowValue === undefined || rowValue === null) {
+      if (rule.operator === 'not_equals') continue; 
+      return false;
+    }
     
     let conditionMet = false;
     const ruleValue = rule.value;
@@ -64,11 +66,11 @@ const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
     }
     
     if (!conditionMet) {
-      return false; // If any rule fails, the row is rejected
+      return false;
     }
   }
 
-  return true; // All rules passed
+  return true;
 };
 
 
@@ -277,6 +279,15 @@ export default function LibraryBooksPage() {
     const libraryData = JSON.parse(libraryDataString);
     const { name: libraryName, location: libraryLocation } = libraryData;
 
+    let rules: Rule[] = [];
+    if(libraryData.importRules) {
+        try {
+            rules = JSON.parse(libraryData.importRules);
+        } catch(e) {
+             toast({ title: "Error en Reglas", description: "Las reglas de importación tienen un formato JSON inválido. No se aplicará ningún filtro.", variant: "destructive" });
+        }
+    }
+
     setIsImporting(true);
 
     Papa.parse<Record<string, any>>(csvFile, {
@@ -296,10 +307,10 @@ export default function LibraryBooksPage() {
             }
             
             try {
-                const booksCollectionRef = collection(db, "books");
-                const q = query(booksCollectionRef, where("libraryId", "==", libraryId));
-                const existingBooksSnapshot = await getDocs(q);
-                const existingBooksMap = new Map<string, {id: string, data: Book}>();
+                // Fetch all existing books for the library just once
+                const existingBooksQuery = query(collection(db, "books"), where("libraryId", "==", libraryId));
+                const existingBooksSnapshot = await getDocs(existingBooksQuery);
+                const existingBooksMap = new Map<string, { id: string, data: Book }>();
                 existingBooksSnapshot.forEach(doc => {
                     const data = doc.data() as Book;
                     if (data.isbn) {
@@ -312,14 +323,14 @@ export default function LibraryBooksPage() {
                 const validationErrors: string[] = [];
 
                 for (const row of results.data) {
-                    if (!applyRules(row, libraryImportRules)) continue;
+                    if (!applyRules(row, rules)) continue;
                     
                     const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
                     if (!isbn) {
                         validationErrors.push(`Una fila fue omitida por no tener ISBN.`);
                         continue;
                     }
-
+                    
                     const formatValue = (row.formato || "").toLowerCase();
                     const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
 
