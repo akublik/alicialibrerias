@@ -47,7 +47,9 @@ function PointsHistoryTable({ transactions, libraries, isLoading }: PointsHistor
                     <TableRow key={t.id}>
                         <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                         <TableCell className="text-xs">{t.description}</TableCell>
-                        <TableCell className="text-xs">{t.libraryId && libraries.get(t.libraryId) ? libraries.get(t.libraryId) : 'Sistema'}</TableCell>
+                        <TableCell className="text-xs">
+                          {t.libraryId && libraries.has(t.libraryId) ? libraries.get(t.libraryId) : 'Sistema'}
+                        </TableCell>
                         <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                             {t.points > 0 ? `+${t.points}` : t.points}
                         </TableCell>
