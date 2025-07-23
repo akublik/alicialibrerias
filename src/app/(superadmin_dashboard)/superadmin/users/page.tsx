@@ -79,7 +79,7 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ 
@@ -87,6 +87,10 @@ export default function ManageUsersPage() {
         ...doc.data(), 
         createdAt: doc.data().createdAt?.toDate() ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
+      
+      // Sort on the client side
+      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
