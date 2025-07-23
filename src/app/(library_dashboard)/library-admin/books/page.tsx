@@ -300,7 +300,8 @@ export default function LibraryBooksPage() {
                 setIsImporting(false);
                 return;
             }
-            if (!results.meta.fields?.includes('isbn13')) {
+            // Fix: Check for 'isbn13' case-insensitively
+            if (!results.meta.fields?.some(field => field.toLowerCase() === 'isbn13')) {
                 toast({ title: "Formato Incorrecto", description: "El archivo CSV debe contener una columna 'isbn13'.", variant: "destructive" });
                 setIsImporting(false);
                 return;
