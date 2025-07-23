@@ -37,30 +37,29 @@ const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
   for (const rule of rules) {
     const rowValue = row[rule.field];
 
+    // If the field for a rule doesn't exist in the row, the rule fails.
     if (rowValue === undefined || rowValue === null) return false;
-
-    const rowValueStr = String(rowValue).toLowerCase();
-    const ruleValueStr = String(rule.value).toLowerCase();
     
     let conditionMet = false;
+    const ruleValue = rule.value;
+
     switch (rule.operator) {
       case 'equals':
-        conditionMet = rowValueStr === ruleValueStr;
+        conditionMet = String(rowValue).toLowerCase() === String(ruleValue).toLowerCase();
         break;
       case 'not_equals':
-        conditionMet = rowValueStr !== ruleValueStr;
+        conditionMet = String(rowValue).toLowerCase() !== String(ruleValue).toLowerCase();
         break;
       case 'contains':
-        conditionMet = rowValueStr.includes(ruleValueStr);
+        conditionMet = String(rowValue).toLowerCase().includes(String(ruleValue).toLowerCase());
         break;
       case 'gt':
-        conditionMet = Number(rowValue) > Number(rule.value);
+        conditionMet = Number(rowValue) > Number(ruleValue);
         break;
       case 'lt':
-        conditionMet = Number(rowValue) < Number(rule.value);
+        conditionMet = Number(rowValue) < Number(ruleValue);
         break;
       default:
-        // Unknown operator fails the check
         conditionMet = false;
     }
     
