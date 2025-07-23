@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -48,20 +48,20 @@ export default function ManageUsersPage() {
 
   useEffect(() => {
     if (!db) {
-      setIsLoadingUsers(false);
+      setIsLoading(false);
       return;
     }
 
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoadingUsers(false);
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
-      setIsLoadingUsers(false);
+      setIsLoading(false);
     });
-
+    
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
@@ -80,17 +80,15 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    // This query is now correct. It filters by user, and then we will sort on the client.
     const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ 
         id: doc.id,
         ...doc.data(), 
-        createdAt: doc.data().createdAt?.toDate() ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
+        createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
       
-      // Sort client-side to prevent complex index requirements in Firestore.
       history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setPointsHistory(history);
@@ -193,7 +191,7 @@ export default function ManageUsersPage() {
           <CardDescription>Mostrando {users.length} usuarios registrados en la plataforma.</CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoadingUsers ? (
+          {isLoading ? (
             <div className="flex justify-center items-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
@@ -302,7 +300,7 @@ export default function ManageUsersPage() {
                                         <TableRow key={t.id}>
                                             <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                             <TableCell className="text-xs">{t.description}</TableCell>
-                                            <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería' : 'Sistema'}</TableCell>
+                                            <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería Desconocida' : 'Sistema'}</TableCell>
                                             <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                                                 {t.points > 0 ? `+${t.points}` : t.points}
                                             </TableCell>
