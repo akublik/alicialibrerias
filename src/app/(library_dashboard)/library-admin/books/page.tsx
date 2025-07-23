@@ -300,15 +300,15 @@ export default function LibraryBooksPage() {
                 setIsImporting(false);
                 return;
             }
-            // Fix: Check for 'isbn13' case-insensitively
-            if (!results.meta.fields?.some(field => field.toLowerCase() === 'isbn13')) {
+            const headerFields = results.meta.fields?.map(f => f.toLowerCase()) || [];
+            if (!headerFields.includes('isbn13')) {
                 toast({ title: "Formato Incorrecto", description: "El archivo CSV debe contener una columna 'isbn13'.", variant: "destructive" });
                 setIsImporting(false);
                 return;
             }
             
             try {
-                // Fetch all existing books for the library just once
+                // Fetch all existing books for the library just once for efficiency
                 const existingBooksQuery = query(collection(db, "books"), where("libraryId", "==", libraryId));
                 const existingBooksSnapshot = await getDocs(existingBooksQuery);
                 const existingBooksMap = new Map<string, { id: string, data: Book }>();
