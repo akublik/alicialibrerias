@@ -88,23 +88,33 @@ export default function ManageUsersPage() {
       setIsLoading(false);
       return;
     }
+    
+    let activeSubscriptions = 2; // For users and libraries
+    const checkDone = () => {
+      activeSubscriptions--;
+      if (activeSubscriptions === 0) {
+        setIsLoading(false);
+      }
+    };
 
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false);
+      checkDone();
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
-      setIsLoading(false);
+      checkDone();
     });
     
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
+        checkDone();
     }, (error) => {
       console.error("Error fetching libraries:", error);
+      checkDone();
     });
 
     return () => {
@@ -117,7 +127,7 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ 
@@ -125,9 +135,6 @@ export default function ManageUsersPage() {
         ...doc.data(), 
         createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
-      
-      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
