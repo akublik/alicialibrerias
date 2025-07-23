@@ -47,7 +47,7 @@ function PointsHistoryTable({ transactions, libraries, isLoading }: PointsHistor
                     <TableRow key={t.id}>
                         <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                         <TableCell className="text-xs">{t.description}</TableCell>
-                        <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería Desconocida' : 'Sistema'}</TableCell>
+                        <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Sistema' : 'Sistema'}</TableCell>
                         <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
                             {t.points > 0 ? `+${t.points}` : t.points}
                         </TableCell>
@@ -89,6 +89,7 @@ export default function ManageUsersPage() {
       return;
     }
     
+    // Fetch users and libraries in parallel
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);

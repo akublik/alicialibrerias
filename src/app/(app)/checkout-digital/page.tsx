@@ -316,7 +316,7 @@ export default function DigitalCheckoutPage() {
                  transaction.set(doc(collection(db, "pointsTransactions")), {
                     userId: user.id,
                     orderId: newOrderRef.id,
-                    libraryId: libraryId,
+                    libraryId: libraryId, // <--- Correctly adding libraryId here
                     description: transactionDescription,
                     points: pointsToAward,
                     createdAt: serverTimestamp()
