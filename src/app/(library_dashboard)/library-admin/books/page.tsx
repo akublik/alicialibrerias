@@ -295,11 +295,6 @@ export default function LibraryBooksPage() {
         skipEmptyLines: true,
         transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
         complete: async (results) => {
-            if (results.errors.length > 0) {
-                toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
-                setIsImporting(false);
-                return;
-            }
             const headerFields = results.meta.fields?.map(f => f.toLowerCase()) || [];
             if (!headerFields.includes('isbn13')) {
                 toast({ title: "Formato Incorrecto", description: "El archivo CSV debe contener una columna 'isbn13'.", variant: "destructive" });
@@ -308,7 +303,6 @@ export default function LibraryBooksPage() {
             }
             
             try {
-                // Fetch all existing books for the library just once for efficiency
                 const existingBooksQuery = query(collection(db, "books"), where("libraryId", "==", libraryId));
                 const existingBooksSnapshot = await getDocs(existingBooksQuery);
                 const existingBooksMap = new Map<string, { id: string, data: Book }>();
@@ -319,53 +313,68 @@ export default function LibraryBooksPage() {
                     }
                 });
 
-                const batch = writeBatch(db);
-                let operationsCount = 0;
+                const BATCH_SIZE = 400; // Keep it under the 500 limit
+                const chunks = [];
+                for (let i = 0; i < results.data.length; i += BATCH_SIZE) {
+                    chunks.push(results.data.slice(i, i + BATCH_SIZE));
+                }
+
+                let totalOperationsCount = 0;
                 const validationErrors: string[] = [];
 
-                for (const row of results.data) {
-                    if (!applyRules(row, rules)) continue;
-                    
-                    const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
-                    if (!isbn) {
-                        validationErrors.push(`Una fila fue omitida por no tener ISBN.`);
-                        continue;
+                for (const chunk of chunks) {
+                    const batch = writeBatch(db);
+                    let operationsInCurrentBatch = 0;
+
+                    for (const row of chunk) {
+                        if (!applyRules(row, rules)) continue;
+                        
+                        const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
+                        if (!isbn) {
+                            validationErrors.push(`Una fila fue omitida por no tener ISBN.`);
+                            continue;
+                        }
+                        
+                        const formatValue = (row.formato || "").toLowerCase();
+                        const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
+
+                        const bookData = {
+                            title: row.titulo || 'Sin Título',
+                            authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
+                            price: parseFloat(row.pvp) || 0,
+                            stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
+                            isbn: isbn,
+                            description: row.resumen || '',
+                            categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
+                            tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
+                            imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png`,
+                            pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
+                            coverType: row.formato || null,
+                            publisher: row.editor || row.sello || null,
+                            condition: 'Nuevo' as const,
+                            format: bookFormat,
+                            libraryId: libraryId,
+                            libraryName: libraryName,
+                            libraryLocation: libraryLocation,
+                            status: 'published' as const,
+                            updatedAt: serverTimestamp(),
+                        };
+
+                        const existingBook = existingBooksMap.get(isbn);
+                        if (existingBook) {
+                            const bookDocRef = doc(db, "books", existingBook.id);
+                            batch.update(bookDocRef, bookData);
+                        } else {
+                            const newBookRef = doc(collection(db, "books"));
+                            batch.set(newBookRef, { ...bookData, createdAt: serverTimestamp() });
+                        }
+                        operationsInCurrentBatch++;
                     }
                     
-                    const formatValue = (row.formato || "").toLowerCase();
-                    const bookFormat = formatValue.includes('digital') ? 'Digital' : 'Físico';
-
-                    const bookData = {
-                        title: row.titulo || 'Sin Título',
-                        authors: (row.autor || "").split(',').map((a: string) => a.trim()).filter(Boolean),
-                        price: parseFloat(row.pvp) || 0,
-                        stock: row.hasOwnProperty('stock') && !isNaN(parseInt(row.stock, 10)) ? parseInt(row.stock, 10) : 1,
-                        isbn: isbn,
-                        description: row.resumen || '',
-                        categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
-                        tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
-                        imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png`,
-                        pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
-                        coverType: row.formato || null,
-                        publisher: row.editor || row.sello || null,
-                        condition: 'Nuevo' as const,
-                        format: bookFormat,
-                        libraryId: libraryId,
-                        libraryName: libraryName,
-                        libraryLocation: libraryLocation,
-                        status: 'published' as const,
-                        updatedAt: serverTimestamp(),
-                    };
-
-                    const existingBook = existingBooksMap.get(isbn);
-                    if (existingBook) {
-                        const bookDocRef = doc(db, "books", existingBook.id);
-                        batch.update(bookDocRef, bookData);
-                    } else {
-                        const newBookRef = doc(collection(db, "books"));
-                        batch.set(newBookRef, { ...bookData, createdAt: serverTimestamp() });
+                    if (operationsInCurrentBatch > 0) {
+                        await batch.commit();
+                        totalOperationsCount += operationsInCurrentBatch;
                     }
-                    operationsCount++;
                 }
 
                 if (validationErrors.length > 0) {
@@ -377,9 +386,8 @@ export default function LibraryBooksPage() {
                     console.warn("Validation errors during import:", validationErrors);
                 }
 
-                if (operationsCount > 0) {
-                    await batch.commit();
-                    toast({ title: "¡Importación Completada!", description: `Se han procesado ${operationsCount} libros.` });
+                if (totalOperationsCount > 0) {
+                    toast({ title: "¡Importación Completada!", description: `Se han procesado ${totalOperationsCount} libros.` });
                     setIsImportDialogOpen(false);
                     setCsvFile(null);
                 } else {
@@ -397,6 +405,7 @@ export default function LibraryBooksPage() {
         }
     });
 };
+
 
   return (
     <>
