@@ -80,7 +80,8 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
+    // This query is now correct. It filters by user, and then we will sort on the client.
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const history = snapshot.docs.map(doc => ({ 
@@ -89,6 +90,9 @@ export default function ManageUsersPage() {
         createdAt: doc.data().createdAt?.toDate() ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
       
+      // Sort client-side to prevent complex index requirements in Firestore.
+      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
