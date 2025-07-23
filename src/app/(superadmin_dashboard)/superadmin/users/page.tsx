@@ -54,7 +54,7 @@ export default function ManageUsersPage() {
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      setIsLoading(false); // Stop loading as soon as users are fetched
+      setIsLoading(false);
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
@@ -85,7 +85,7 @@ export default function ManageUsersPage() {
       const history = snapshot.docs.map(doc => ({ 
         id: doc.id,
         ...doc.data(), 
-        createdAt: doc.data().createdAt?.toDate() || new Date() 
+        createdAt: doc.data().createdAt?.toDate() ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
       setPointsHistory(history);
       setIsLoadingHistory(false);
@@ -294,7 +294,7 @@ export default function ManageUsersPage() {
                                 <TableBody>
                                     {pointsHistory.length > 0 ? pointsHistory.map(t => (
                                         <TableRow key={t.id}>
-                                            <TableCell className="text-xs">{format(new Date(t.createdAt), 'dd/MM/yy', { locale: es })}</TableCell>
+                                            <TableCell className="text-xs">{t.createdAt ? format(new Date(t.createdAt), 'dd/MM/yy', { locale: es }) : 'N/A'}</TableCell>
                                             <TableCell className="text-xs">{t.description}</TableCell>
                                             <TableCell className="text-xs">{t.libraryId ? libraries.get(t.libraryId) || 'Librería' : 'Sistema'}</TableCell>
                                             <TableCell className={`text-right font-semibold text-xs ${t.points > 0 ? 'text-green-600' : 'text-destructive'}`}>
