@@ -297,7 +297,6 @@ export default function LibraryBooksPage() {
             }
             
             try {
-                // Fetch all existing books for the library in one go.
                 const booksCollectionRef = collection(db, "books");
                 const q = query(booksCollectionRef, where("libraryId", "==", libraryId));
                 const existingBooksSnapshot = await getDocs(q);
