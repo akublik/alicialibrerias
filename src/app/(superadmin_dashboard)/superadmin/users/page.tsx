@@ -89,32 +89,33 @@ export default function ManageUsersPage() {
       return;
     }
     
-    let activeSubscriptions = 2; // For users and libraries
-    const checkDone = () => {
-      activeSubscriptions--;
-      if (activeSubscriptions === 0) {
-        setIsLoading(false);
-      }
+    let loadedCount = 0;
+    const totalCollections = 2; // users and libraries
+    const checkAllLoaded = () => {
+        loadedCount++;
+        if (loadedCount === totalCollections) {
+            setIsLoading(false);
+        }
     };
-
+    
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
       setUsers(allUsers);
-      checkDone();
+      checkAllLoaded();
     }, (error) => {
       console.error("Error fetching users:", error);
       toast({ title: "Error al cargar usuarios", variant: "destructive" });
-      checkDone();
+      checkAllLoaded();
     });
     
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
         setLibraries(libMap);
-        checkDone();
+        checkAllLoaded();
     }, (error) => {
       console.error("Error fetching libraries:", error);
-      checkDone();
+      checkAllLoaded();
     });
 
     return () => {
@@ -127,14 +128,19 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
+    // Remove orderBy to avoid composite index requirement. We will sort on the client.
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const history = snapshot.docs.map(doc => ({ 
+      let history = snapshot.docs.map(doc => ({ 
         id: doc.id,
         ...doc.data(), 
         createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
+
+      // Sort on the client side
+      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       setPointsHistory(history);
       setIsLoadingHistory(false);
     }, (error) => {
