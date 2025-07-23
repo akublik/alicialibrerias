@@ -344,7 +344,7 @@ export default function LibraryBooksPage() {
                         description: row.resumen || '',
                         categories: (row.clasificacion || "").split(/[,;]/).map((c: string) => c.trim()).filter(Boolean),
                         tags: (row.colección || "").split(/[,;]/).map((t: string) => t.trim()).filter(Boolean),
-                        imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png?text=${encodeURIComponent(row.titulo || 'Libro')}`,
+                        imageUrl: row.imagen_tapa || `https://placehold.co/300x450.png`,
                         pageCount: row.paginas ? parseInt(row.paginas, 10) : null,
                         coverType: row.formato || null,
                         publisher: row.editor || row.sello || null,
