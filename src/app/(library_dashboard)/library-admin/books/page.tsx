@@ -285,8 +285,6 @@ export default function LibraryBooksPage() {
         skipEmptyLines: true,
         transformHeader: (header: string) => header.trim().toLowerCase().replace(/"/g, ''),
         complete: async (results) => {
-            const validationErrors: string[] = [];
-            
             if (results.errors.length > 0) {
                 toast({ title: "Error al leer CSV", description: results.errors.map(e => e.message).join(', '), variant: "destructive" });
                 setIsImporting(false);
@@ -297,15 +295,26 @@ export default function LibraryBooksPage() {
                 setIsImporting(false);
                 return;
             }
-
+            
+            // --- Efficiently fetch existing books ---
             const booksCollectionRef = collection(db, "books");
+            const q = query(booksCollectionRef, where("libraryId", "==", libraryId));
+            const existingBooksSnapshot = await getDocs(q);
+            const existingBooksMap = new Map<string, {id: string, data: Book}>();
+            existingBooksSnapshot.forEach(doc => {
+                const data = doc.data() as Book;
+                if (data.isbn) {
+                    existingBooksMap.set(data.isbn, { id: doc.id, data });
+                }
+            });
+
+            // --- Process CSV rows and prepare batch writes ---
             const batch = writeBatch(db);
             let operationsCount = 0;
+            const validationErrors: string[] = [];
 
             for (const row of results.data) {
-                if (!applyRules(row, libraryImportRules)) {
-                    continue; // Skip row if it doesn't match rules
-                }
+                if (!applyRules(row, libraryImportRules)) continue;
                 
                 const isbn = row.isbn13 ? String(row.isbn13).trim() : null;
                 if (!isbn) {
@@ -338,12 +347,10 @@ export default function LibraryBooksPage() {
                     updatedAt: serverTimestamp(),
                 };
 
-                const existingBookQuery = query(booksCollectionRef, where("libraryId", "==", libraryId), where("isbn", "==", isbn));
-                const existingBookSnapshot = await getDocs(existingBookQuery);
-
-                if (!existingBookSnapshot.empty) {
-                    const bookDoc = existingBookSnapshot.docs[0];
-                    batch.update(doc(db, "books", bookDoc.id), bookData);
+                const existingBook = existingBooksMap.get(isbn);
+                if (existingBook) {
+                    const bookDocRef = doc(db, "books", existingBook.id);
+                    batch.update(bookDocRef, bookData);
                 } else {
                     const newBookRef = doc(collection(db, "books"));
                     batch.set(newBookRef, { ...bookData, createdAt: serverTimestamp() });
@@ -354,10 +361,9 @@ export default function LibraryBooksPage() {
             if (validationErrors.length > 0) {
               toast({
                 title: `Avisos de Validación (${validationErrors.length})`,
-                description: "Algunas filas fueron omitidas. Revisa la consola para más detalles.",
+                description: "Algunas filas fueron omitidas.",
                 variant: "destructive",
               });
-              console.warn("Validation warnings during CSV import:", validationErrors);
             }
             
             if (operationsCount > 0) {
@@ -370,7 +376,7 @@ export default function LibraryBooksPage() {
                     toast({ title: "Error al Guardar", description: `Error al procesar el lote: ${e.message}`, variant: "destructive" });
                 }
             } else {
-               toast({ title: "Nada que importar", description: "No se encontraron libros que procesar en el archivo." });
+               toast({ title: "Nada que importar", description: "No se encontraron libros para procesar en el archivo." });
             }
             
             setIsImporting(false);
