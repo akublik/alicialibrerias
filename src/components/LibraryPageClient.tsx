@@ -11,7 +11,7 @@ import { MapPin, Clock, Phone, Mail, Search, BookOpen, ArrowLeft, Heart, Calenda
 import { BookCard } from '@/components/BookCard';
 import Link from 'next/link';
 import { useEffect, useState, useMemo } from 'react';
-import { db } from '@/lib/firebase';
+import { db, googleMapsApiKey } from '@/lib/firebase';
 import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp, deleteDoc, limit, setDoc, increment } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from '@/lib/utils';
@@ -308,6 +308,7 @@ export default function LibraryPageClient() {
   const { name, location, description, address, phone, email, imageUrl, dataAiHint, instagram, facebook, tiktok } = library;
 
   const hasSocials = instagram || facebook || tiktok;
+  const mapSrc = `https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(address || name)}`;
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
@@ -398,24 +399,26 @@ export default function LibraryPageClient() {
             </CardContent>
           </Card>
           
-          <Card className="shadow-lg">
-            <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center">
-                    <QrCode className="mr-2 h-5 w-5 text-primary"/>
-                    Código de Lealtad
-                </CardTitle>
-                 <CardDescription>Escanea este código en la librería para acumular puntos o identificarte.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center items-center p-6">
-                {library.id ? (
-                    <div className="p-4 bg-white rounded-lg">
-                      <QRCodeSVG value={library.id} size={160} />
+          {googleMapsApiKey && (address || name) && (
+              <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl">Ubicación en el Mapa</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="aspect-w-16 aspect-h-9 rounded-md overflow-hidden border">
+                        <iframe
+                            width="100%"
+                            height="300"
+                            style={{ border: 0 }}
+                            loading="lazy"
+                            allowFullScreen
+                            src={mapSrc}>
+                        </iframe>
                     </div>
-                ) : (
-                    <p className="text-muted-foreground">No se pudo generar el código.</p>
-                )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+          )}
+
         </div>
 
         <div className="md:col-span-2">
