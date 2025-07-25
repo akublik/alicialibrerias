@@ -38,6 +38,7 @@ import { generateBookReview, type GenerateBookReviewOutput } from "@/ai/flows/ge
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
+import { slugify } from "@/lib/utils";
 
 
 const bookFormSchema = z.object({
@@ -290,6 +291,7 @@ export default function EditBookPage() {
 
       const updatedData = {
           title: values.title,
+          slug: slugify(values.title),
           authors: values.authors.split(',').map(a => a.trim()),
           format: values.format,
           isbn: values.isbn || '',

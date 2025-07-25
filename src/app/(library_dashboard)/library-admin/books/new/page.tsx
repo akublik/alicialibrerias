@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Progress } from "@/components/ui/progress";
 import Image from "next/image";
+import { slugify } from "@/lib/utils";
 
 
 const bookFormSchema = z.object({
@@ -240,6 +241,7 @@ export default function NewBookPage() {
         setUploadStep("Guardando información...");
         const newBookData = {
             title: values.title,
+            slug: slugify(values.title),
             authors: values.authors.split(',').map(a => a.trim()),
             format: values.format,
             epubFileUrl: finalEpubUrl,

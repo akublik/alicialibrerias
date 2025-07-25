@@ -10,8 +10,9 @@ interface AuthorCardProps {
 }
 
 export function AuthorCard({ author }: AuthorCardProps) {
+  const authorLink = author.slug ? `/authors/${author.slug}` : `/authors/${author.id}`;
   return (
-    <Link href={`/authors/${author.id}`}>
+    <Link href={authorLink}>
         <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl group flex flex-col h-full text-center">
         <CardHeader className="p-0">
             <div className="relative w-full aspect-square">

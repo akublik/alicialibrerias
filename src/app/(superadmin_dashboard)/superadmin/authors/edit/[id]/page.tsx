@@ -19,6 +19,7 @@ import { doc, getDoc, updateDoc } from "firebase/firestore";
 import type { Author } from "@/types";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { countryOptions } from "@/lib/options";
+import { slugify } from "@/lib/utils";
 
 const authorFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre es requerido." }),
@@ -84,7 +85,11 @@ export default function EditAuthorPage() {
     setIsSubmitting(true);
     try {
       const authorRef = doc(db, "authors", authorId);
-      await updateDoc(authorRef, values);
+      const dataToUpdate = {
+        ...values,
+        slug: slugify(values.name),
+      }
+      await updateDoc(authorRef, dataToUpdate);
       toast({ title: "Autor Actualizado", description: `El perfil de ${values.name} ha sido actualizado.` });
       router.push("/superadmin/authors");
     } catch (error: any) {

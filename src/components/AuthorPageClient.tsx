@@ -1,21 +1,23 @@
 // src/components/AuthorPageClient.tsx
 "use client";
 
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import type { Author, Book } from '@/types';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { Loader2, ArrowLeft, BookOpen, User } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BookCard } from '@/components/BookCard';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
-export default function AuthorPageClient() {
-  const params = useParams();
-  const authorId = params.id as string;
+interface AuthorPageClientProps {
+  slug: string;
+}
+
+export default function AuthorPageClient({ slug }: AuthorPageClientProps) {
   const router = useRouter();
 
   const [author, setAuthor] = useState<Author | null>(null);
@@ -26,7 +28,7 @@ export default function AuthorPageClient() {
 
   useEffect(() => {
     const fetchAuthorData = async () => {
-      if (!authorId) {
+      if (!slug) {
         setIsLoading(false);
         return;
       }
@@ -37,11 +39,11 @@ export default function AuthorPageClient() {
       }
       setIsLoading(true);
       try {
-        const authorRef = doc(db, "authors", authorId);
-        const authorSnap = await getDoc(authorRef);
+        const q = query(collection(db, "authors"), where("slug", "==", slug), limit(1));
+        const authorSnapshot = await getDocs(q);
 
-        if (authorSnap.exists()) {
-          const authorData = { id: authorSnap.id, ...authorSnap.data() } as Author;
+        if (!authorSnapshot.empty) {
+          const authorData = { id: authorSnapshot.docs[0].id, ...authorSnapshot.docs[0].data() } as Author;
           setAuthor(authorData);
 
           // Fetch books by this author
@@ -72,8 +74,7 @@ export default function AuthorPageClient() {
 
           setBooks(authorBooks);
         } else {
-          // Author not found, maybe redirect or show a 404-like component
-          router.push('/'); // simple redirect for now
+          router.push('/'); 
         }
       } catch (error) {
         console.error("Error fetching author details:", error);
@@ -83,7 +84,7 @@ export default function AuthorPageClient() {
     };
 
     fetchAuthorData();
-  }, [authorId, router]);
+  }, [slug, router]);
   
   const { currentBooks, totalPages } = useMemo(() => {
     const indexOfLastItem = currentPage * ITEMS_PER_PAGE;

@@ -18,6 +18,7 @@ import { db } from "@/lib/firebase";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { countryOptions } from "@/lib/options";
+import { slugify } from "@/lib/utils";
 
 const authorFormSchema = z.object({
   name: z.string().min(2, { message: "El nombre es requerido." }),
@@ -55,6 +56,7 @@ export default function NewAuthorPage() {
     try {
       await addDoc(collection(db, "authors"), {
         ...values,
+        slug: slugify(values.name),
         imageUrl: values.imageUrl || `https://placehold.co/200x200.png?text=${encodeURIComponent(values.name[0])}`,
         createdAt: serverTimestamp(),
       });

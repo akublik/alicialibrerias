@@ -1,7 +1,7 @@
 // src/components/BookPageClient.tsx
 "use client"; 
 
-import { useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import type { Book, Review, User } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -38,10 +38,12 @@ const StarRating = ({ rating, interactive = false, setRating }: { rating: number
   );
 };
 
+interface BookPageClientProps {
+  slug: string;
+}
 
-export default function BookPageClient() {
-  const params = useParams();
-  const bookId = params.id as string;
+export default function BookPageClient({ slug }: BookPageClientProps) {
+  const router = useRouter();
   const { addToCart } = useCart();
   const { toast } = useToast();
   const { isInWishlist, toggleWishlist } = useWishlist();
@@ -67,7 +69,6 @@ export default function BookPageClient() {
   }, [reviews]);
   
   useEffect(() => {
-    // This logic must be in useEffect to avoid hydration errors
     setCurrentUrl(window.location.href);
     const authStatus = localStorage.getItem("isAuthenticated") === "true";
     setIsAuthenticated(authStatus);
@@ -78,58 +79,50 @@ export default function BookPageClient() {
   }, []);
 
   useEffect(() => {
-    if (!bookId || !db) return;
-
-    // Listener for real-time review updates
+    if (!book?.id || !db) return;
     const reviewsRef = collection(db, "reviews");
-    const q = query(reviewsRef, where("bookId", "==", bookId));
+    const q = query(reviewsRef, where("bookId", "==", book.id));
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const fetchedReviews = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: doc.data().createdAt?.toDate() || new Date(),
         } as Review));
-        
-        // Sort reviews by date on the client side to avoid needing a composite index
         fetchedReviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
         setReviews(fetchedReviews);
     });
-
     return () => unsubscribe();
-  }, [bookId]);
+  }, [book?.id]);
 
   useEffect(() => {
     const fetchBookData = async () => {
-      if (!bookId || !db) return;
+      if (!slug || !db) return;
       setIsLoading(true);
       try {
-        // --- 1. Fetch Main Book and All Libraries in Parallel ---
-        const bookRef = doc(db, "books", bookId);
-        const [bookSnap, librariesSnapshot] = await Promise.all([
-            getDoc(bookRef),
-            getDocs(collection(db, "libraries")),
-        ]);
+        const booksRef = collection(db, "books");
+        const q = query(booksRef, where("slug", "==", slug), limit(1));
+        const bookSnapshot = await getDocs(q);
+
+        if (bookSnapshot.empty) {
+          console.error("No such document!");
+          setIsLoading(false);
+          return;
+        }
         
+        const bookDoc = bookSnapshot.docs[0];
+        const bookData = bookDoc.data();
+        let foundBook: Book = {
+            id: bookDoc.id,
+            ...bookData,
+            format: bookData.format || 'Físico',
+        } as Book;
+
+        const librariesSnapshot = await getDocs(collection(db, "libraries"));
         const librariesMap = new Map<string, { name: string, location: string }>();
         librariesSnapshot.forEach(doc => {
             const data = doc.data();
             librariesMap.set(doc.id, { name: data.name, location: data.location });
         });
-
-        if (!bookSnap.exists()) {
-          console.error("No such document!");
-          setIsLoading(false);
-          return;
-        }
-
-        // --- 2. Augment Main Book Data ---
-        const bookData = bookSnap.data();
-        let foundBook: Book = {
-            id: bookSnap.id,
-            ...bookData,
-            format: bookData.format || 'Físico',
-        } as Book;
 
         if (foundBook.libraryId && librariesMap.has(foundBook.libraryId)) {
           const libInfo = librariesMap.get(foundBook.libraryId)!;
@@ -138,31 +131,25 @@ export default function BookPageClient() {
         }
         setBook(foundBook);
 
-        // --- 3. Fetch Related Books ---
-        const booksRef = collection(db, "books");
         const relatedBooksPromises = [];
-
-        // Query by categories (higher priority)
         if (foundBook.categories && foundBook.categories.length > 0) {
             const categoriesToQuery = foundBook.categories.slice(0, 10);
             relatedBooksPromises.push(
                 getDocs(query(
                     booksRef,
                     where("categories", "array-contains-any", categoriesToQuery),
-                    where(documentId(), "!=", bookId),
+                    where(documentId(), "!=", bookDoc.id),
                     limit(6)
                 ))
             );
         }
-        
-        // Query by authors (secondary priority)
         if (foundBook.authors && foundBook.authors.length > 0) {
             const authorsToQuery = foundBook.authors.slice(0, 10);
             relatedBooksPromises.push(
                 getDocs(query(
                     booksRef,
                     where("authors", "array-contains-any", authorsToQuery),
-                    where(documentId(), "!=", bookId),
+                    where(documentId(), "!=", bookDoc.id),
                     limit(6)
                 ))
             );
@@ -171,34 +158,26 @@ export default function BookPageClient() {
         const relatedSnapshots = await Promise.all(relatedBooksPromises);
         const relatedBooksMap = new Map<string, Book>();
 
-        const augmentAndAddBook = (doc: any) => {
-            if (!relatedBooksMap.has(doc.id)) {
-                const relatedBookData = doc.data();
-                let relatedBook: Book = { 
-                    id: doc.id,
-                    ...relatedBookData,
-                    format: relatedBookData.format || 'Físico',
-                } as Book;
-
-                if (relatedBook.libraryId && librariesMap.has(relatedBook.libraryId)) {
-                    const libInfo = librariesMap.get(relatedBook.libraryId)!;
-                    relatedBook.libraryName = libInfo.name;
-                    relatedBook.libraryLocation = libInfo.location;
-                }
-                relatedBooksMap.set(doc.id, relatedBook);
-            }
-        };
-
         relatedSnapshots.forEach(snapshot => {
-            snapshot.docs.forEach(doc => augmentAndAddBook(doc));
+            snapshot.docs.forEach(doc => {
+                if (!relatedBooksMap.has(doc.id)) {
+                    const relatedBookData = doc.data();
+                    let relatedBook: Book = { 
+                        id: doc.id,
+                        ...relatedBookData,
+                        format: relatedBookData.format || 'Físico',
+                    } as Book;
+                    if (relatedBook.libraryId && librariesMap.has(relatedBook.libraryId)) {
+                        const libInfo = librariesMap.get(relatedBook.libraryId)!;
+                        relatedBook.libraryName = libInfo.name;
+                        relatedBook.libraryLocation = libInfo.location;
+                    }
+                    relatedBooksMap.set(doc.id, relatedBook);
+                }
+            });
         });
-
-        // Ensure current book is not in the list
-        relatedBooksMap.delete(bookId);
-
-        // Take the first 3 unique related books for display
+        relatedBooksMap.delete(bookDoc.id);
         setRelatedBooks(Array.from(relatedBooksMap.values()).slice(0, 3));
-
       } catch (error) {
         console.error("Error fetching book and related data:", error);
       } finally {
@@ -208,7 +187,7 @@ export default function BookPageClient() {
     
     fetchBookData();
 
-  }, [bookId]);
+  }, [slug]);
 
   const handleAddToCart = () => {
     if (book) {
@@ -235,7 +214,7 @@ export default function BookPageClient() {
       try {
           // Add the review
           await addDoc(collection(db, "reviews"), {
-              bookId,
+              bookId: book.id,
               bookTitle: book.title,
               userId: user.id,
               userName: user.name,
@@ -485,7 +464,7 @@ export default function BookPageClient() {
                 <Card className="text-center">
                     <CardContent className="p-6">
                         <p className="text-muted-foreground">
-                            <Link href={`/login?redirect=/books/${bookId}`} className="text-primary hover:underline font-semibold">Inicia sesión</Link> para dejar una reseña.
+                            <Link href={`/login?redirect=/books/${slug}`} className="text-primary hover:underline font-semibold">Inicia sesión</Link> para dejar una reseña.
                         </p>
                     </CardContent>
                 </Card>

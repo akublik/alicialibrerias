@@ -20,6 +20,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
   const { addToCart } = useCart();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const isWished = isInWishlist(book.id);
+  const bookLink = book.slug ? `/books/${book.slug}` : `/books/${book.id}`;
 
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -41,7 +42,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
   return (
     <Card className="overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl flex flex-col h-full group">
       <CardHeader className="p-0 relative">
-        <Link href={`/books/${book.id}`} aria-label={`Ver detalles de ${book.title}`} className="block relative w-full aspect-[2/3] overflow-hidden">
+        <Link href={bookLink} aria-label={`Ver detalles de ${book.title}`} className="block relative w-full aspect-[2/3] overflow-hidden">
           <Image
             src={book.imageUrl}
             alt={`Portada de ${book.title}`}
@@ -52,7 +53,7 @@ export function BookCard({ book, size = 'normal' }: BookCardProps) {
         </Link>
       </CardHeader>
       <CardContent className={cn("flex-grow", size === 'small' ? 'p-3' : 'p-4')}>
-        <Link href={`/books/${book.id}`}>
+        <Link href={bookLink}>
           <CardTitle
             className={cn(
               "font-headline leading-tight mb-1 hover:text-primary transition-colors",

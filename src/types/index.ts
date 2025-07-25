@@ -2,6 +2,7 @@
 
 export interface Book {
   id: string;
+  slug?: string;
   isbn?: string;
   title: string;
   authors: string[];
@@ -177,6 +178,7 @@ export interface UserWishlistItem {
 
 export interface Author {
   id: string;
+  slug?: string;
   name: string;
   bio: string;
   imageUrl: string;

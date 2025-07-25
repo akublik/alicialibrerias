@@ -1,27 +1,31 @@
-
-// src/app/(app)/books/[id]/page.tsx
+// src/app/(app)/books/[slug]/page.tsx
 import type { Metadata } from 'next';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Book } from '@/types';
 import BookPageClient from '@/components/BookPageClient';
+import { notFound } from 'next/navigation';
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const id = params.id;
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const slug = params.slug;
+   if (!db) {
+    return {
+      title: 'Error',
+      description: 'La base de datos no está disponible.',
+    };
+  }
+
   try {
-    if (!db) {
-      throw new Error("Database not configured");
-    }
-    const bookRef = doc(db, "books", id);
-    const bookSnap = await getDoc(bookRef);
+    const q = query(collection(db, "books"), where("slug", "==", slug), limit(1));
+    const querySnapshot = await getDocs(q);
 
-    if (!bookSnap.exists()) {
+    if (querySnapshot.empty) {
       return {
         title: 'Libro no Encontrado',
       };
     }
 
-    const book = bookSnap.data() as Book;
+    const book = querySnapshot.docs[0].data() as Book;
     const description = book.description?.substring(0, 160) || `Encuentra el libro ${book.title} de ${book.authors.join(', ')} en Alicia Libros.`;
 
     return {
@@ -44,7 +48,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       },
     };
   } catch (error) {
-    console.error("Error generating metadata for book:", id, error);
+    console.error("Error generating metadata for book:", slug, error);
     return {
       title: 'Error al cargar libro',
       description: 'No se pudo cargar la información para este libro.',
@@ -52,6 +56,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 }
 
-export default function BookDetailsPage() {
-    return <BookPageClient />;
+export default function BookDetailsPage({ params }: { params: { slug: string } }) {
+    if (!params.slug) {
+        notFound();
+    }
+    return <BookPageClient slug={params.slug} />;
 }

@@ -56,7 +56,7 @@ export default function CartPage() {
                   />
                 </div>
                 <div className="flex-grow">
-                  <Link href={`/books/${item.id}`}>
+                  <Link href={item.slug ? `/books/${item.slug}` : `/books/${item.id}`}>
                     <h2 className="font-headline text-lg font-semibold text-primary hover:underline">{item.title}</h2>
                   </Link>
                   <p className="text-sm text-muted-foreground">{item.authors.join(", ")}</p>
