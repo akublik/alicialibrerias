@@ -229,19 +229,6 @@ export default function ReaderPage() {
         </div>
       );
     }
-  
-    if (!epubData || epubData.byteLength === 0) {
-      return (
-          <div className="flex flex-col justify-center items-center h-screen text-center p-4 bg-muted">
-              <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-              <h1 className="text-2xl font-bold text-destructive mb-2">Error de Datos</h1>
-              <p className="text-muted-foreground max-w-lg">No se pudo cargar el contenido del libro. El archivo puede estar dañado o vacío.</p>
-               <Button onClick={() => router.push('/dashboard')} className="mt-6">
-                Volver a Mi Panel
-              </Button>
-          </div>
-      );
-    }
     
     return (
       <div className="flex flex-col h-screen w-screen bg-muted overflow-hidden">
@@ -309,7 +296,7 @@ export default function ReaderPage() {
             </aside>
 
             <div className="flex-grow h-full relative" id="reader-wrapper">
-                {epubData && epubData.byteLength > 0 && (
+                {epubData && epubData.byteLength > 0 ? (
                     <ReactReader
                         key={book?.id}
                         url={epubData}
@@ -323,6 +310,10 @@ export default function ReaderPage() {
                             });
                         }}
                     />
+                ) : (
+                   <div className="flex flex-col justify-center items-center h-full">
+                       {!error && <Loader2 className="h-8 w-8 animate-spin" />}
+                   </div>
                 )}
             </div>
         </div>
