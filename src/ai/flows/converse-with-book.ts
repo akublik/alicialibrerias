@@ -37,26 +37,25 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             history: genkitHistory,
         });
 
-        // Robust response handling
-        const candidate = response?.candidates?.[0];
-        if (candidate?.message?.content) {
-            const responseText = candidate.message.content[0]?.text;
-            if (responseText) {
-                return responseText;
-            }
+        // Use the safe .text() accessor provided by Genkit
+        const responseText = response.text();
+        
+        if (responseText) {
+            return responseText;
         }
         
-        // If we reach here, the response was not in the expected format or was empty.
+        // If we reach here, the response was empty, likely due to safety settings or other reasons.
         console.error("----------- DETAILED AI CONVERSE WITH BOOK ERROR -----------");
-        console.error("Flow: converseWithBook - Response structure was invalid or empty.");
+        console.error("Flow: converseWithBook - AI response was valid but contained no text content.");
         console.error("Timestamp:", new Date().toISOString());
         console.error("Book Title:", bookTitle);
         console.error("Full AI Response Object:", JSON.stringify(response, null, 2));
         
         let errorMessage = "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
-        if (candidate?.finishReason) {
-            errorMessage += ` (Razón: ${candidate.finishReason})`;
-            if (candidate.finishReason === 'SAFETY') {
+        const finishReason = response.candidates?.[0]?.finishReason;
+        if (finishReason) {
+            errorMessage += ` (Razón: ${finishReason})`;
+            if (finishReason === 'SAFETY') {
               errorMessage = "No puedo responder a esa pregunta porque infringe las políticas de seguridad. Por favor, intenta con otra pregunta sobre el libro.";
             }
         }
