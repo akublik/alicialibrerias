@@ -19,8 +19,11 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     const systemPrompt = `A partir de ahora, actúa como si fueras AlicIA, una asistente de lectura experta en el libro "${bookTitle}". Responde a mis preguntas y comentarios usando tu conocimiento sobre ese libro. Si te hago preguntas que se salgan del contexto o del enfoque del libro, rechaza la solicitud indicando que solo puedes interactuar como una asistente para ese libro.`;
     
     try {
-        const validHistory = history
-            .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string' && m.content.trim() !== '');
+        // Robust validation: Ensure each message is a valid object with the required properties.
+        // This prevents the "Cannot read properties of undefined (reading 'content')" error.
+        const validHistory = history.filter(
+          (m): m is ChatMessage => m && typeof m.role === 'string' && typeof m.content === 'string' && m.content.trim() !== ''
+        );
 
         if (validHistory.length === 0) {
              return "Por favor, hazme una pregunta para empezar.";
