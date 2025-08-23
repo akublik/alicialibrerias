@@ -264,12 +264,6 @@ export default function ReaderPage() {
                     <p className="text-sm text-muted-foreground truncate">{book?.author}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <a href={book?.epubFileUrl} download={`${book?.title}.epub`}>
-                        <Button variant="outline" size="sm">
-                            <Download className="mr-2 h-4 w-4" />
-                            Descargar EPUB
-                        </Button>
-                    </a>
                     <Select value={selectedVoice} onValueChange={setSelectedVoice}>
                       <SelectTrigger className="w-[120px] h-9 text-xs">
                         <SelectValue placeholder="Selecciona una voz" />
