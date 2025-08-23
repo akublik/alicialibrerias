@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import type { DigitalBook } from '@/types';
-import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play, Download } from 'lucide-react';
+import { Loader2, AlertTriangle, ArrowLeft, X, BookOpen, Volume2, Pause, Play } from 'lucide-react';
 import { ReactReader } from "react-reader";
 import type { Rendition } from 'epubjs';
 import { Button } from '@/components/ui/button';
@@ -309,19 +309,21 @@ export default function ReaderPage() {
             </aside>
 
             <div className="flex-grow h-full relative" id="reader-wrapper">
-                <ReactReader
-                    key={book?.id}
-                    url={epubData}
-                    location={location}
-                    locationChanged={handleLocationChanged}
-                    getRendition={(rendition) => {
-                        renditionRef.current = rendition;
-                        // @ts-ignore
-                        rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
-                            setToc(bookToc);
-                        });
-                    }}
-                />
+                {epubData && epubData.byteLength > 0 && (
+                    <ReactReader
+                        key={book?.id}
+                        url={epubData}
+                        location={location}
+                        locationChanged={handleLocationChanged}
+                        getRendition={(rendition) => {
+                            renditionRef.current = rendition;
+                            // @ts-ignore
+                            rendition.book.loaded.navigation.then(({ toc: bookToc }) => {
+                                setToc(bookToc);
+                            });
+                        }}
+                    />
+                )}
             </div>
         </div>
         
