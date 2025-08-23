@@ -20,14 +20,12 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     
     try {
         const validHistory = history
-            // This robust filter ensures we only process valid, complete messages.
             .filter(m => m && typeof m.role === 'string' && typeof m.content === 'string' && m.content.trim() !== '');
 
         if (validHistory.length === 0) {
              return "Por favor, hazme una pregunta para empezar.";
         }
 
-        // Construct the history with the correct types expected by ai.generate
         const genkitHistory: Array<{ role: Role; content: Part[] }> = validHistory.map((msg) => ({
             role: msg.role === 'user' ? 'user' : 'model',
             content: [{ text: msg.content }],
@@ -40,12 +38,15 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         });
 
         // Robust response handling
-        const responseText = response?.candidates?.[0]?.message?.content?.[0]?.text;
-        if (responseText) {
-          return responseText;
+        const candidate = response?.candidates?.[0];
+        if (candidate?.message?.content) {
+            const responseText = candidate.message.content[0]?.text;
+            if (responseText) {
+                return responseText;
+            }
         }
         
-        // If we reach here, the response was not in the expected format.
+        // If we reach here, the response was not in the expected format or was empty.
         console.error("----------- DETAILED AI CONVERSE WITH BOOK ERROR -----------");
         console.error("Flow: converseWithBook - Response structure was invalid or empty.");
         console.error("Timestamp:", new Date().toISOString());
@@ -53,8 +54,11 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
         console.error("Full AI Response Object:", JSON.stringify(response, null, 2));
         
         let errorMessage = "AlicIA está procesando tu pregunta... pero no ha encontrado una respuesta de texto. Inténtalo de nuevo.";
-        if (response?.candidates?.[0]?.finishReason) {
-            errorMessage += ` (Razón: ${response.candidates[0].finishReason})`;
+        if (candidate?.finishReason) {
+            errorMessage += ` (Razón: ${candidate.finishReason})`;
+            if (candidate.finishReason === 'SAFETY') {
+              errorMessage = "No puedo responder a esa pregunta porque infringe las políticas de seguridad. Por favor, intenta con otra pregunta sobre el libro.";
+            }
         }
         return errorMessage;
         
