@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Textarea } from "@/components/ui/textarea";
 import type { Review, User } from "@/types";
 import Image from "next/image";
-import { MessageSquare, Users, CalendarDays, Star, ThumbsUp, Send, PlusCircle, Loader2 } from "lucide-react";
+import { MessageSquare, Users, CalendarDays, Star, ThumbsUp, Send, PlusCircle, Loader2, Bot } from "lucide-react";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from "react";
@@ -172,12 +172,17 @@ export default function CommunityPage() {
       </header>
 
       <Tabs defaultValue="reviews" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 mb-8 bg-muted/50 p-1 h-auto">
+        <TabsList className="grid w-full grid-cols-1 sm:grid-cols-4 mb-8 bg-muted/50 p-1 h-auto">
           <TabsTrigger value="reviews" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
             <MessageSquare className="mr-2 h-5 w-5" /> Reseñas de Libros
           </TabsTrigger>
           <TabsTrigger value="bookClubs" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
             <Users className="mr-2 h-5 w-5" /> Clubes de Lectura
+          </TabsTrigger>
+           <TabsTrigger value="bot" asChild>
+            <Link href="/community/literature-bot" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
+              <Bot className="mr-2 h-5 w-5" /> Bot Literario
+            </Link>
           </TabsTrigger>
           <TabsTrigger value="forums" className="py-2.5 font-body text-sm flex items-center justify-center data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md">
             <CalendarDays className="mr-2 h-5 w-5" /> Foros de Discusión
@@ -305,6 +310,10 @@ export default function CommunityPage() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+        
+        <TabsContent value="bot">
+            {/* El contenido se mostrará en la página /community/literature-bot */}
         </TabsContent>
 
         <TabsContent value="forums">
