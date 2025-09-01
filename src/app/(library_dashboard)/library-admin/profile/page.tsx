@@ -73,7 +73,13 @@ export default function LibraryProfilePage() {
       instagram: "",
       facebook: "",
       tiktok: "",
-      importRules: "",
+      importRules: `[
+  {
+    "field": "clasificacion",
+    "operator": "startsWith",
+    "value": "WB"
+  }
+]`,
     },
   });
 
@@ -117,7 +123,7 @@ export default function LibraryProfilePage() {
             instagram: libraryData.instagram || '',
             facebook: libraryData.facebook || '',
             tiktok: libraryData.tiktok || '',
-            importRules: libraryData.importRules ? JSON.stringify(JSON.parse(libraryData.importRules), null, 2) : '',
+            importRules: libraryData.importRules ? JSON.stringify(JSON.parse(libraryData.importRules), null, 2) : form.getValues('importRules'),
           });
         } else {
           toast({ title: "Error", description: "No se encontró el perfil de la librería.", variant: "destructive" });
@@ -251,9 +257,11 @@ export default function LibraryProfilePage() {
                         <pre className="text-xs bg-background p-3 rounded-md overflow-x-auto">
                             <code>
 {`[
-  { "field": "pais_edicion", "operator": "equals", "value": "ES" },
-  { "field": "idioma_edicion", "operator": "not_equals", "value": "BR" },
-  { "field": "pvp", "operator": "gt", "value": "5.00" }
+  {
+    "field": "clasificacion",
+    "operator": "startsWith",
+    "value": "WB"
+  }
 ]`}
                             </code>
                         </pre>
@@ -274,7 +282,7 @@ export default function LibraryProfilePage() {
                                     />
                                 </FormControl>
                                 <FormDescription>
-                                    Usa un array de objetos JSON para definir reglas. Operadores válidos: `equals`, `not_equals`, `contains`, `gt` (mayor que), `lt` (menor que).
+                                    Usa un array de objetos JSON para definir reglas. Operadores válidos: `equals`, `not_equals`, `contains`, `gt` (mayor que), `lt` (menor que), `startsWith`.
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

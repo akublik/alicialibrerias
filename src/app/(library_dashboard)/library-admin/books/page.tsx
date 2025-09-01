@@ -25,7 +25,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 type Rule = {
   field: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'gt' | 'lt';
+  operator: 'equals' | 'not_equals' | 'contains' | 'gt' | 'lt' | 'startsWith';
   value: any;
 };
 
@@ -54,6 +54,9 @@ const applyRules = (row: Record<string, any>, rules: Rule[]): boolean => {
         break;
       case 'contains':
         conditionMet = String(rowValue).toLowerCase().includes(String(ruleValue).toLowerCase());
+        break;
+      case 'startsWith':
+        conditionMet = String(rowValue).toLowerCase().startsWith(String(ruleValue).toLowerCase());
         break;
       case 'gt':
         conditionMet = Number(rowValue) > Number(ruleValue);
