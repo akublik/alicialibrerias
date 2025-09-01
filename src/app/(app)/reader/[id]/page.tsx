@@ -25,7 +25,7 @@ export default function ReaderPage() {
   const router = useRouter();
   const bookId = params.id as string;
   
-  const [book, setBook] = useState<Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string } | null>(null);
+  const [book, setBook] = useState<(Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string }) | null>(null);
   const [epubData, setEpubData] = useState<ArrayBuffer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,45 +56,31 @@ export default function ReaderPage() {
       setEpubData(null);
       
       try {
-        let bookData: Partial<DigitalBook> & { title: string; author: string, epubFileUrl: string } | null = null;
-        
-        let bookRef = doc(db, "digital_books", bookId);
-        let docSnap = await getDoc(bookRef);
+        // We will only look for books in the 'digital_books' collection now
+        // This is the single source of truth for readable content.
+        const bookRef = doc(db, "digital_books", bookId);
+        const docSnap = await getDoc(bookRef);
 
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            bookData = {
-                id: docSnap.id,
-                title: data.title,
-                author: data.author,
-                epubFileUrl: data.epubFileUrl,
-            };
-        } else {
-            bookRef = doc(db, "books", bookId);
-            docSnap = await getDoc(bookRef);
-            if(docSnap.exists()) {
-                const data = docSnap.data();
-                if (!data.epubFileUrl) {
-                    throw new Error("Este libro no está disponible en un formato digital para leer.");
-                }
-                bookData = {
-                    id: docSnap.id,
-                    title: data.title,
-                    author: Array.isArray(data.authors) ? data.authors.join(', ') : data.authors,
-                    epubFileUrl: data.epubFileUrl,
-                };
-            } else {
-                 throw new Error("Libro no encontrado en ninguna biblioteca.");
-            }
-        }
-        
-        if (!bookData || !bookData.epubFileUrl) {
-          throw new Error("Este libro no tiene un archivo EPUB disponible para leer.");
+        if (!docSnap.exists()) {
+            throw new Error("Este libro no se encuentra en la biblioteca digital.");
         }
 
-        setBook(bookData);
+        const bookData = docSnap.data();
+        if (!bookData.epubFileUrl) {
+            throw new Error("El archivo EPUB para este libro no está disponible.");
+        }
+
+        // We have a valid digital book, set its state.
+        const validBook = {
+            id: docSnap.id,
+            title: bookData.title,
+            author: bookData.author,
+            epubFileUrl: bookData.epubFileUrl,
+        };
+        setBook(validBook);
         
-        const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(bookData.epubFileUrl)}`;
+        // Use a proxy to fetch the book data to avoid CORS issues
+        const proxyUrl = `/api/proxy-epub?url=${encodeURIComponent(validBook.epubFileUrl)}`;
         const response = await fetch(proxyUrl);
         
         if (!response.ok) {
@@ -108,6 +94,7 @@ export default function ReaderPage() {
           throw new Error("El archivo del libro está vacío o no se pudo cargar correctamente.");
         }
 
+        // Set the final EPUB data
         setEpubData(data);
 
       } catch (e: any) {
@@ -223,8 +210,8 @@ export default function ReaderPage() {
           <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
           <h1 className="text-2xl font-bold text-destructive mb-2">Ocurrió un error</h1>
           <p className="text-muted-foreground max-w-lg whitespace-pre-wrap">{error}</p>
-          <Button onClick={() => router.push('/dashboard')} className="mt-6">
-            Volver a Mi Panel
+          <Button onClick={() => router.push('/my-library')} className="mt-6">
+            Volver a Mi Biblioteca
           </Button>
         </div>
       );
@@ -235,10 +222,10 @@ export default function ReaderPage() {
         <header className="flex-shrink-0 bg-background shadow-md z-30">
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Link href="/dashboard" passHref>
+                  <Link href="/my-library" passHref>
                       <Button variant="outline" size="sm">
                           <ArrowLeft className="mr-2 h-4 w-4" />
-                          Mi Panel
+                          Mi Biblioteca
                       </Button>
                   </Link>
                    <Button variant="outline" size="sm" onClick={() => setIsTocVisible(!isTocVisible)}>
