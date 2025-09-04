@@ -15,7 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
-import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
+import { analyzeMarketAndCompetition } from '@/ai/flows/market-analysis';
+import type { MarketAnalysisOutput } from '@/types';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -51,8 +52,8 @@ const authorProfileFormSchema = z.object({
 type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 
 const marketAnalysisFormSchema = z.object({
-    genre: z.string().min(1, { message: "Debes seleccionar un género." }),
-    bookTitle: z.string().min(3, { message: "El título de referencia es requerido." }),
+    authorGenre: z.string().min(1, { message: "Debes seleccionar un género." }),
+    authorBookTitle: z.string().min(3, { message: "El título de referencia es requerido." }),
 });
 type MarketAnalysisFormValues = z.infer<typeof marketAnalysisFormSchema>;
 
@@ -89,7 +90,7 @@ export default function AuthorDashboardPage() {
   
   const analysisForm = useForm<MarketAnalysisFormValues>({
       resolver: zodResolver(marketAnalysisFormSchema),
-      defaultValues: { genre: "", bookTitle: "" },
+      defaultValues: { authorGenre: "", authorBookTitle: "" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -117,9 +118,9 @@ export default function AuthorDashboardPage() {
               setAuthorBooks(fetchedBooks);
 
               if (fetchedBooks.length > 0) {
-                  analysisForm.setValue("bookTitle", fetchedBooks[0].title);
+                  analysisForm.setValue("authorBookTitle", fetchedBooks[0].title);
                   if (fetchedBooks[0].categories && fetchedBooks[0].categories.length > 0) {
-                      analysisForm.setValue("genre", fetchedBooks[0].categories[0]);
+                      analysisForm.setValue("authorGenre", fetchedBooks[0].categories[0]);
                   }
               }
           } else {
@@ -193,10 +194,7 @@ export default function AuthorDashboardPage() {
     setIsAnalyzing(true);
     setMarketAnalysis(null);
     try {
-      const result = await analyzeMarketAndCompetition({
-          authorGenre: values.genre,
-          authorBookTitle: values.bookTitle
-      });
+      const result = await analyzeMarketAndCompetition(values);
       setMarketAnalysis(result);
       toast({ title: "¡Análisis Completado!", description: "Las tendencias y sugerencias están listas." });
     } catch (error: any) {
@@ -448,10 +446,31 @@ export default function AuthorDashboardPage() {
             <CardHeader><CardTitle className="font-headline text-2xl flex items-center"><BarChart2 className="mr-2 h-6 w-6 text-primary"/>Análisis de Mercado y Competencia</CardTitle><CardDescription>Obtén una ventaja estratégica. Selecciona tu género y un libro de referencia para que la IA genere un análisis detallado.</CardDescription></CardHeader>
             <CardContent>
               <Form {...analysisForm}>
-                <form onSubmit={analysisForm.handleSubmit(onSubmitAnalysis)} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-                    <FormField control={analysisForm.control} name="genre" render={({ field }) => ( <FormItem><FormLabel>Género Principal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un género"/></SelectTrigger></FormControl><SelectContent>{bookCategories.map(c => <SelectItem key={c.value} value={c.label}>{c.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
-                    <FormField control={analysisForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Libro de Referencia</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un libro"/></SelectTrigger></FormControl><SelectContent>{authorBooks.map(b => <SelectItem key={b.id} value={b.title}>{b.title}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
-                    <Button type="submit" disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}Analizar Mercado</Button>
+                <form onSubmit={analysisForm.handleSubmit(onSubmitAnalysis)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={analysisForm.control} name="authorGenre" render={({ field }) => ( <FormItem><FormLabel>Género Principal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un género"/></SelectTrigger></FormControl><SelectContent>{bookCategories.map(c => <SelectItem key={c.value} value={c.label}>{c.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                        <FormField control={analysisForm.control} name="authorBookTitle" render={({ field }) => (
+                           <FormItem>
+                               <FormLabel>Libro de Referencia</FormLabel>
+                               <FormControl>
+                                   <Input placeholder="Escribe el título de un libro" {...field} />
+                               </FormControl>
+                               <FormMessage />
+                           </FormItem>
+                        )}/>
+                    </div>
+                     {authorBooks.length > 0 && (
+                        <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">O selecciona uno de tus libros para rellenar el campo:</FormLabel>
+                            <Select onValueChange={(value) => analysisForm.setValue('authorBookTitle', value)}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Selecciona uno de tus libros..."/></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>{authorBooks.map(b => <SelectItem key={b.id} value={b.title}>{b.title}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </FormItem>
+                     )}
+                    <Button type="submit" disabled={isAnalyzing} className="w-full md:w-auto">{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}{isAnalyzing ? 'Analizando...' : 'Analizar Mercado'}</Button>
                 </form>
               </Form>
             </CardContent>

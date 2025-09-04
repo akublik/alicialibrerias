@@ -7,7 +7,7 @@ import type { MarketAnalysisInput, MarketAnalysisOutput } from '@/types';
 
 const MarketAnalysisInputSchema = z.object({
   authorGenre: z.string().describe("El género principal en el que escribe el autor."),
-  authorBookTitle: z.string().describe("El título del libro del autor que se usará como referencia."),
+  authorBookTitle: z.string().describe("El título de un libro del autor (o un libro similar) que se usará como referencia principal para el análisis."),
 });
 
 const MarketAnalysisOutputSchema = z.object({
