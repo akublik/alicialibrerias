@@ -7,7 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 
 if (apiKey) {
   ai = genkit({
-    plugins: [googleAI({ apiKey })],
+    plugins: [googleAI({ apiKey, clientOptions: { apiClient: 'genkit' } })],
   });
 } else {
   console.warn(`
