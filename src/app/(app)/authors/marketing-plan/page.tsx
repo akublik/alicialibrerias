@@ -1,7 +1,7 @@
 // src/app/(app)/authors/marketing-plan/page.tsx
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -10,10 +10,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Wand2, Bot } from "lucide-react";
+import { Loader2, Wand2, Bot, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { Separator } from '@/components/ui/separator';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -26,8 +29,11 @@ type MarketingPlanFormValues = z.infer<typeof marketingPlanFormSchema>;
 
 export default function MarketingPlanPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
   const { toast } = useToast();
+  const planContentRef = useRef<HTMLDivElement>(null);
+
 
   const form = useForm<MarketingPlanFormValues>({
     resolver: zodResolver(marketingPlanFormSchema),
@@ -45,6 +51,56 @@ export default function MarketingPlanPage() {
       toast({ title: "Error al generar el plan", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!planContentRef.current || !marketingPlan) return;
+    setIsDownloading(true);
+
+    try {
+      const canvas = await html2canvas(planContentRef.current, { 
+        scale: 2, 
+        backgroundColor: null,
+        useCORS: true,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF({
+        orientation: 'p',
+        unit: 'px',
+        format: 'a4',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const ratio = canvasWidth / canvasHeight;
+      const imgWidth = pdfWidth;
+      const imgHeight = imgWidth / ratio;
+      
+      let position = 0;
+      let heightLeft = imgHeight;
+      const pageMargin = 20;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+      
+      const title = form.getValues('title').replace(/ /g, '_');
+      pdf.save(`Plan_Marketing_${title}.pdf`);
+    } catch (error) {
+        console.error("Error creating PDF:", error);
+        toast({ title: "Error al descargar PDF", description: "No se pudo generar el archivo PDF.", variant: "destructive" });
+    } finally {
+        setIsDownloading(false);
     }
   };
 
@@ -96,49 +152,63 @@ export default function MarketingPlanPage() {
             )}
             
             {marketingPlan && (
-                <div className="space-y-6">
-                    <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-xl">Slogan Sugerido</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <blockquote className="border-l-4 border-primary pl-4 text-lg italic text-foreground">
-                                {marketingPlan.slogan}
-                            </blockquote>
-                        </CardContent>
-                    </Card>
-                    <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-xl">Análisis de Público Objetivo</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-muted-foreground whitespace-pre-line">
-                           {marketingPlan.targetAudienceAnalysis}
-                        </CardContent>
-                    </Card>
-                     <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-xl">Estrategias de Lanzamiento</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                           {marketingPlan.launchStrategies.map((strategy, index) => (
-                               <p key={index} className="text-muted-foreground">{index + 1}. {strategy}</p>
-                           ))}
-                        </CardContent>
-                    </Card>
-                    <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-headline text-xl">Ejemplos de Publicaciones para Redes Sociales</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                           {marketingPlan.socialMediaPosts.map((post, index) => (
-                               <div key={index}>
-                                   <p className="text-foreground bg-muted p-4 rounded-md whitespace-pre-line">{post}</p>
-                                   {index < marketingPlan.socialMediaPosts.length - 1 && <Separator className="mt-6" />}
-                               </div>
-                           ))}
-                        </CardContent>
-                    </Card>
+              <div className="space-y-6">
+                <div ref={planContentRef} className="bg-background p-8 rounded-lg">
+                    <div className="text-center mb-8">
+                        <h2 className="font-headline text-3xl font-bold text-primary">Plan de Marketing para:</h2>
+                        <h3 className="text-2xl font-semibold text-foreground">{form.getValues('title')}</h3>
+                        <p className="text-muted-foreground">por {form.getValues('author')}</p>
+                    </div>
+
+                    <div className="space-y-6">
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-headline text-xl">Slogan Sugerido</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <blockquote className="border-l-4 border-primary pl-4 text-lg italic text-foreground">
+                                    {marketingPlan.slogan}
+                                </blockquote>
+                            </CardContent>
+                        </Card>
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-headline text-xl">Análisis de Público Objetivo</CardTitle>
+                            </CardHeader>
+                            <CardContent className="text-muted-foreground whitespace-pre-wrap">
+                               {marketingPlan.targetAudienceAnalysis}
+                            </CardContent>
+                        </Card>
+                         <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-headline text-xl">Estrategias de Lanzamiento</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                               {marketingPlan.launchStrategies.map((strategy, index) => (
+                                   <p key={index} className="text-muted-foreground">{index + 1}. {strategy}</p>
+                               ))}
+                            </CardContent>
+                        </Card>
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-headline text-xl">Ejemplos de Publicaciones para Redes Sociales</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                               {marketingPlan.socialMediaPosts.map((post, index) => (
+                                   <div key={index}>
+                                       <p className="text-foreground bg-muted p-4 rounded-md whitespace-pre-wrap">{post}</p>
+                                       {index < marketingPlan.socialMediaPosts.length - 1 && <Separator className="mt-6" />}
+                                   </div>
+                               ))}
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
+                <Button onClick={handleDownloadPdf} disabled={isDownloading} className="w-full mt-4">
+                  {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  {isDownloading ? 'Descargando PDF...' : 'Descargar como PDF'}
+                </Button>
+              </div>
             )}
         </div>
       </div>
