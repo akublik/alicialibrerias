@@ -2,9 +2,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, Bot, Target, Megaphone, UserPlus, LayoutDashboard } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ArrowRight, UserPlus, LayoutDashboard, BookCopy, Rocket, Wand2, BarChart2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from 'react';
 import type { User } from '@/types';
 
@@ -23,79 +24,144 @@ export default function AuthorsHomePage() {
     }
   }, []);
 
-  const features = [
+  const benefits = [
     {
-      icon: Bot,
-      title: "Generación por IA",
-      description: "Crea un plan de marketing completo en segundos, analizando los detalles de tu libro para ofrecerte las mejores estrategias."
+      icon: BookCopy,
+      title: "Publicación Profesional",
+      items: ["Digital + Impresión bajo demanda", "Control total sobre tu libro y ventas"]
     },
     {
-      icon: Target,
-      title: "Análisis de Audiencia",
-      description: "Descubre quiénes son tus lectores ideales y cómo llegar a ellos de manera efectiva a través de diferentes canales."
+      icon: Rocket,
+      title: "Experiencia de Lanzamiento Real",
+      items: ["Eventos con librerías asociadas", "Streaming y firma de libros", "Actividades con lectores"]
     },
     {
-      icon: Megaphone,
-      title: "Contenido para Redes",
-      description: "Obtén publicaciones listas para usar en tus redes sociales, diseñadas para captar la atención y generar expectación."
+      icon: Wand2,
+      title: "Marketing y Comunidad",
+      items: ["Asistente IA de lanzamiento", "Generador de booktrailers y piezas gráficas", "Conexión directa con tu público"]
+    },
+    {
+      icon: BarChart2,
+      title: "Métricas y Seguimiento",
+      items: ["Panel en tiempo real con ventas y visitas", "Sugerencias de IA para mejorar tu estrategia"]
     }
   ];
+  
+  const timelineSteps = [
+    { number: "01", title: "Sube tu Manuscrito", description: "Prepara tu obra para publicación digital e impresión bajo demanda." },
+    { number: "02", title: "Plan de Lanzamiento con IA", description: "Obtén un checklist y un plan de marketing personalizado para tu libro." },
+    { number: "03", title: "Publicación", description: "Tu libro disponible en alicialibros.com y en nuestra red de librerías asociadas." },
+    { number: "04", title: "Evento de Lanzamiento", description: "Organiza firmas de libros, presentaciones y eventos en streaming." },
+    { number: "05", title: "Post-Lanzamiento", description: "Interactúa con tu comunidad, gestiona reseñas y analiza tus métricas de venta." },
+  ];
+
+  const renderAuthButtons = () => {
+    if (isAuthenticated && user?.role === 'author') {
+      return (
+        <Link href="/authors/dashboard">
+          <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
+            Ir a mi Panel de Autor <LayoutDashboard className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+      );
+    }
+    return (
+      <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <Link href="/author-register">
+          <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+            Publica tu libro hoy <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
+        </Link>
+        <Link href="/author-login">
+          <Button size="lg" variant="outline" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow w-full sm:w-auto">
+            Ya soy autor, ingresar
+          </Button>
+        </Link>
+      </div>
+    );
+  };
+
 
   return (
     <div className="animate-fadeIn">
-      <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
-            Centro de Autores
+      <section className="relative py-20 md:py-32 overflow-hidden bg-background">
+         <div className="absolute inset-0 z-0 opacity-10">
+            <Image
+                src="https://placehold.co/1920x1080.png"
+                alt="Autor recibiendo su primer libro"
+                layout="fill"
+                objectFit="cover"
+                data-ai-hint="author receiving book"
+                className="scale-125"
+            />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/80 to-background/50 z-10"></div>
+        <div className="container mx-auto px-4 text-center relative z-20">
+          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary drop-shadow-md">
+            No solo publiques tu libro… ¡lánzalo y conecta con tu comunidad!
           </h1>
           <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
-            Potencia el lanzamiento de tu libro con nuestra herramienta de marketing inteligente. Genera un plan completo, desde eslóganes hasta publicaciones en redes sociales, todo con la ayuda de la IA.
+            Alicialibros.com te permite publicar digital y físico, organizar eventos de lanzamiento y vivir la experiencia completa de tu libro.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {isAuthenticated && user?.role === 'author' ? (
-               <Link href="/authors/dashboard">
-                <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                  Ir a mi Panel de Autor <LayoutDashboard className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/author-login">
-                  <Button size="lg" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                    Crear mi Plan de Marketing <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-                 <Link href="/author-register">
-                  <Button size="lg" variant="secondary" className="font-body text-base px-8 py-6 shadow-lg hover:shadow-xl transition-shadow">
-                    Regístrate gratis como autor <UserPlus className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
+          {renderAuthButtons()}
         </div>
       </section>
 
-       <section className="py-16 bg-background">
+       <section className="py-16 bg-muted/30">
         <div className="container mx-auto px-4">
-          <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">¿Cómo te ayudamos a lanzar tu libro?</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature, index) => (
-              <Card key={index} className="text-center shadow-md hover:shadow-xl transition-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {benefits.map((benefit, index) => (
+              <Card key={index} className="text-center shadow-md hover:shadow-xl transition-shadow bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
-                    <feature.icon className="h-6 w-6" />
+                    <benefit.icon className="h-6 w-6" />
                   </div>
-                  <CardTitle className="font-headline text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="font-headline text-xl">{benefit.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                        {benefit.items.map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       </section>
+      
+      <section className="py-16 bg-background">
+        <div className="container mx-auto px-4">
+            <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Cómo Funciona</h2>
+            <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-1/2 top-4 hidden h-full w-0.5 bg-primary/20 md:block" aria-hidden="true"></div>
+                <div className="space-y-12 md:space-y-0">
+                    {timelineSteps.map((step, index) => (
+                        <div key={index} className="relative">
+                            <div className="flex flex-col md:flex-row items-center">
+                                <div className="flex md:w-1/2 justify-center md:justify-end md:pr-8 order-1 md:order-none">
+                                    <div className="w-full max-w-sm">
+                                        <Card className="shadow-lg">
+                                            <CardContent className="p-6">
+                                                <h3 className="font-headline text-xl font-semibold text-primary mb-2">{step.number}. {step.title}</h3>
+                                                <p className="text-muted-foreground">{step.description}</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </div>
+                                <div className="flex-shrink-0 order-first md:order-none">
+                                    <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg shadow-md z-10 relative">
+                                        {step.number}
+                                    </div>
+                                </div>
+                                <div className="md:w-1/2 md:pl-8 order-2"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    </section>
     </div>
   );
 }
