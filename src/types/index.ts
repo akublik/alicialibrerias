@@ -78,7 +78,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'superadmin' | 'library' | 'reader';
+  role: 'superadmin' | 'library' | 'reader' | 'author';
   libraryId?: string; // Only for 'library' role
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
@@ -185,6 +185,12 @@ export interface Author {
   dataAiHint?: string;
   countries: string[];
   createdAt: any;
+  instagram?: string;
+  facebook?: string;
+  x?: string;
+  tiktok?: string;
+  youtube?: string;
+  website?: string;
 }
 
 export interface SecondaryBannerSlide {

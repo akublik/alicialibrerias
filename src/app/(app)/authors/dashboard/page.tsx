@@ -8,21 +8,24 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import type { User, Author, Book } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
 import { BookCard } from '@/components/BookCard';
-import { collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { slugify } from '@/lib/utils';
 
 const marketingPlanFormSchema = z.object({
@@ -36,6 +39,12 @@ type MarketingPlanFormValues = z.infer<typeof marketingPlanFormSchema>;
 const authorProfileFormSchema = z.object({
     bio: z.string().min(10, { message: "La biografía debe tener al menos 10 caracteres." }),
     imageUrl: z.string().url({ message: "Debe ser una URL de imagen válida." }).optional().or(z.literal('')),
+    website: z.string().url({ message: "URL de sitio web no válida." }).optional().or(z.literal('')),
+    instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
+    facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
+    x: z.string().url({ message: "URL de X (Twitter) no válida." }).optional().or(z.literal('')),
+    tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
+    youtube: z.string().url({ message: "URL de YouTube no válida." }).optional().or(z.literal('')),
 });
 type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 
@@ -43,11 +52,15 @@ type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 export default function AuthorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
   const [authorBooks, setAuthorBooks] = useState<Book[]>([]);
+
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -60,7 +73,7 @@ export default function AuthorDashboardPage() {
 
   const profileForm = useForm<AuthorProfileFormValues>({
       resolver: zodResolver(authorProfileFormSchema),
-      defaultValues: { bio: "", imageUrl: "" },
+      defaultValues: { bio: "", imageUrl: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -68,8 +81,20 @@ export default function AuthorDashboardPage() {
           const q = query(collection(db, "authors"), where("name", "==", userData.name), limit(1));
           const authorSnapshot = await getDocs(q);
           if (!authorSnapshot.empty) {
-              const authorData = {id: authorSnapshot.docs[0].id, ...authorSnapshot.docs[0].data()} as Author;
+              const authorDoc = authorSnapshot.docs[0];
+              const authorData = {id: authorDoc.id, ...authorDoc.data()} as Author;
               setAuthorProfile(authorData);
+              setImagePreview(authorData.imageUrl);
+              profileForm.reset({
+                  bio: authorData.bio || "",
+                  imageUrl: authorData.imageUrl || "",
+                  website: authorData.website || "",
+                  instagram: authorData.instagram || "",
+                  facebook: authorData.facebook || "",
+                  x: authorData.x || "",
+                  tiktok: authorData.tiktok || "",
+                  youtube: authorData.youtube || "",
+              });
               
               const booksQuery = query(collection(db, "books"), where("authors", "array-contains", authorData.name));
               const booksSnapshot = await getDocs(booksQuery);
@@ -104,7 +129,7 @@ export default function AuthorDashboardPage() {
         }
     };
     checkAuthAndFetchData();
-  }, [router, marketingForm]);
+  }, [router, marketingForm, profileForm]);
 
   const handleLogout = () => {
     if (auth) {
@@ -130,31 +155,79 @@ export default function AuthorDashboardPage() {
     }
   };
   
+  const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          setProfileImageFile(file);
+          const reader = new FileReader();
+          reader.onloadend = () => setImagePreview(reader.result as string);
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const uploadFile = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (!storage) { reject(new Error("Firebase Storage no está configurado.")); return; }
+      const storageRef = ref(storage, `author_profiles/${Date.now()}-${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      uploadTask.on('state_changed',
+        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
+        (error) => { console.error(`Error de subida:`, error); reject(error); },
+        async () => {
+          try {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          } catch (error) { reject(error); }
+        }
+      );
+    });
+  };
+
   const onSubmitAuthorProfile = async (values: AuthorProfileFormValues) => {
     if (!user || !db) return;
-    setIsCreatingProfile(true);
+    setIsSavingProfile(true);
+    setUploadProgress(0);
+
     try {
-        await addDoc(collection(db, "authors"), {
+        let finalImageUrl = values.imageUrl || '';
+        if (profileImageFile) {
+            finalImageUrl = await uploadFile(profileImageFile);
+        }
+
+        const data = {
             name: user.name,
             bio: values.bio,
-            imageUrl: values.imageUrl || `https://placehold.co/200x200.png?text=${user.name.charAt(0)}`,
             slug: slugify(user.name),
-            countries: [],
-            createdAt: serverTimestamp(),
-        });
-        toast({ title: "¡Perfil Creado!", description: "Tu perfil de autor ahora es público." });
-        await fetchAuthorData(user); // Re-fetch author data to update UI
+            imageUrl: finalImageUrl || `https://placehold.co/200x200.png?text=${user.name.charAt(0)}`,
+            website: values.website,
+            instagram: values.instagram,
+            facebook: values.facebook,
+            x: values.x,
+            tiktok: values.tiktok,
+            youtube: values.youtube,
+        };
+
+        if (authorProfile) {
+            // Update existing profile
+            const authorRef = doc(db, "authors", authorProfile.id);
+            await updateDoc(authorRef, data);
+            toast({ title: "¡Perfil Actualizado!", description: "Tu perfil de autor ha sido actualizado." });
+        } else {
+            // Create new profile
+            await addDoc(collection(db, "authors"), { ...data, createdAt: serverTimestamp(), countries: [] });
+            toast({ title: "¡Perfil Creado!", description: "Tu perfil de autor ahora es público." });
+        }
+        await fetchAuthorData(user);
     } catch (error: any) {
-        toast({ title: "Error al crear perfil", description: error.message, variant: "destructive" });
+        toast({ title: "Error al guardar perfil", description: error.message, variant: "destructive" });
     } finally {
-        setIsCreatingProfile(false);
+        setIsSavingProfile(false);
     }
   }
 
   const handleDownloadPdf = async () => {
     if (!planContentRef.current || !marketingPlan) return;
     setIsDownloading(true);
-
     try {
       const canvas = await html2canvas(planContentRef.current, { scale: 2, backgroundColor: null, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
@@ -169,17 +242,14 @@ export default function AuthorDashboardPage() {
       
       let position = 0;
       let heightLeft = imgHeight;
-
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
-
       while (heightLeft > 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
         heightLeft -= pdfHeight;
       }
-      
       const title = marketingForm.getValues('title').replace(/ /g, '_');
       pdf.save(`Plan_Marketing_${title}.pdf`);
     } catch (error) {
@@ -211,10 +281,10 @@ export default function AuthorDashboardPage() {
         </Button>
       </header>
 
-      <Tabs defaultValue="marketing" className="w-full">
+      <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
+            <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketing" className="mt-6">
@@ -267,55 +337,58 @@ export default function AuthorDashboardPage() {
 
         <TabsContent value="profile" className="mt-6">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <div className="md:col-span-1">
-                   {authorProfile ? (
-                       <Card className="shadow-lg">
-                           <CardHeader className="p-0">
-                               <div className="relative aspect-square">
-                                   <Image src={authorProfile.imageUrl} alt={authorProfile.name} layout="fill" objectFit="cover" className="rounded-t-lg"/>
-                               </div>
-                           </CardHeader>
-                           <CardContent className="p-4 text-center">
-                               <h2 className="font-headline text-2xl font-bold">{authorProfile.name}</h2>
-                               <p className="text-sm text-muted-foreground mt-2">{authorProfile.bio.substring(0, 150)}...</p>
-                           </CardContent>
-                           <CardFooter>
-                               <Button variant="outline" className="w-full" disabled>Editar Perfil (Próximamente)</Button>
-                           </CardFooter>
-                       </Card>
-                   ) : (
-                       <Card className="shadow-lg">
-                            <CardHeader>
-                                <CardTitle>Crea tu Perfil de Autor</CardTitle>
-                                <CardDescription>Este perfil será público. ¡Haz que sea genial!</CardDescription>
-                            </CardHeader>
-                           <CardContent>
-                               <Form {...profileForm}>
-                                   <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-4">
-                                        <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de tu foto de perfil</FormLabel><FormControl><Input {...field} placeholder="https://ejemplo.com/tu-foto.jpg"/></FormControl><FormMessage /></FormItem> )}/>
-                                        <Button type="submit" className="w-full" disabled={isCreatingProfile}>
-                                            {isCreatingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                            {isCreatingProfile ? "Creando Perfil..." : "Crear Perfil"}
-                                        </Button>
-                                   </form>
-                               </Form>
-                           </CardContent>
-                       </Card>
-                   )}
-                   <Card className="mt-8 shadow-lg">
-                       <CardHeader><CardTitle className="font-headline text-lg flex items-center"><LinkIcon className="mr-2 h-5 w-5"/>Enlaces Públicos</CardTitle></CardHeader>
-                       <CardContent className="space-y-2 text-sm">
-                           <p className="text-muted-foreground">Aquí aparecerán tus enlaces a redes sociales, web, etc. (Próximamente)</p>
+               <div className="md:col-span-2">
+                   <Card className="shadow-lg">
+                       <CardHeader>
+                           <CardTitle>Tu Perfil de Autor</CardTitle>
+                           <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva!</CardDescription>
+                       </CardHeader>
+                       <CardContent>
+                           <Form {...profileForm}>
+                               <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
+                                    <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
+                                    
+                                    <div className="space-y-2">
+                                        <Label>Tu foto de perfil</Label>
+                                        <div className="flex items-center gap-4">
+                                            {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
+                                            <div className="flex-grow space-y-2">
+                                                <FormField control={profileForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground">URL de la foto (si no subes una)</FormLabel><FormControl><Input {...field} placeholder="https://ejemplo.com/tu-foto.jpg"/></FormControl><FormMessage /></FormItem> )}/>
+                                                <div className="space-y-2">
+                                                  <Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">O sube un archivo nuevo (recomendado)</Label>
+                                                  <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</FormLabel><FormControl><Input {...field} placeholder="https://instagram.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Facebook className="h-4 w-4"/>Facebook</FormLabel><FormControl><Input {...field} placeholder="https://facebook.com/tu-pagina" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="x" render={({ field }) => ( <FormItem><FormLabel>X (Twitter)</FormLabel><FormControl><Input {...field} placeholder="https://x.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>TikTok</FormLabel><FormControl><Input {...field} placeholder="https://tiktok.com/@tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                    </div>
+                                    
+                                    {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
+                                    
+                                    <Button type="submit" className="w-full" disabled={isSavingProfile}>
+                                        {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                        {isSavingProfile ? "Guardando Perfil..." : (authorProfile ? "Actualizar Perfil" : "Crear Perfil")}
+                                    </Button>
+                               </form>
+                           </Form>
                        </CardContent>
                    </Card>
                </div>
-               <div className="md:col-span-2">
+               <div className="md:col-span-1">
                    <Card className="shadow-lg">
                        <CardHeader><CardTitle className="font-headline text-lg flex items-center"><BookOpen className="mr-2 h-5 w-5"/>Tus Libros Publicados</CardTitle></CardHeader>
                        <CardContent>
                            {authorBooks.length > 0 ? (
-                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                               <div className="grid grid-cols-2 gap-4">
                                    {authorBooks.map(book => <BookCard key={book.id} book={book} size="small" />)}
                                </div>
                            ) : (

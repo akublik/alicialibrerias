@@ -8,10 +8,17 @@ import Link from 'next/link';
 import type { Author, Book } from '@/types';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import { Loader2, ArrowLeft, BookOpen, User } from 'lucide-react';
+import { Loader2, ArrowLeft, BookOpen, User, Instagram, Facebook, Globe, Youtube, Clapperboard, XIcon, ExternalLink } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { BookCard } from '@/components/BookCard';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Button } from './ui/button';
+import { Separator } from './ui/separator';
+
+const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 8v5a5 5 0 0 1-5 5H8.5a4.5 4.5 0 0 1 0-9H13v5a2 2 0 0 0 2 2h3"></path></svg>
+);
+
 
 interface AuthorPageClientProps {
   slug: string;
@@ -138,6 +145,22 @@ export default function AuthorPageClient({ slug }: AuthorPageClientProps) {
             <CardContent className="p-6 text-center">
                <h1 className="font-headline text-3xl font-bold text-primary">{author.name}</h1>
             </CardContent>
+             {(author.instagram || author.facebook || author.x || author.tiktok || author.youtube || author.website) && (
+              <>
+                <Separator />
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-semibold text-center text-muted-foreground mb-3">Sigue al Autor</h3>
+                  <div className="flex justify-center flex-wrap gap-2">
+                    {author.website && <Button asChild variant="outline" size="icon"><a href={author.website} target="_blank" rel="noopener noreferrer"><Globe className="h-5 w-5" /></a></Button>}
+                    {author.instagram && <Button asChild variant="outline" size="icon"><a href={author.instagram} target="_blank" rel="noopener noreferrer"><Instagram className="h-5 w-5" /></a></Button>}
+                    {author.facebook && <Button asChild variant="outline" size="icon"><a href={author.facebook} target="_blank" rel="noopener noreferrer"><Facebook className="h-5 w-5" /></a></Button>}
+                    {author.x && <Button asChild variant="outline" size="icon"><a href={author.x} target="_blank" rel="noopener noreferrer"><XIcon className="h-5 w-5" /></a></Button>}
+                    {author.tiktok && <Button asChild variant="outline" size="icon"><a href={author.tiktok} target="_blank" rel="noopener noreferrer"><TikTokIcon className="h-5 w-5" /></a></Button>}
+                    {author.youtube && <Button asChild variant="outline" size="icon"><a href={author.youtube} target="_blank" rel="noopener noreferrer"><Youtube className="h-5 w-5" /></a></Button>}
+                  </div>
+                </CardContent>
+              </>
+            )}
           </Card>
         </div>
         
