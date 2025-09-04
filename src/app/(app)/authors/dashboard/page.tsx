@@ -373,7 +373,7 @@ export default function AuthorDashboardPage() {
                        <Card className="shadow-lg">
                            <CardHeader>
                                <CardTitle>Tu Perfil de Autor</CardTitle>
-                               <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva!</CardDescription>
+                               <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva! <strong className="font-semibold text-foreground/90">Esta información también ayudará a crear tu plan de marketing.</strong></CardDescription>
                            </CardHeader>
                            <CardContent>
                                <Form {...profileForm}>
