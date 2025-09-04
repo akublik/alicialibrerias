@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
+import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -27,6 +28,8 @@ import { BookCard } from '@/components/BookCard';
 import { collection, query, where, getDocs, limit, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { slugify } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { bookCategories } from '@/lib/options';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -47,12 +50,21 @@ const authorProfileFormSchema = z.object({
 });
 type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 
+const marketAnalysisFormSchema = z.object({
+    genre: z.string().min(1, { message: "Debes seleccionar un género." }),
+    bookTitle: z.string().min(3, { message: "El título de referencia es requerido." }),
+});
+type MarketAnalysisFormValues = z.infer<typeof marketAnalysisFormSchema>;
+
 
 export default function AuthorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
+  const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysisOutput | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
   const [authorBooks, setAuthorBooks] = useState<Book[]>([]);
@@ -73,6 +85,11 @@ export default function AuthorDashboardPage() {
   const profileForm = useForm<AuthorProfileFormValues>({
       resolver: zodResolver(authorProfileFormSchema),
       defaultValues: { bio: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "" },
+  });
+  
+  const analysisForm = useForm<MarketAnalysisFormValues>({
+      resolver: zodResolver(marketAnalysisFormSchema),
+      defaultValues: { genre: "", bookTitle: "" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -96,7 +113,15 @@ export default function AuthorDashboardPage() {
               
               const booksQuery = query(collection(db, "books"), where("authors", "array-contains", authorData.name));
               const booksSnapshot = await getDocs(booksQuery);
-              setAuthorBooks(booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
+              const fetchedBooks = booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book));
+              setAuthorBooks(fetchedBooks);
+
+              if (fetchedBooks.length > 0) {
+                  analysisForm.setValue("bookTitle", fetchedBooks[0].title);
+                  if (fetchedBooks[0].categories && fetchedBooks[0].categories.length > 0) {
+                      analysisForm.setValue("genre", fetchedBooks[0].categories[0]);
+                  }
+              }
           } else {
               setAuthorProfile(null);
           }
@@ -127,7 +152,7 @@ export default function AuthorDashboardPage() {
         }
     };
     checkAuthAndFetchData();
-  }, [router, marketingForm]);
+  }, [router, marketingForm, analysisForm]);
 
   const handleLogout = () => {
     if (auth) {
@@ -164,6 +189,23 @@ export default function AuthorDashboardPage() {
     }
   };
   
+  const onSubmitAnalysis = async (values: MarketAnalysisFormValues) => {
+    setIsAnalyzing(true);
+    setMarketAnalysis(null);
+    try {
+      const result = await analyzeMarketAndCompetition({
+          authorGenre: values.genre,
+          authorBookTitle: values.bookTitle
+      });
+      setMarketAnalysis(result);
+      toast({ title: "¡Análisis Completado!", description: "Las tendencias y sugerencias están listas." });
+    } catch (error: any) {
+      toast({ title: "Error al analizar", description: error.message, variant: "destructive" });
+    } finally {
+        setIsAnalyzing(false);
+    }
+  }
+
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
@@ -177,9 +219,8 @@ export default function AuthorDashboardPage() {
   const uploadFile = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('path', 'author_profiles'); // Firebase Storage subfolder
+    formData.append('path', 'author_profiles');
 
-    // Reset progress for new upload
     setUploadProgress(0);
 
     return new Promise((resolve, reject) => {
@@ -199,17 +240,11 @@ export default function AuthorDashboardPage() {
                 resolve(response.downloadURL);
             } else {
                 let errorMsg = "Error en la subida.";
-                try {
-                   errorMsg = JSON.parse(xhr.responseText).error || errorMsg;
-                } catch(e) { /* Ignore parsing error */ }
+                try { errorMsg = JSON.parse(xhr.responseText).error || errorMsg; } catch(e) {}
                 reject(new Error(errorMsg));
             }
         };
-
-        xhr.onerror = () => {
-            reject(new Error("Error de red durante la subida de la imagen."));
-        };
-        
+        xhr.onerror = () => reject(new Error("Error de red durante la subida."));
         xhr.send(formData);
     });
   };
@@ -239,12 +274,10 @@ export default function AuthorDashboardPage() {
         };
 
         if (authorProfile) {
-            // Update existing profile
             const authorRef = doc(db, "authors", authorProfile.id);
             await updateDoc(authorRef, data);
             toast({ title: "¡Perfil Actualizado!", description: "Tu perfil de autor ha sido actualizado." });
         } else {
-            // Create new profile
             await addDoc(collection(db, "authors"), { ...data, createdAt: serverTimestamp(), countries: [] });
             toast({ title: "¡Perfil Creado!", description: "Tu perfil de autor ahora es público." });
         }
@@ -299,33 +332,24 @@ export default function AuthorDashboardPage() {
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
       <header className="mb-8 flex justify-between items-center">
         <div>
-          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">
-            Panel de Autor
-          </h1>
-          <p className="text-lg text-foreground/80">
-            Bienvenido/a, {user.name}.
-          </p>
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Panel de Autor</h1>
+          <p className="text-lg text-foreground/80">Bienvenido/a, {user.name}.</p>
         </div>
-        <Button onClick={handleLogout} variant="outline">
-          <LogOut className="mr-2 h-4 w-4" />
-          Cerrar Sesión
-        </Button>
+        <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
       </header>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
+            <TabsTrigger value="analysis">Tendencias y Competencia</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketing" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                    <Card className="sticky top-24 shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary" />Crea tu Plan de Marketing</CardTitle>
-                      <CardDescription>Ingresa los detalles de tu libro y la IA creará un plan de lanzamiento a tu medida.</CardDescription>
-                    </CardHeader>
+                    <CardHeader><CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary" />Crea tu Plan de Marketing</CardTitle><CardDescription>Ingresa los detalles de tu libro y la IA creará un plan de lanzamiento a tu medida.</CardDescription></CardHeader>
                     <CardContent>
                       <Form {...marketingForm}>
                         <form onSubmit={marketingForm.handleSubmit(onSubmitMarketingPlan)} className="space-y-4">
@@ -333,10 +357,7 @@ export default function AuthorDashboardPage() {
                           <FormField control={marketingForm.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={marketingForm.control} name="synopsis" render={({ field }) => ( <FormItem><FormLabel>Sinopsis</FormLabel><FormControl><Textarea {...field} rows={5} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={marketingForm.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Textarea {...field} placeholder="Ej: Jóvenes adultos, amantes de la fantasía..." rows={3} /></FormControl><FormMessage /></FormItem> )} />
-                          <Button type="submit" disabled={isLoading} className="w-full">
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                            {isLoading ? 'Generando...' : 'Generar Plan'}
-                          </Button>
+                          <Button type="submit" disabled={isLoading} className="w-full">{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}{isLoading ? 'Generando...' : 'Generar Plan'}</Button>
                         </form>
                       </Form>
                     </CardContent>
@@ -356,10 +377,7 @@ export default function AuthorDashboardPage() {
                                 <Card className="shadow-md"><CardHeader><CardTitle className="font-headline text-xl">Ejemplos de Publicaciones para Redes Sociales</CardTitle></CardHeader><CardContent className="space-y-6">{marketingPlan.socialMediaPosts.map((post, index) => (<div key={index}><p className="text-foreground bg-muted p-4 rounded-md whitespace-pre-wrap">{post}</p>{index < marketingPlan.socialMediaPosts.length - 1 && <Separator className="mt-6" />}</div>))}</CardContent></Card>
                             </div>
                         </div>
-                        <Button onClick={handleDownloadPdf} disabled={isDownloading} className="w-full mt-4">
-                          {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                          {isDownloading ? 'Descargando PDF...' : 'Descargar como PDF'}
-                        </Button>
+                        <Button onClick={handleDownloadPdf} disabled={isDownloading} className="w-full mt-4">{isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}{isDownloading ? 'Descargando PDF...' : 'Descargar como PDF'}</Button>
                       </div>
                     )}
                 </div>
@@ -371,28 +389,12 @@ export default function AuthorDashboardPage() {
                <div className="md:col-span-2">
                     {authorProfile ? (
                        <Card className="shadow-lg">
-                           <CardHeader>
-                               <CardTitle>Tu Perfil de Autor</CardTitle>
-                               <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva! <strong className="font-semibold text-foreground/90">Esta información también ayudará a crear tu plan de marketing.</strong></CardDescription>
-                           </CardHeader>
+                           <CardHeader><CardTitle>Tu Perfil de Autor</CardTitle><CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva! <strong className="font-semibold text-foreground/90">Esta información también ayudará a crear tu plan de marketing.</strong></CardDescription></CardHeader>
                            <CardContent>
                                <Form {...profileForm}>
                                    <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
                                         <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
-                                        
-                                        <div className="space-y-2">
-                                            <Label>Tu foto de perfil</Label>
-                                            <div className="flex items-center gap-4">
-                                                {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
-                                                <div className="flex-grow space-y-2">
-                                                    <div className="space-y-2">
-                                                      <Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">Sube un archivo nuevo (recomendado)</Label>
-                                                      <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        
+                                        <div className="space-y-2"><Label>Tu foto de perfil</Label><div className="flex items-center gap-4">{imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}<div className="flex-grow space-y-2"><div className="space-y-2"><Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">Sube un archivo nuevo (recomendado)</Label><Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} /></div></div></div></div>
                                         <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
@@ -402,32 +404,20 @@ export default function AuthorDashboardPage() {
                                             <FormField control={profileForm.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>TikTok</FormLabel><FormControl><Input {...field} placeholder="https://tiktok.com/@tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
                                             <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
                                         </div>
-                                        
                                         {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
-                                        
-                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>
-                                            {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                            {isSavingProfile ? "Guardando Perfil..." : "Actualizar Perfil"}
-                                        </Button>
+                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>{isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}{isSavingProfile ? "Guardando Perfil..." : "Actualizar Perfil"}</Button>
                                    </form>
                                </Form>
                            </CardContent>
                        </Card>
                     ) : (
                          <Card className="shadow-lg">
-                           <CardHeader>
-                               <CardTitle>Crea tu Perfil de Autor Público</CardTitle>
-                               <CardDescription>Para que los lectores puedan descubrirte, completa tu perfil. Esta información será visible en la plataforma.</CardDescription>
-                           </CardHeader>
+                           <CardHeader><CardTitle>Crea tu Perfil de Autor Público</CardTitle><CardDescription>Para que los lectores puedan descubrirte, completa tu perfil. Esta información será visible en la plataforma.</CardDescription></CardHeader>
                            <CardContent>
                                <Form {...profileForm}>
                                    <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
                                         <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="profile-image-upload">Tu foto de perfil</Label>
-                                            {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
-                                            <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} required/>
-                                        </div>
+                                        <div className="space-y-2"><Label htmlFor="profile-image-upload">Tu foto de perfil</Label>{imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}<Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} required/></div>
                                          <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
@@ -438,10 +428,7 @@ export default function AuthorDashboardPage() {
                                             <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
                                         </div>
                                         {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
-                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>
-                                            {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                            Crear Perfil
-                                        </Button>
+                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>{isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}Crear Perfil</Button>
                                    </form>
                                </Form>
                            </CardContent>
@@ -449,20 +436,34 @@ export default function AuthorDashboardPage() {
                     )}
                </div>
                <div className="md:col-span-1">
-                   <Card className="shadow-lg">
-                       <CardHeader><CardTitle className="font-headline text-lg flex items-center"><BookOpen className="mr-2 h-5 w-5"/>Tus Libros Publicados</CardTitle></CardHeader>
-                       <CardContent>
-                           {authorBooks.length > 0 ? (
-                               <div className="grid grid-cols-2 gap-4">
-                                   {authorBooks.map(book => <BookCard key={book.id} book={book} size="small" />)}
-                               </div>
-                           ) : (
-                               <p className="text-muted-foreground text-center py-8">Aún no tienes libros publicados en la plataforma.</p>
-                           )}
-                       </CardContent>
+                   <Card className="shadow-lg"><CardHeader><CardTitle className="font-headline text-lg flex items-center"><BookOpen className="mr-2 h-5 w-5"/>Tus Libros Publicados</CardTitle></CardHeader>
+                       <CardContent>{authorBooks.length > 0 ? ( <div className="grid grid-cols-2 gap-4">{authorBooks.map(book => <BookCard key={book.id} book={book} size="small" />)}</div> ) : ( <p className="text-muted-foreground text-center py-8">Aún no tienes libros publicados en la plataforma.</p> )}</CardContent>
                    </Card>
                </div>
            </div>
+        </TabsContent>
+        
+        <TabsContent value="analysis" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader><CardTitle className="font-headline text-2xl flex items-center"><BarChart2 className="mr-2 h-6 w-6 text-primary"/>Análisis de Mercado y Competencia</CardTitle><CardDescription>Obtén una ventaja estratégica. Selecciona tu género y un libro de referencia para que la IA genere un análisis detallado.</CardDescription></CardHeader>
+            <CardContent>
+              <Form {...analysisForm}>
+                <form onSubmit={analysisForm.handleSubmit(onSubmitAnalysis)} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <FormField control={analysisForm.control} name="genre" render={({ field }) => ( <FormItem><FormLabel>Género Principal</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un género"/></SelectTrigger></FormControl><SelectContent>{bookCategories.map(c => <SelectItem key={c.value} value={c.label}>{c.label}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                    <FormField control={analysisForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Libro de Referencia</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona un libro"/></SelectTrigger></FormControl><SelectContent>{authorBooks.map(b => <SelectItem key={b.id} value={b.title}>{b.title}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                    <Button type="submit" disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}Analizar Mercado</Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+          {isAnalyzing && (<div className="flex flex-col items-center justify-center text-center p-8 mt-6 bg-card rounded-lg shadow-md"><Loader2 className="h-12 w-12 text-primary animate-spin mb-4" /><p className="font-headline text-xl text-foreground">Analizando el mercado...</p><p className="text-muted-foreground">La IA está estudiando tendencias y competidores.</p></div>)}
+          {marketAnalysis && (
+            <div className="mt-6 space-y-6 animate-fadeIn">
+              <Card><CardHeader><CardTitle>Tendencias del Mercado</CardTitle></CardHeader><CardContent className="space-y-4"><div><h4 className="font-semibold">Géneros en Crecimiento</h4><p className="text-muted-foreground">{marketAnalysis.marketTrends.growingGenres.join(', ')}</p></div><div><h4 className="font-semibold">Perfil del Lector Objetivo</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.marketTrends.targetAudienceProfile}</p></div><div><h4 className="font-semibold">Precio Promedio</h4><p className="text-muted-foreground">{marketAnalysis.marketTrends.averagePrice}</p></div></CardContent></Card>
+              <Card><CardHeader><CardTitle>Análisis de Competencia</CardTitle></CardHeader><CardContent className="space-y-4"><div><h4 className="font-semibold">Autores Similares</h4><p className="text-muted-foreground">{marketAnalysis.competitorAnalysis.similarAuthors.join(', ')}</p></div><div><h4 className="font-semibold">Análisis de Portadas</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.competitorAnalysis.coverAnalysis}</p></div><div><h4 className="font-semibold">Análisis de Descripciones</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.competitorAnalysis.descriptionAnalysis}</p></div><div><h4 className="font-semibold">Estrategias de Marketing</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.competitorAnalysis.marketingStrategies}</p></div></CardContent></Card>
+              <Card className="bg-primary/5 border-primary/20"><CardHeader><CardTitle>Sugerencias de la IA</CardTitle></CardHeader><CardContent className="space-y-4"><div><h4 className="font-semibold">Tono y Estilo para Diferenciarte</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.toneAndStyle}</p></div><div><h4 className="font-semibold">Diferenciación de Audiencia</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.targetAudienceDifferentiation}</p></div><div><h4 className="font-semibold">Sugerencias Visuales (Portadas)</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.visualSuggestions}</p></div></CardContent></Card>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

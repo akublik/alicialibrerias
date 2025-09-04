@@ -334,3 +334,28 @@ export interface Notification {
   isRead: boolean;
   createdAt: any; // Firestore Timestamp
 }
+
+// Types for Market Analysis Flow
+export interface MarketAnalysisInput {
+    authorGenre: string;
+    authorBookTitle: string;
+}
+
+export interface MarketAnalysisOutput {
+    marketTrends: {
+        growingGenres: string[];
+        targetAudienceProfile: string;
+        averagePrice: string;
+    };
+    competitorAnalysis: {
+        similarAuthors: string[];
+        coverAnalysis: string;
+        descriptionAnalysis: string;
+        marketingStrategies: string;
+    };
+    aiSuggestions: {
+        toneAndStyle: string;
+        targetAudienceDifferentiation: string;
+        visualSuggestions: string;
+    };
+}

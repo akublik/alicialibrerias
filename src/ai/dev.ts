@@ -8,3 +8,4 @@ import '@/ai/flows/tts-flow.ts';
 import '@/ai/flows/converse-with-book.ts';
 import '@/ai/flows/alicia-assistant-chat.ts';
 import '@/ai/flows/generate-marketing-plan.ts';
+import '@/ai/flows/market-analysis.ts';
