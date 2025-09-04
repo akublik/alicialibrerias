@@ -12,11 +12,10 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2 } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
-import { analyzeMarketAndCompetition } from '@/ai/flows/market-analysis';
-import type { MarketAnalysisOutput } from '@/types';
+import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -180,9 +179,10 @@ export default function AuthorDashboardPage() {
             tiktok: authorProfile.tiktok,
             youtube: authorProfile.youtube,
         } : undefined,
+        marketAnalysis,
       });
       setMarketingPlan(result);
-      toast({ title: "¡Plan de Marketing Generado!", description: "Tu plan personalizado está listo." });
+      toast({ title: "¡Plan de Lanzamiento Generado!", description: "Tu plan personalizado está listo." });
     } catch (error: any) {
       toast({ title: "Error al generar el plan", description: error.message, variant: "destructive" });
     } finally {
@@ -313,7 +313,7 @@ export default function AuthorDashboardPage() {
         heightLeft -= pdfHeight;
       }
       const title = marketingForm.getValues('title').replace(/ /g, '_');
-      pdf.save(`Plan_Marketing_${title}.pdf`);
+      pdf.save(`Plan_Lanzamiento_${title}.pdf`);
     } catch (error) {
         console.error("Error creating PDF:", error);
         toast({ title: "Error al descargar PDF", description: "No se pudo generar el archivo PDF.", variant: "destructive" });
@@ -328,26 +328,45 @@ export default function AuthorDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-      <header className="mb-8 flex justify-between items-center">
+      <header className="mb-4 flex justify-between items-center">
         <div>
           <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">Panel de Autor</h1>
           <p className="text-lg text-foreground/80">Bienvenido/a, {user.name}.</p>
         </div>
         <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
       </header>
+      
+      <div className="mb-8 p-4 bg-muted/50 rounded-lg flex items-center justify-center gap-2 md:gap-4 text-center flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-primary">Perfil</span>
+            <ChevronRight className="h-5 w-5 text-muted-foreground"/>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-foreground/80">Análisis</span>
+             <ChevronRight className="h-5 w-5 text-muted-foreground"/>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-foreground/80">Plan</span>
+             <ChevronRight className="h-5 w-5 text-muted-foreground"/>
+          </div>
+           <div className="flex items-center gap-2">
+            <Rocket className="h-5 w-5 text-foreground/60"/>
+            <span className="font-semibold text-foreground/60">Lanzamiento</span>
+          </div>
+      </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
-            <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="analysis">Tendencias y Competencia</TabsTrigger>
+            <TabsTrigger value="marketing">Plan de Lanzamiento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketing" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-1">
                    <Card className="sticky top-24 shadow-lg">
-                    <CardHeader><CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary" />Crea tu Plan de Marketing</CardTitle><CardDescription>Ingresa los detalles de tu libro y la IA creará un plan de lanzamiento a tu medida.</CardDescription></CardHeader>
+                    <CardHeader><CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary" />Crea tu Plan de Lanzamiento</CardTitle><CardDescription>Ingresa los detalles de tu libro y la IA creará un plan a tu medida.</CardDescription></CardHeader>
                     <CardContent>
                       <Form {...marketingForm}>
                         <form onSubmit={marketingForm.handleSubmit(onSubmitMarketingPlan)} className="space-y-4">
@@ -355,7 +374,7 @@ export default function AuthorDashboardPage() {
                           <FormField control={marketingForm.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={marketingForm.control} name="synopsis" render={({ field }) => ( <FormItem><FormLabel>Sinopsis</FormLabel><FormControl><Textarea {...field} rows={5} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={marketingForm.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Textarea {...field} placeholder="Ej: Jóvenes adultos, amantes de la fantasía..." rows={3} /></FormControl><FormMessage /></FormItem> )} />
-                          <Button type="submit" disabled={isLoading} className="w-full">{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}{isLoading ? 'Generando...' : 'Generar Plan'}</Button>
+                          <Button type="submit" disabled={isLoading} className="w-full">{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}{isLoading ? 'Generando...' : 'Generar Plan de Lanzamiento'}</Button>
                         </form>
                       </Form>
                     </CardContent>
@@ -363,11 +382,11 @@ export default function AuthorDashboardPage() {
                 </div>
                 <div className="lg:col-span-2">
                     {isLoading && ( <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[50vh]"><Loader2 className="h-12 w-12 text-primary animate-spin mb-4" /><p className="font-headline text-xl text-foreground">Creando tu plan...</p><p className="text-muted-foreground">La IA está analizando tu libro.</p></div> )}
-                    {!isLoading && !marketingPlan && ( <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[50vh]"><Bot className="h-12 w-12 text-muted-foreground mb-4" /><p className="font-headline text-xl text-foreground">Tu plan de marketing aparecerá aquí</p><p className="text-muted-foreground">Completa el formulario para empezar.</p></div> )}
+                    {!isLoading && !marketingPlan && ( <div className="flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[50vh]"><Bot className="h-12 w-12 text-muted-foreground mb-4" /><p className="font-headline text-xl text-foreground">Tu plan de lanzamiento aparecerá aquí</p><p className="text-muted-foreground">Completa el formulario para empezar.</p></div> )}
                     {marketingPlan && (
                       <div className="space-y-6">
                         <div ref={planContentRef} className="bg-background p-8 rounded-lg">
-                            <div className="text-center mb-8"><h2 className="font-headline text-3xl font-bold text-primary">Plan de Marketing para:</h2><h3 className="text-2xl font-semibold text-foreground">{marketingForm.getValues('title')}</h3><p className="text-muted-foreground">por {marketingForm.getValues('author')}</p></div>
+                            <div className="text-center mb-8"><h2 className="font-headline text-3xl font-bold text-primary">Plan de Lanzamiento para:</h2><h3 className="text-2xl font-semibold text-foreground">{marketingForm.getValues('title')}</h3><p className="text-muted-foreground">por {marketingForm.getValues('author')}</p></div>
                             <div className="space-y-6">
                                 <Card className="shadow-md"><CardHeader><CardTitle className="font-headline text-xl">Slogan Sugerido</CardTitle></CardHeader><CardContent><blockquote className="border-l-4 border-primary pl-4 text-lg italic text-foreground">{marketingPlan.slogan}</blockquote></CardContent></Card>
                                 <Card className="shadow-md"><CardHeader><CardTitle className="font-headline text-xl">Análisis de Público Objetivo</CardTitle></CardHeader><CardContent className="text-muted-foreground whitespace-pre-wrap">{marketingPlan.targetAudienceAnalysis}</CardContent></Card>
