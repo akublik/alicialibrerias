@@ -38,6 +38,10 @@ const nextConfig = {
         protocol: 'http',
         hostname: 'digitalwayltda.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
     ],
   },
 };
