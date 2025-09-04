@@ -85,14 +85,14 @@ export default function AuthorsHomePage() {
   return (
     <div className="animate-fadeIn">
       <section className="relative py-20 md:py-32 overflow-hidden bg-background">
-         <div className="absolute inset-0 z-0 opacity-10">
-            <Image
-                src="https://placehold.co/1920x1080.png"
-                alt="Autor recibiendo su primer libro"
-                layout="fill"
-                objectFit="cover"
-                data-ai-hint="author receiving book"
-                className="scale-125"
+         <div className="absolute inset-0 z-0 opacity-20">
+            <video
+              src="https://videos.pexels.com/video-files/3209828/3209828-hd_1920_1080_25fps.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-cover"
             />
         </div>
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background/80 to-background/50 z-10"></div>
