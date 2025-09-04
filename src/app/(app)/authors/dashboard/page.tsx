@@ -18,15 +18,15 @@ import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/fl
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import type { User, Author, Book } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
 import { BookCard } from '@/components/BookCard';
 import { collection, query, where, getDocs, limit, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { slugify } from '@/lib/utils';
+import { XIcon } from 'lucide-react';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -38,7 +38,6 @@ type MarketingPlanFormValues = z.infer<typeof marketingPlanFormSchema>;
 
 const authorProfileFormSchema = z.object({
     bio: z.string().min(10, { message: "La biografía debe tener al menos 10 caracteres." }),
-    imageUrl: z.string().url({ message: "Debe ser una URL de imagen válida." }).optional().or(z.literal('')),
     website: z.string().url({ message: "URL de sitio web no válida." }).optional().or(z.literal('')),
     instagram: z.string().url({ message: "URL de Instagram no válida." }).optional().or(z.literal('')),
     facebook: z.string().url({ message: "URL de Facebook no válida." }).optional().or(z.literal('')),
@@ -73,7 +72,7 @@ export default function AuthorDashboardPage() {
 
   const profileForm = useForm<AuthorProfileFormValues>({
       resolver: zodResolver(authorProfileFormSchema),
-      defaultValues: { bio: "", imageUrl: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "" },
+      defaultValues: { bio: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -87,7 +86,6 @@ export default function AuthorDashboardPage() {
               setImagePreview(authorData.imageUrl);
               profileForm.reset({
                   bio: authorData.bio || "",
-                  imageUrl: authorData.imageUrl || "",
                   website: authorData.website || "",
                   instagram: authorData.instagram || "",
                   facebook: authorData.facebook || "",
@@ -129,7 +127,7 @@ export default function AuthorDashboardPage() {
         }
     };
     checkAuthAndFetchData();
-  }, [router, marketingForm, profileForm]);
+  }, [router, marketingForm]);
 
   const handleLogout = () => {
     if (auth) {
@@ -165,21 +163,43 @@ export default function AuthorDashboardPage() {
       }
   };
 
-  const uploadFile = (file: File): Promise<string> => {
+  const uploadFile = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', 'author_profiles'); // Firebase Storage subfolder
+
+    // Reset progress for new upload
+    setUploadProgress(0);
+
     return new Promise((resolve, reject) => {
-      if (!storage) { reject(new Error("Firebase Storage no está configurado.")); return; }
-      const storageRef = ref(storage, `author_profiles/${Date.now()}-${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      uploadTask.on('state_changed',
-        (snapshot) => setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100),
-        (error) => { console.error(`Error de subida:`, error); reject(error); },
-        async () => {
-          try {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-          } catch (error) { reject(error); }
-        }
-      );
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/upload-image', true);
+
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                setUploadProgress(percentComplete);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                resolve(response.downloadURL);
+            } else {
+                let errorMsg = "Error en la subida.";
+                try {
+                   errorMsg = JSON.parse(xhr.responseText).error || errorMsg;
+                } catch(e) { /* Ignore parsing error */ }
+                reject(new Error(errorMsg));
+            }
+        };
+
+        xhr.onerror = () => {
+            reject(new Error("Error de red durante la subida de la imagen."));
+        };
+        
+        xhr.send(formData);
     });
   };
 
@@ -189,7 +209,7 @@ export default function AuthorDashboardPage() {
     setUploadProgress(0);
 
     try {
-        let finalImageUrl = values.imageUrl || '';
+        let finalImageUrl = authorProfile?.imageUrl || '';
         if (profileImageFile) {
             finalImageUrl = await uploadFile(profileImageFile);
         }
@@ -338,50 +358,84 @@ export default function AuthorDashboardPage() {
         <TabsContent value="profile" className="mt-6">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                <div className="md:col-span-2">
-                   <Card className="shadow-lg">
-                       <CardHeader>
-                           <CardTitle>Tu Perfil de Autor</CardTitle>
-                           <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva!</CardDescription>
-                       </CardHeader>
-                       <CardContent>
-                           <Form {...profileForm}>
-                               <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
-                                    <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
-                                    
-                                    <div className="space-y-2">
-                                        <Label>Tu foto de perfil</Label>
-                                        <div className="flex items-center gap-4">
-                                            {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
-                                            <div className="flex-grow space-y-2">
-                                                <FormField control={profileForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel className="text-xs text-muted-foreground">URL de la foto (si no subes una)</FormLabel><FormControl><Input {...field} placeholder="https://ejemplo.com/tu-foto.jpg"/></FormControl><FormMessage /></FormItem> )}/>
-                                                <div className="space-y-2">
-                                                  <Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">O sube un archivo nuevo (recomendado)</Label>
-                                                  <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} />
+                    {authorProfile ? (
+                       <Card className="shadow-lg">
+                           <CardHeader>
+                               <CardTitle>Tu Perfil de Autor</CardTitle>
+                               <CardDescription>Esta información será visible públicamente en tu página de autor. ¡Asegúrate de que sea atractiva!</CardDescription>
+                           </CardHeader>
+                           <CardContent>
+                               <Form {...profileForm}>
+                                   <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
+                                        <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
+                                        
+                                        <div className="space-y-2">
+                                            <Label>Tu foto de perfil</Label>
+                                            <div className="flex items-center gap-4">
+                                                {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
+                                                <div className="flex-grow space-y-2">
+                                                    <div className="space-y-2">
+                                                      <Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">Sube un archivo nuevo (recomendado)</Label>
+                                                      <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    
-                                    <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</FormLabel><FormControl><Input {...field} placeholder="https://instagram.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Facebook className="h-4 w-4"/>Facebook</FormLabel><FormControl><Input {...field} placeholder="https://facebook.com/tu-pagina" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="x" render={({ field }) => ( <FormItem><FormLabel>X (Twitter)</FormLabel><FormControl><Input {...field} placeholder="https://x.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>TikTok</FormLabel><FormControl><Input {...field} placeholder="https://tiktok.com/@tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                        <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                    </div>
-                                    
-                                    {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
-                                    
-                                    <Button type="submit" className="w-full" disabled={isSavingProfile}>
-                                        {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
-                                        {isSavingProfile ? "Guardando Perfil..." : (authorProfile ? "Actualizar Perfil" : "Crear Perfil")}
-                                    </Button>
-                               </form>
-                           </Form>
-                       </CardContent>
-                   </Card>
+                                        
+                                        <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</FormLabel><FormControl><Input {...field} placeholder="https://instagram.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Facebook className="h-4 w-4"/>Facebook</FormLabel><FormControl><Input {...field} placeholder="https://facebook.com/tu-pagina" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="x" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><XIcon className="h-4 w-4"/>X (Twitter)</FormLabel><FormControl><Input {...field} placeholder="https://x.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>TikTok</FormLabel><FormControl><Input {...field} placeholder="https://tiktok.com/@tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        </div>
+                                        
+                                        {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
+                                        
+                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>
+                                            {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                            {isSavingProfile ? "Guardando Perfil..." : "Actualizar Perfil"}
+                                        </Button>
+                                   </form>
+                               </Form>
+                           </CardContent>
+                       </Card>
+                    ) : (
+                         <Card className="shadow-lg">
+                           <CardHeader>
+                               <CardTitle>Crea tu Perfil de Autor Público</CardTitle>
+                               <CardDescription>Para que los lectores puedan descubrirte, completa tu perfil. Esta información será visible en la plataforma.</CardDescription>
+                           </CardHeader>
+                           <CardContent>
+                               <Form {...profileForm}>
+                                   <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
+                                        <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="profile-image-upload">Tu foto de perfil</Label>
+                                            {imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}
+                                            <Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} required/>
+                                        </div>
+                                         <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
+                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</FormLabel><FormControl><Input {...field} placeholder="https://instagram.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="facebook" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Facebook className="h-4 w-4"/>Facebook</FormLabel><FormControl><Input {...field} placeholder="https://facebook.com/tu-pagina" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="x" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><XIcon className="h-4 w-4"/>X (Twitter)</FormLabel><FormControl><Input {...field} placeholder="https://x.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="tiktok" render={({ field }) => ( <FormItem><FormLabel>TikTok</FormLabel><FormControl><Input {...field} placeholder="https://tiktok.com/@tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="youtube" render={({ field }) => ( <FormItem><FormLabel>YouTube</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/c/tu-canal" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        </div>
+                                        {isSavingProfile && <Progress value={uploadProgress} className="w-full" />}
+                                        <Button type="submit" className="w-full" disabled={isSavingProfile}>
+                                            {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                            Crear Perfil
+                                        </Button>
+                                   </form>
+                               </Form>
+                           </CardContent>
+                       </Card>
+                    )}
                </div>
                <div className="md:col-span-1">
                    <Card className="shadow-lg">
