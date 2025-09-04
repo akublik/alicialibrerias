@@ -1,4 +1,3 @@
-
 // src/components/layout/Navbar.tsx
 "use client";
 
@@ -192,7 +191,7 @@ export function Navbar() {
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
           <Link href="/" className={cn("transition-colors hover:text-primary", pathname === "/" ? "text-primary font-semibold" : "text-foreground/70")}>Inicio</Link>
           <Link href="/libraries" className={cn("transition-colors hover:text-primary", pathname === "/libraries" ? "text-primary font-semibold" : "text-foreground/70")}>Librerías</Link>
-          <Link href="/authors" className={cn("transition-colors hover:text-primary", pathname === "/authors" ? "text-primary font-semibold" : "text-foreground/70")}>Autores</Link>
+          <Link href="/authors" className={cn("transition-colors hover:text-primary", pathname.startsWith("/authors") ? "text-primary font-semibold" : "text-foreground/70")}>Autores</Link>
           <Link href="/my-library" className={cn("transition-colors hover:text-primary", pathname === "/my-library" ? "text-primary font-semibold" : "text-foreground/70")}>Biblioteca</Link>
           <Link href="/about" className={cn("transition-colors hover:text-primary", pathname === "/about" ? "text-primary font-semibold" : "text-foreground/70")}>Nosotros</Link>
           <Link href="/recommendations" className={cn("transition-colors hover:text-primary", pathname === "/recommendations" ? "text-primary font-semibold" : "text-foreground/70")}>Recomendaciones IA</Link>
@@ -257,7 +256,7 @@ export function Navbar() {
               <nav className="flex flex-col space-y-2 mt-8">
                  <Link href="/" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Home className="h-5 w-5" /><span>Inicio</span></Link>
                  <Link href="/libraries" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/libraries" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Library className="h-5 w-5" /><span>Librerías</span></Link>
-                 <Link href="/authors" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/authors" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><PenSquare className="h-5 w-5" /><span>Autores</span></Link>
+                 <Link href="/authors" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname.startsWith("/authors") ? "bg-accent text-accent-foreground" : "text-foreground/80")}><PenSquare className="h-5 w-5" /><span>Autores</span></Link>
                  <Link href="/my-library" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/my-library" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><BookHeart className="h-5 w-5" /><span>Biblioteca</span></Link>
                  <Link href="/about" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
                  <Link href="/recommendations" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
