@@ -143,7 +143,18 @@ export default function AuthorDashboardPage() {
     setIsLoading(true);
     setMarketingPlan(null);
     try {
-      const result = await generateMarketingPlan(values);
+      const result = await generateMarketingPlan({
+        ...values,
+        authorProfile: authorProfile ? {
+            bio: authorProfile.bio,
+            website: authorProfile.website,
+            instagram: authorProfile.instagram,
+            facebook: authorProfile.facebook,
+            x: authorProfile.x,
+            tiktok: authorProfile.tiktok,
+            youtube: authorProfile.youtube,
+        } : undefined,
+      });
       setMarketingPlan(result);
       toast({ title: "¡Plan de Marketing Generado!", description: "Tu plan personalizado está listo." });
     } catch (error: any) {

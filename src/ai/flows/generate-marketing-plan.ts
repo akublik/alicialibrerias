@@ -11,11 +11,22 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
+const AuthorProfileSchema = z.object({
+  bio: z.string().optional().describe("La biografía del autor."),
+  website: z.string().url().optional().describe("El sitio web del autor."),
+  instagram: z.string().url().optional(),
+  facebook: z.string().url().optional(),
+  x: z.string().url().optional(),
+  tiktok: z.string().url().optional(),
+  youtube: z.string().url().optional(),
+});
+
 const GenerateMarketingPlanInputSchema = z.object({
   title: z.string().describe('El título del libro.'),
   author: z.string().describe('El autor del libro.'),
   synopsis: z.string().describe('La sinopsis o resumen del libro.'),
   targetAudience: z.string().describe('Una descripción del público objetivo del libro.'),
+  authorProfile: AuthorProfileSchema.optional().describe("El perfil del autor, incluyendo biografía y redes sociales."),
 });
 export type GenerateMarketingPlanInput = z.infer<typeof GenerateMarketingPlanInputSchema>;
 
@@ -38,8 +49,15 @@ export async function generateMarketingPlan(input: GenerateMarketingPlanInput): 
 *   **Sinopsis:** ${input.synopsis}
 *   **Público Objetivo:** ${input.targetAudience}
 
+{{#if authorProfile}}
+**Perfil del Autor:**
+*   **Biografía:** ${input.authorProfile.bio || 'No proporcionada'}
+*   **Sitio Web:** ${input.authorProfile.website || 'No proporcionado'}
+*   **Redes Sociales:** {{#if authorProfile.instagram}}Instagram: ${input.authorProfile.instagram} {{/if}}{{#if authorProfile.facebook}}Facebook: ${input.authorProfile.facebook} {{/if}}{{#if authorProfile.x}}X: ${input.authorProfile.x} {{/if}}{{#if authorProfile.tiktok}}TikTok: ${input.authorProfile.tiktok} {{/if}}{{#if authorProfile.youtube}}YouTube: ${input.authorProfile.youtube}{{/if}}
+{{/if}}
+
 **Tu Tarea:**
-Genera un plan de marketing que incluya un eslogan, un análisis del público, tres ejemplos de publicaciones para redes sociales y tres estrategias de lanzamiento. Responde únicamente en el formato JSON solicitado.`,
+Genera un plan de marketing que incluya un eslogan, un análisis del público, tres ejemplos de publicaciones para redes sociales (mencionando las redes del autor si están disponibles) y tres estrategias de lanzamiento. Responde únicamente en el formato JSON solicitado.`,
     output: {
       schema: GenerateMarketingPlanOutputSchema,
     },
