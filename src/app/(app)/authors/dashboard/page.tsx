@@ -10,7 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { Separator } from '@/components/ui/separator';
@@ -22,8 +22,8 @@ import type { User, Author, Book } from '@/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from 'next/image';
 import { BookCard } from '@/components/BookCard';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-
+import { collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
+import { slugify } from '@/lib/utils';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -31,12 +31,19 @@ const marketingPlanFormSchema = z.object({
   synopsis: z.string().min(20, "La sinopsis debe tener al menos 20 caracteres."),
   targetAudience: z.string().min(10, "Describe tu público objetivo."),
 });
-
 type MarketingPlanFormValues = z.infer<typeof marketingPlanFormSchema>;
+
+const authorProfileFormSchema = z.object({
+    bio: z.string().min(10, { message: "La biografía debe tener al menos 10 caracteres." }),
+    imageUrl: z.string().url({ message: "Debe ser una URL de imagen válida." }).optional().or(z.literal('')),
+});
+type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
+
 
 export default function AuthorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
@@ -46,11 +53,33 @@ export default function AuthorDashboardPage() {
   const router = useRouter();
   const planContentRef = useRef<HTMLDivElement>(null);
 
-  const form = useForm<MarketingPlanFormValues>({
+  const marketingForm = useForm<MarketingPlanFormValues>({
     resolver: zodResolver(marketingPlanFormSchema),
     defaultValues: { title: "", author: "", synopsis: "", targetAudience: "" },
   });
+
+  const profileForm = useForm<AuthorProfileFormValues>({
+      resolver: zodResolver(authorProfileFormSchema),
+      defaultValues: { bio: "", imageUrl: "" },
+  });
   
+  const fetchAuthorData = async (userData: User) => {
+      if (db) {
+          const q = query(collection(db, "authors"), where("name", "==", userData.name), limit(1));
+          const authorSnapshot = await getDocs(q);
+          if (!authorSnapshot.empty) {
+              const authorData = {id: authorSnapshot.docs[0].id, ...authorSnapshot.docs[0].data()} as Author;
+              setAuthorProfile(authorData);
+              
+              const booksQuery = query(collection(db, "books"), where("authors", "array-contains", authorData.name));
+              const booksSnapshot = await getDocs(booksQuery);
+              setAuthorBooks(booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
+          } else {
+              setAuthorProfile(null);
+          }
+      }
+  }
+
   useEffect(() => {
     const checkAuthAndFetchData = async () => {
         const authStatus = localStorage.getItem("isAuthenticated") === "true";
@@ -67,28 +96,15 @@ export default function AuthorDashboardPage() {
                 return;
             }
             setUser(userData);
-            form.setValue("author", userData.name);
-
-            // Fetch Author Profile and Books
-            if (db) {
-                const q = query(collection(db, "authors"), where("name", "==", userData.name), limit(1));
-                const authorSnapshot = await getDocs(q);
-                if (!authorSnapshot.empty) {
-                    const authorData = authorSnapshot.docs[0].data() as Author;
-                    setAuthorProfile(authorData);
-                    
-                    const booksQuery = query(collection(db, "books"), where("authors", "array-contains", authorData.name));
-                    const booksSnapshot = await getDocs(booksQuery);
-                    setAuthorBooks(booksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Book)));
-                }
-            }
+            marketingForm.setValue("author", userData.name);
+            await fetchAuthorData(userData);
 
         } else {
             router.push("/author-login");
         }
     };
     checkAuthAndFetchData();
-  }, [router, form]);
+  }, [router, marketingForm]);
 
   const handleLogout = () => {
     if (auth) {
@@ -113,6 +129,27 @@ export default function AuthorDashboardPage() {
       setIsLoading(false);
     }
   };
+  
+  const onSubmitAuthorProfile = async (values: AuthorProfileFormValues) => {
+    if (!user || !db) return;
+    setIsCreatingProfile(true);
+    try {
+        await addDoc(collection(db, "authors"), {
+            name: user.name,
+            bio: values.bio,
+            imageUrl: values.imageUrl || `https://placehold.co/200x200.png?text=${user.name.charAt(0)}`,
+            slug: slugify(user.name),
+            countries: [],
+            createdAt: serverTimestamp(),
+        });
+        toast({ title: "¡Perfil Creado!", description: "Tu perfil de autor ahora es público." });
+        await fetchAuthorData(user); // Re-fetch author data to update UI
+    } catch (error: any) {
+        toast({ title: "Error al crear perfil", description: error.message, variant: "destructive" });
+    } finally {
+        setIsCreatingProfile(false);
+    }
+  }
 
   const handleDownloadPdf = async () => {
     if (!planContentRef.current || !marketingPlan) return;
@@ -143,7 +180,7 @@ export default function AuthorDashboardPage() {
         heightLeft -= pdfHeight;
       }
       
-      const title = form.getValues('title').replace(/ /g, '_');
+      const title = marketingForm.getValues('title').replace(/ /g, '_');
       pdf.save(`Plan_Marketing_${title}.pdf`);
     } catch (error) {
         console.error("Error creating PDF:", error);
@@ -189,12 +226,12 @@ export default function AuthorDashboardPage() {
                       <CardDescription>Ingresa los detalles de tu libro y la IA creará un plan de lanzamiento a tu medida.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmitMarketingPlan)} className="space-y-4">
-                          <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="synopsis" render={({ field }) => ( <FormItem><FormLabel>Sinopsis</FormLabel><FormControl><Textarea {...field} rows={5} /></FormControl><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Textarea {...field} placeholder="Ej: Jóvenes adultos, amantes de la fantasía..." rows={3} /></FormControl><FormMessage /></FormItem> )} />
+                      <Form {...marketingForm}>
+                        <form onSubmit={marketingForm.handleSubmit(onSubmitMarketingPlan)} className="space-y-4">
+                          <FormField control={marketingForm.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                          <FormField control={marketingForm.control} name="author" render={({ field }) => ( <FormItem><FormLabel>Autor del Libro</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                          <FormField control={marketingForm.control} name="synopsis" render={({ field }) => ( <FormItem><FormLabel>Sinopsis</FormLabel><FormControl><Textarea {...field} rows={5} /></FormControl><FormMessage /></FormItem> )} />
+                          <FormField control={marketingForm.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Textarea {...field} placeholder="Ej: Jóvenes adultos, amantes de la fantasía..." rows={3} /></FormControl><FormMessage /></FormItem> )} />
                           <Button type="submit" disabled={isLoading} className="w-full">
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                             {isLoading ? 'Generando...' : 'Generar Plan'}
@@ -210,7 +247,7 @@ export default function AuthorDashboardPage() {
                     {marketingPlan && (
                       <div className="space-y-6">
                         <div ref={planContentRef} className="bg-background p-8 rounded-lg">
-                            <div className="text-center mb-8"><h2 className="font-headline text-3xl font-bold text-primary">Plan de Marketing para:</h2><h3 className="text-2xl font-semibold text-foreground">{form.getValues('title')}</h3><p className="text-muted-foreground">por {form.getValues('author')}</p></div>
+                            <div className="text-center mb-8"><h2 className="font-headline text-3xl font-bold text-primary">Plan de Marketing para:</h2><h3 className="text-2xl font-semibold text-foreground">{marketingForm.getValues('title')}</h3><p className="text-muted-foreground">por {marketingForm.getValues('author')}</p></div>
                             <div className="space-y-6">
                                 <Card className="shadow-md"><CardHeader><CardTitle className="font-headline text-xl">Slogan Sugerido</CardTitle></CardHeader><CardContent><blockquote className="border-l-4 border-primary pl-4 text-lg italic text-foreground">{marketingPlan.slogan}</blockquote></CardContent></Card>
                                 <Card className="shadow-md"><CardHeader><CardTitle className="font-headline text-xl">Análisis de Público Objetivo</CardTitle></CardHeader><CardContent className="text-muted-foreground whitespace-pre-wrap">{marketingPlan.targetAudienceAnalysis}</CardContent></Card>
@@ -247,9 +284,23 @@ export default function AuthorDashboardPage() {
                            </CardFooter>
                        </Card>
                    ) : (
-                       <Card className="shadow-lg text-center p-8">
-                           <CardTitle>Perfil no encontrado</CardTitle>
-                           <CardDescription>Aún no tienes un perfil de autor público. Un superadmin lo creará por ti.</CardDescription>
+                       <Card className="shadow-lg">
+                            <CardHeader>
+                                <CardTitle>Crea tu Perfil de Autor</CardTitle>
+                                <CardDescription>Este perfil será público. ¡Haz que sea genial!</CardDescription>
+                            </CardHeader>
+                           <CardContent>
+                               <Form {...profileForm}>
+                                   <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-4">
+                                        <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
+                                        <FormField control={profileForm.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de tu foto de perfil</FormLabel><FormControl><Input {...field} placeholder="https://ejemplo.com/tu-foto.jpg"/></FormControl><FormMessage /></FormItem> )}/>
+                                        <Button type="submit" className="w-full" disabled={isCreatingProfile}>
+                                            {isCreatingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4"/>}
+                                            {isCreatingProfile ? "Creando Perfil..." : "Crear Perfil"}
+                                        </Button>
+                                   </form>
+                               </Form>
+                           </CardContent>
                        </Card>
                    )}
                    <Card className="mt-8 shadow-lg">
@@ -278,4 +329,24 @@ export default function AuthorDashboardPage() {
       </Tabs>
     </div>
   );
+}
+```
+  </change>
+  <change>
+    <file>/src/lib/utils.ts</file>
+    <content><![CDATA[import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+export function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+    .replace(/\-\-+/g, '-');        // Replace multiple - with single -
 }
