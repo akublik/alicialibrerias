@@ -1,7 +1,7 @@
-// src/app/(app)/authors/marketing-plan/page.tsx
+// src/app/(app)/authors/dashboard/page.tsx
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -10,12 +10,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { Separator } from '@/components/ui/separator';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
+import type { User } from '@/types';
 
 
 const marketingPlanFormSchema = z.object({
@@ -27,13 +30,44 @@ const marketingPlanFormSchema = z.object({
 
 type MarketingPlanFormValues = z.infer<typeof marketingPlanFormSchema>;
 
-export default function MarketingPlanPage() {
+export default function AuthorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const { toast } = useToast();
+  const router = useRouter();
   const planContentRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const authStatus = localStorage.getItem("isAuthenticated") === "true";
+    if (!authStatus) {
+      router.push("/author-login");
+      return;
+    }
+    const userDataString = localStorage.getItem("aliciaLibros_user");
+    if (userDataString) {
+      const userData = JSON.parse(userDataString);
+      if(userData.role !== 'author') {
+        router.push("/author-login");
+        return;
+      }
+      setUser(userData);
+      form.setValue("author", userData.name);
+    } else {
+      router.push("/author-login");
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    if (auth) {
+      auth.signOut();
+    }
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("aliciaLibros_user");
+    router.push("/author-login");
+    toast({ title: "Sesión Cerrada" });
+  };
 
   const form = useForm<MarketingPlanFormValues>({
     resolver: zodResolver(marketingPlanFormSchema),
@@ -82,7 +116,6 @@ export default function MarketingPlanPage() {
       
       let position = 0;
       let heightLeft = imgHeight;
-      const pageMargin = 20;
 
       pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
       heightLeft -= pdfHeight;
@@ -104,8 +137,26 @@ export default function MarketingPlanPage() {
     }
   };
 
+  if (!user) {
+    return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
+      <header className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary">
+            Panel de Autor
+          </h1>
+          <p className="text-lg text-foreground/80">
+            Bienvenido/a, {user.name}.
+          </p>
+        </div>
+        <Button onClick={handleLogout} variant="outline">
+          <LogOut className="mr-2 h-4 w-4" />
+          Cerrar Sesión
+        </Button>
+      </header>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
            <Card className="sticky top-24 shadow-lg">

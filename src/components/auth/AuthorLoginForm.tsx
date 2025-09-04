@@ -84,7 +84,7 @@ export function AuthorLoginForm() {
       localStorage.setItem("aliciaLibros_user", JSON.stringify(userData));
       
       toast({ title: "Inicio de Sesión Exitoso", description: `Bienvenido/a de nuevo, ${userData.name}.` });
-      router.push('/dashboard');
+      router.push('/authors/dashboard'); // Corrected Redirect
       router.refresh(); 
 
     } catch (error: any) {

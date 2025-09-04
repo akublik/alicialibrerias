@@ -63,7 +63,7 @@ export function AuthorRegisterForm() {
     localStorage.setItem("isAuthenticated", "true");
     localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForStorage));
     toast({ title: "¡Registro Exitoso!", description: `Bienvenido/a, ${name}.` });
-    router.push('/dashboard');
+    router.push('/authors/dashboard');
     router.refresh();
   };
 
