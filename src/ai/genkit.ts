@@ -7,7 +7,7 @@ const apiKey = process.env.GEMINI_API_KEY;
 
 if (apiKey) {
   ai = genkit({
-    plugins: [googleAI({ apiKey, disableRestrictedApiChecks: true })],
+    plugins: [googleAI({ apiKey })],
   });
 } else {
   console.warn(`
