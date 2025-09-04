@@ -72,11 +72,15 @@ export function LoginForm() {
       const userData = { id: userDocSnap.id, ...userDocSnap.data() } as User;
       const userRole = userData.role || (userData as any).rol;
 
-      if (userRole !== 'reader') {
+      if (userRole === 'library' || userRole === 'superadmin' || userRole === 'author') {
         await auth.signOut();
+        let portal = 'librerías';
+        if (userRole === 'author') portal = 'autores';
+        if (userRole === 'superadmin') portal = 'superadministradores';
+        
         toast({
           title: "Acceso Incorrecto",
-          description: "Esta es una cuenta de administrador. Por favor, usa el portal de acceso para librerías o superadministradores.",
+          description: `Esta es una cuenta de ${userRole}. Por favor, usa el portal de acceso para ${portal}.`,
           variant: "destructive",
         });
         setIsLoading(false);
@@ -95,7 +99,6 @@ export function LoginForm() {
       
       toast({ title: "Inicio de Sesión Exitoso", description: `Bienvenido/a de nuevo, ${userData.name}.` });
       router.push(redirectUrl);
-      // We use router.refresh() to ensure the server component re-renders and the layout can update the auth state.
       router.refresh(); 
 
     } catch (error: any) {

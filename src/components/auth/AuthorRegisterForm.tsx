@@ -131,7 +131,7 @@ export function AuthorRegisterForm() {
         </Button>
       </CardContent>
       <CardFooter className="flex justify-center text-sm">
-        <Link href="/login" className="font-medium text-primary hover:underline">¿Ya tienes una cuenta? Ingresa aquí</Link>
+        <Link href="/author-login" className="font-medium text-primary hover:underline">¿Ya eres autor? Ingresa aquí</Link>
       </CardFooter>
     </Card>
   );
