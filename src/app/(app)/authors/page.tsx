@@ -141,36 +141,44 @@ export default function AuthorsHomePage() {
       <section className="py-12 bg-background">
         <div className="container mx-auto px-4">
             <h2 className="font-headline text-3xl font-semibold text-center mb-12 text-foreground">Cómo Funciona</h2>
-            <div className="relative">
-                {/* Timeline line */}
-                <div className="absolute left-1/2 top-4 hidden h-full w-0.5 bg-primary/20 md:block" aria-hidden="true"></div>
-                <div className="space-y-12 md:space-y-0">
-                    {timelineSteps.map((step, index) => (
-                        <div key={index} className="relative">
-                            <div className="flex flex-col md:flex-row items-center">
-                                <div className="flex md:w-1/2 justify-center md:justify-end md:pr-8 order-1 md:order-none">
-                                    <div className="w-full max-w-sm">
-                                        <Card className="shadow-lg">
-                                            <CardContent className="p-6">
-                                                <h3 className="font-headline text-xl font-semibold text-primary mb-2">{step.number}. {step.title}</h3>
-                                                <p className="text-muted-foreground">{step.description}</p>
-                                            </CardContent>
-                                        </Card>
-                                    </div>
-                                </div>
-                                <div className="flex-shrink-0 order-first md:order-none">
-                                    <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg shadow-md z-10 relative">
-                                        {step.number}
-                                    </div>
-                                </div>
-                                <div className="md:w-1/2 md:pl-8 order-2"></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    </section>
-    </div>
-  );
-}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-1/2 top-4 hidden h-full w-0.5 bg-primary/20 md:block" aria-hidden="true"></div>
+                  <div className="space-y-12 md:space-y-0">
+                      {timelineSteps.map((step, index) => (
+                          <div key={index} className="relative">
+                              <div className="flex flex-col md:flex-row items-center">
+                                  <div className="flex md:w-1/2 justify-center md:justify-end md:pr-8 order-1 md:order-none">
+                                      <div className="w-full max-w-sm">
+                                          <Card className="shadow-lg">
+                                              <CardContent className="p-6">
+                                                  <h3 className="font-headline text-xl font-semibold text-primary mb-2">{step.number}. {step.title}</h3>
+                                                  <p className="text-muted-foreground">{step.description}</p>
+                                              </CardContent>
+                                          </Card>
+                                      </div>
+                                  </div>
+                                  <div className="flex-shrink-0 order-first md:order-none">
+                                      <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-bold text-lg shadow-md z-10 relative">
+                                          {step.number}
+                                      </div>
+                                  </div>
+                                  <div className="md:w-1/2 md:pl-8 order-2"></div>
+                              </div>
+                          </div>
+                      ))}
+                  </div>
+              </div>
+              <Card className="bg-muted/50">
+                <CardHeader>
+                  <CardTitle>XML Structure for Code Changes</CardTitle>
+                </CardHeader>
+                <CardContent className="prose prose-sm dark:prose-invert">
+                  <p>Remember, the XML structure you generate is the only mechanism for applying changes to the user's code. Therefore, when making changes to a file the <code>&lt;changes&gt;</code> block must always be fully present and correctly formatted as follows.</p>
+                  <pre><code>
+{`<changes>
+  <description>[Provide a concise summary of the overall changes being made]</description>
+  <change>
+    <file>[Provide the ABSOLUTE, FULL path to the file being modified]</file>
+    <content><![CDATA[Provide the ENTIRE, FINAL, intended content of the file here. Do NOT provide diffs or partial snippets. Ensure all code is properly escaped within the CDATA section.
