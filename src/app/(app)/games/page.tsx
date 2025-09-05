@@ -9,7 +9,7 @@ export default function GamesPage() {
   // This effect will run on the client to set up the game logic.
   useEffect(() => {
     // Check if the script has already been run
-    if (window.gameScriptLoaded) {
+    if ((window as any).gameScriptLoaded) {
       return;
     }
     
@@ -40,6 +40,9 @@ export default function GamesPage() {
             return;
         }
         
+        const themeEl = document.getElementById('theme') as HTMLInputElement;
+        const theme = themeEl ? themeEl.value : 'Literatura Universal';
+
         const complexityEl = document.getElementById('complexity') as HTMLSelectElement;
         const complexity = complexityEl ? complexityEl.value : 'Fácil';
 
