@@ -37,12 +37,12 @@ export default function AuthorsHomePage() {
     {
       icon: Wand2,
       title: "Marketing y Comunidad",
-      items: ["Asistente IA de lanzamiento", "Generador de booktrailers y piezas gráficas", "Conexión directa con tu público"]
+      items: ["Asistente AlicIA de lanzamiento", "Generador de booktrailers y piezas gráficas", "Conexión directa con tu público"]
     },
     {
       icon: BarChart2,
       title: "Métricas y Seguimiento",
-      items: ["Panel en tiempo real con ventas y visitas", "Sugerencias de IA para mejorar tu estrategia"]
+      items: ["Panel en tiempo real con ventas y visitas", "Sugerencias de AlicIA para mejorar tu estrategia"]
     }
   ];
   
