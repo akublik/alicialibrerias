@@ -29,7 +29,7 @@ import {
 const useAuth = () => {
   const [authInfo, setAuthInfo] = React.useState<{
     isAuthenticated: boolean;
-    userRole: 'reader' | 'library' | 'superadmin' | null;
+    userRole: 'reader' | 'library' | 'superadmin' | 'author' | null;
   }>({
     isAuthenticated: false,
     userRole: null,
@@ -89,6 +89,7 @@ export function Navbar() {
   const getDashboardLink = () => {
     if (userRole === 'library') return '/library-admin/dashboard';
     if (userRole === 'superadmin') return '/superadmin/dashboard';
+    if (userRole === 'author') return '/authors/dashboard';
     return '/dashboard'; // Default for readers
   };
   
@@ -209,9 +210,17 @@ export function Navbar() {
           <Link href="/about" className={cn("transition-colors hover:text-primary", pathname === "/about" ? "text-primary font-semibold" : "text-foreground/70")}>Nosotros</Link>
           <Link href="/recommendations" className={cn("transition-colors hover:text-primary", pathname === "/recommendations" ? "text-primary font-semibold" : "text-foreground/70")}>Recomendaciones IA</Link>
           
-          <Link href="/community" className={cn("transition-colors hover:text-primary", pathname.startsWith('/community') ? "text-primary font-semibold" : "text-foreground/70")}>Comunidad</Link>
-          
-          <Link href="/games" className={cn("transition-colors hover:text-primary", pathname.startsWith('/games') ? "text-primary font-semibold" : "text-foreground/70")}>Juegos Literarios</Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+               <Button variant="ghost" className={cn("p-0 h-auto hover:bg-transparent transition-colors hover:text-primary focus-visible:ring-0", (pathname.startsWith('/community') || pathname.startsWith('/games')) ? "text-primary font-semibold" : "text-foreground/70")}>
+                Comunidad <ChevronDown className="relative top-[1px] ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem asChild><Link href="/community">Reseñas y Clubes</Link></DropdownMenuItem>
+              <DropdownMenuItem asChild><Link href="/games">Juegos Literarios</Link></DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -279,9 +288,18 @@ export function Navbar() {
                  <Link href="/about" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
                  <Link href="/recommendations" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
                  
-                 <Link href="/community" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname.startsWith('/community') ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:no-underline")}><Users className="h-5 w-5" /><span>Comunidad</span></Link>
-                 
-                 <Link href="/games" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname.startsWith('/games') ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:no-underline")}><Gamepad2 className="h-5 w-5" /><span>Juegos Literarios</span></Link>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="comunidad" className="border-b-0">
+                      <AccordionTrigger className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground no-underline", (pathname.startsWith('/community') || pathname.startsWith('/games')) ? "bg-accent text-accent-foreground" : "text-foreground/80 hover:no-underline")}>
+                        <Users className="h-5 w-5" />
+                        <span>Comunidad</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="pl-8 pt-2 pb-0 flex flex-col space-y-2">
+                        <Link href="/community" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/community' ? 'font-semibold' : 'text-muted-foreground')}>Reseñas y Clubes</Link>
+                        <Link href="/games" onClick={handleMobileLinkClick} className={cn("flex items-center text-sm p-2 rounded-md hover:bg-accent", pathname === '/games' ? 'font-semibold' : 'text-muted-foreground')}>Juegos Literarios</Link>
+                      </AccordionContent>
+                    </AccordionItem>
+                 </Accordion>
 
                  <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="puntos" className="border-b-0">
