@@ -11,14 +11,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MoreHorizontal, PlusCircle, PenSquare, Loader2, Edit, Trash2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { collection, onSnapshot, doc, deleteDoc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import type { Author } from "@/types";
+import { Switch } from "@/components/ui/switch";
 
 export default function ManageAuthorsPage() {
   const [authors, setAuthors] = useState<Author[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [authorToAction, setAuthorToAction] = useState<Author | null>(null);
+  const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
@@ -40,10 +42,23 @@ export default function ManageAuthorsPage() {
 
     return () => unsubscribe();
   }, [toast]);
+  
+  const handleStatusChange = async (author: Author, newStatus: boolean) => {
+      if (!author.id) return;
+      setIsActionLoading(author.id);
+      try {
+          await updateDoc(doc(db, "authors", author.id), { published: newStatus });
+          toast({ title: "Estado actualizado", description: `${author.name} ahora está ${newStatus ? 'publicado' : 'como borrador'}.` });
+      } catch (e: any) {
+          toast({ title: "Error", description: e.message, variant: "destructive" });
+      } finally {
+          setIsActionLoading(null);
+      }
+  };
 
   const handleDeleteAuthor = async () => {
     if (!authorToAction || !db) return;
-    
+    setIsActionLoading(authorToAction.id);
     try {
       await deleteDoc(doc(db, "authors", authorToAction.id));
       toast({
@@ -58,6 +73,7 @@ export default function ManageAuthorsPage() {
         variant: "destructive",
       });
     } finally {
+      setIsActionLoading(null);
       setIsDeleteDialogOpen(false);
       setAuthorToAction(null);
     }
@@ -73,7 +89,7 @@ export default function ManageAuthorsPage() {
               Gestionar Autores
             </h1>
             <p className="text-lg text-foreground/80">
-              Añade, edita o elimina los perfiles de los autores.
+              Añade, edita, publica o elimina los perfiles de los autores.
             </p>
           </div>
           <Link href="/superadmin/authors/new">
@@ -103,6 +119,7 @@ export default function ManageAuthorsPage() {
                       <TableHead className="w-[80px]">Foto</TableHead>
                       <TableHead>Nombre</TableHead>
                       <TableHead>Países Visibles</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -121,6 +138,19 @@ export default function ManageAuthorsPage() {
                         </TableCell>
                         <TableCell className="font-medium">{author.name}</TableCell>
                         <TableCell>{(author.countries || []).join(', ')}</TableCell>
+                        <TableCell>
+                            <div className="flex items-center space-x-2">
+                                {isActionLoading === author.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin"/>
+                                ) : (
+                                    <Switch
+                                        checked={author.published}
+                                        onCheckedChange={(newStatus) => handleStatusChange(author, newStatus)}
+                                    />
+                                )}
+                                <span className="text-sm text-muted-foreground">{author.published ? 'Publicado' : 'Borrador'}</span>
+                            </div>
+                        </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -152,7 +182,7 @@ export default function ManageAuthorsPage() {
                       </TableRow>
                     )) : (
                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                          <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
                               No has añadido ningún autor todavía.
                           </TableCell>
                        </TableRow>
@@ -173,11 +203,13 @@ export default function ManageAuthorsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setAuthorToAction(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setAuthorToAction(null)} disabled={!!isActionLoading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAuthor}
               className="bg-destructive hover:bg-destructive/90"
+              disabled={!!isActionLoading}
             >
+              {isActionLoading === authorToAction?.id && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
               Sí, eliminar autor
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -21,8 +21,9 @@ import React, { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/lib/firebase"; 
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { setDoc, doc, serverTimestamp, addDoc, collection } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { slugify } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
@@ -49,19 +50,35 @@ export function AuthorRegisterForm() {
   });
 
   const processUserRegistration = async (user: any, name: string) => {
+    // 1. Create the Author profile document first
+    const newAuthorRef = await addDoc(collection(db, "authors"), {
+        name: name,
+        bio: `Perfil pendiente de completar por ${name}.`,
+        imageUrl: `https://placehold.co/200x200.png?text=${encodeURIComponent(name[0])}`,
+        countries: [],
+        slug: slugify(name),
+        createdAt: serverTimestamp(),
+        published: false, // Authors are unpublished by default
+    });
+
+    // 2. Create the User document with the author's ID
     const newUser = {
       name: name,
       email: user.email,
       role: "author" as const,
+      authorId: newAuthorRef.id, // Link user to the author profile
       createdAt: serverTimestamp(),
       isActive: true,
       loyaltyPoints: 0,
       hasWrittenFirstReview: false,
     };
     await setDoc(doc(db, "users", user.uid), newUser);
+    
+    // 3. Set local storage and navigate
     const userDataForStorage = { id: user.uid, ...newUser };
     localStorage.setItem("isAuthenticated", "true");
     localStorage.setItem("aliciaLibros_user", JSON.stringify(userDataForStorage));
+    
     toast({ title: "¡Registro Exitoso!", description: `Bienvenido/a, ${name}.` });
     router.push('/authors/dashboard');
     router.refresh();

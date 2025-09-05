@@ -4,7 +4,7 @@
 import { AuthorCard } from "@/components/AuthorCard";
 import { db } from "@/lib/firebase";
 import type { Author } from "@/types";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { Loader2, PenSquare } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -17,7 +17,11 @@ export default function AuthorsPage() {
             setIsLoading(false);
             return;
         }
-        const unsubscribe = onSnapshot(collection(db, "authors"), (snapshot) => {
+        
+        // Query for authors that are explicitly marked as published
+        const q = query(collection(db, "authors"), where("published", "==", true));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const authorsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Author));
             setAuthors(authorsData);
             setIsLoading(false);

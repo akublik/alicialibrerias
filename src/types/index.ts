@@ -80,6 +80,7 @@ export interface User {
   name: string;
   role: 'superadmin' | 'library' | 'reader' | 'author';
   libraryId?: string; // Only for 'library' role
+  authorId?: string; // Only for 'author' role
   password?: string; // For prototype purposes, would be handled by Auth in production
   createdAt?: any; // Should be Firestore Timestamp
   isActive?: boolean;
@@ -185,6 +186,7 @@ export interface Author {
   dataAiHint?: string;
   countries: string[];
   createdAt: any;
+  published?: boolean;
   instagram?: string;
   facebook?: string;
   x?: string;
