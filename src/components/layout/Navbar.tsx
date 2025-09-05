@@ -208,7 +208,6 @@ export function Navbar() {
           <Link href="/authors" className={cn("transition-colors hover:text-primary", pathname.startsWith("/authors") ? "text-primary font-semibold" : "text-foreground/70")}>Centro de Autores</Link>
           
           <Link href="/about" className={cn("transition-colors hover:text-primary", pathname === "/about" ? "text-primary font-semibold" : "text-foreground/70")}>Nosotros</Link>
-          <Link href="/recommendations" className={cn("transition-colors hover:text-primary", pathname === "/recommendations" ? "text-primary font-semibold" : "text-foreground/70")}>Recomendaciones IA</Link>
           <Link href="/community" className={cn("transition-colors hover:text-primary", pathname.startsWith("/community") ? "text-primary font-semibold" : "text-foreground/70")}>Comunidad</Link>
           
           <DropdownMenu>
@@ -275,7 +274,6 @@ export function Navbar() {
                  
                  <Link href="/authors" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname.startsWith("/authors") ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Rocket className="h-5 w-5" /><span>Centro de Autores</span></Link>
                  <Link href="/about" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/about" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Info className="h-5 w-5" /><span>Nosotros</span></Link>
-                 <Link href="/recommendations" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname === "/recommendations" ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Sparkles className="h-5 w-5" /><span>Recomendaciones IA</span></Link>
                  <Link href="/community" onClick={handleMobileLinkClick} className={cn("flex items-center space-x-3 rounded-md px-3 py-2 text-base font-medium transition-colors hover:bg-accent hover:text-accent-foreground", pathname.startsWith("/community") ? "bg-accent text-accent-foreground" : "text-foreground/80")}><Users className="h-5 w-5" /><span>Comunidad</span></Link>
 
                  <Accordion type="single" collapsible className="w-full">
