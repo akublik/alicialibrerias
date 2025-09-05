@@ -48,7 +48,7 @@ export default function AuthorsHomePage() {
   
   const timelineSteps = [
     { number: "01", title: "Sube tu Manuscrito", description: "Prepara tu obra para publicación digital e impresión bajo demanda." },
-    { number: "02", title: "Plan de Lanzamiento con IA", description: "Obtén un checklist y un plan de marketing personalizado para tu libro." },
+    { number: "02", title: "Plan de Lanzamiento con AlicIA", description: "Obtén un checklist y un plan de marketing personalizado para tu libro." },
     { number: "03", title: "Publicación", description: "Tu libro disponible en alicialibros.com y en nuestra red de librerías asociadas." },
     { number: "04", title: "Evento de Lanzamiento", description: "Organiza firmas de libros, presentaciones y eventos en streaming." },
     { number: "05", title: "Post-Lanzamiento", description: "Interactúa con tu comunidad, gestiona reseñas y analiza tus métricas de venta." },
