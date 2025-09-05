@@ -77,19 +77,19 @@ export default function ContactPage() {
 
   return (
     <div className="animate-fadeIn">
-      <section className="py-20 md:py-32 bg-gradient-to-br from-primary/10 via-background to-background">
+      <section className="py-12 md:py-20 bg-gradient-to-br from-primary/10 via-background to-background">
         <div className="container mx-auto px-4 text-center">
-          <Mail className="mx-auto h-16 w-16 text-primary mb-6" />
-          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary">
+          <Mail className="mx-auto h-12 w-12 text-primary mb-4" />
+          <h1 className="font-headline text-4xl md:text-5xl font-bold mb-4 text-primary">
             Contáctanos
           </h1>
-          <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-2xl mx-auto">
+          <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
             ¿Tienes preguntas, sugerencias o quieres colaborar? Estamos aquí para escucharte.
           </p>
         </div>
       </section>
 
-      <section className="py-16 bg-background">
+      <section className="py-12 bg-background">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12">
             <div>
