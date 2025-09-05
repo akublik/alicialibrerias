@@ -32,14 +32,14 @@ const MarketAnalysisOutputSchema = z.object({
 export async function analyzeMarketAndCompetition(input: MarketAnalysisInput): Promise<MarketAnalysisOutput> {
   const response = await ai.generate({
     model: 'googleai/gemini-1.5-flash',
-    prompt: `Eres un analista de mercado editorial y estratega de marketing de clase mundial. Un autor necesita un análisis completo para posicionar su libro.
+    prompt: `Eres un analista de mercado editorial y estratega de marketing de clase mundial. Un autor necesita un análisis completo para posicionar su libro. **Toda tu respuesta debe estar en español.**
 
 **Información del Autor:**
 *   **Género Principal:** ${input.authorGenre}
 *   **Título de Referencia:** ${input.authorBookTitle}
 
 **Tu Tarea:**
-Realiza un análisis exhaustivo del mercado y la competencia. Proporciona información accionable y estratégica. Responde únicamente en el formato JSON solicitado.
+Realiza un análisis exhaustivo del mercado y la competencia. Proporciona información accionable y estratégica. Responde únicamente en el formato JSON solicitado. Toda la información textual, incluyendo análisis y sugerencias, debe estar en español.
 
 **1. Tendencias del Mercado:**
     *   **Géneros en Crecimiento:** Identifica de 3 a 5 subgéneros o nichos relacionados con "${input.authorGenre}" que estén ganando popularidad.
