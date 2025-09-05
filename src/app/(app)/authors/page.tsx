@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BookCopy, Rocket, Wand2, BarChart2, LayoutDashboard } from "lucide-react";
+import { ArrowRight, BookCopy, Rocket, Wand2, BarChart2, LayoutDashboard, FileSignature, DollarSign, Printer, Globe } from "lucide-react";
 import type { User } from '@/types';
 
 export default function AuthorsHomePage() {
@@ -54,6 +54,43 @@ export default function AuthorsHomePage() {
     { number: "04", title: "Evento de Lanzamiento", description: "Organiza firmas de libros, presentaciones y eventos en streaming." },
     { number: "05", title: "Post-Lanzamiento", description: "Interactúa con tu comunidad, gestiona reseñas y analiza tus métricas de venta." },
   ];
+  
+  const commercialConditions = [
+      {
+          icon: FileSignature,
+          title: "Editorial y Derechos",
+          points: [
+              "Alicialibros.com actuará como editor de la obra.",
+              "Los derechos de explotación comercial pertenecerán a Alicialibros.com, garantizando la distribución y venta en todos los canales disponibles.",
+              "El autor conserva la propiedad intelectual y moral de su obra."
+          ]
+      },
+      {
+          icon: DollarSign,
+          title: "Reparto de Ganancias",
+          points: [
+              "El autor recibirá el 75% de las ganancias netas por cada libro vendido."
+          ]
+      },
+      {
+          icon: Printer,
+          title: "Costos de Impresión",
+          points: [
+              "El sistema funciona con impresión bajo demanda (POD).",
+              "El costo de impresión único para el autor será de $50.",
+              "Sin tirajes mínimos ni inversión inicial."
+          ]
+      },
+      {
+          icon: Globe,
+          title: "Canales de Distribución",
+          points: [
+              "La obra será ofrecida en Alicialibros.com.",
+              "Distribución extendida a librerías asociadas en Latinoamérica y España.",
+              "Disponibilidad en formato digital e impreso."
+          ]
+      }
+  ]
 
   const renderAuthButtons = () => {
     if (isAuthenticated && user?.role === 'author') {
@@ -158,6 +195,33 @@ export default function AuthorsHomePage() {
                     ))}
                 </div>
             </div>
+        </div>
+      </section>
+
+      <section className="py-12 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <Card className="shadow-lg p-6 md:p-8 max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="font-headline text-3xl text-center text-primary">Condiciones Comerciales de Publicación con Alicia</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {commercialConditions.map((condition) => (
+                        <div key={condition.title}>
+                            <h3 className="font-headline text-xl font-semibold text-foreground flex items-center gap-2 mb-3">
+                               <div className="flex-shrink-0 bg-primary/10 p-2 rounded-full"><condition.icon className="h-5 w-5 text-primary"/></div>
+                                {condition.title}
+                            </h3>
+                            <ul className="space-y-2 list-disc list-inside text-muted-foreground">
+                                {condition.points.map((point, index) => (
+                                    <li key={index}>{point}</li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+          </Card>
         </div>
       </section>
     </div>
