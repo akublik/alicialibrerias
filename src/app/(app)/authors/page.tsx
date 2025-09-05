@@ -104,12 +104,12 @@ export default function AuthorsHomePage() {
               className="w-full h-full object-cover"
             />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/40 to-background/10 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent z-10"></div>
         <div className="container mx-auto px-4 text-center relative z-20">
-          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary drop-shadow-md">
+          <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary drop-shadow-lg">
             No solo publiques tu libro… ¡lánzalo y conecta con tu comunidad!
           </h1>
-          <p className="text-lg md:text-xl text-foreground/90 mb-8 max-w-3xl mx-auto drop-shadow-sm">
+          <p className="text-lg md:text-xl text-foreground/90 mb-8 max-w-3xl mx-auto drop-shadow-lg">
             Alicialibros.com te permite publicar digital y físico, organizar eventos de lanzamiento y vivir la experiencia completa de tu libro.
           </p>
           {renderAuthButtons()}
