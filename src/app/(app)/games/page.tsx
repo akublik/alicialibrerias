@@ -11,14 +11,13 @@ export default function GamesPage() {
     <title>Juego Literario - AliciaLibros.com</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Belleza&display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            font-family: 'Alegreya', serif;
-            background-color: hsl(var(--background));
-            color: hsl(var(--foreground));
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f3e9;
+            color: #333;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -26,7 +25,6 @@ export default function GamesPage() {
             padding: 2rem;
             flex-direction: column;
         }
-        h1, h2, h3 { font-family: 'Belleza', sans-serif; }
         .container {
             display: flex;
             gap: 2rem;
@@ -36,8 +34,8 @@ export default function GamesPage() {
             justify-content: center;
         }
         .card {
-            background-color: hsl(var(--card));
-            border-radius: var(--radius);
+            background-color: #fff;
+            border-radius: 1rem;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             padding: 2rem;
             transition: transform 0.3s ease-in-out;
@@ -57,19 +55,20 @@ export default function GamesPage() {
             justify-content: center;
             align-items: center;
             text-align: center;
+            padding: 2rem;
         }
         .game-icon {
             font-size: 4rem;
-            color: hsl(var(--primary));
+            color: #f39c12;
             margin-bottom: 1rem;
         }
         .question-card, .result-card {
             width: 100%;
             max-width: 600px;
-            background-color: hsl(var(--card));
+            background-color: #fefcf5;
             padding: 2rem;
-            border-radius: var(--radius);
-            border: 2px solid hsl(var(--primary));
+            border-radius: 1rem;
+            border: 2px solid #f39c12;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
@@ -80,61 +79,64 @@ export default function GamesPage() {
             width: 100%;
             padding: 0.75rem;
             margin: 0.5rem 0;
-            border-radius: var(--radius);
-            background-color: hsl(var(--secondary));
-            border: 2px solid hsl(var(--secondary));
-            color: hsl(var(--secondary-foreground));
+            border-radius: 0.5rem;
+            background-color: #fef3c7;
+            border: 2px solid #fcd34d;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
             font-weight: 600;
         }
-        .option-button:hover:not(:disabled) {
-            background-color: hsl(var(--primary) / 0.2);
-            border-color: hsl(var(--primary));
+        .option-button:hover {
+            background-color: #fde68a;
             transform: translateY(-2px);
         }
         .option-button.correct {
             background-color: #d1fae5;
             border-color: #34d399;
-            color: #064e3b;
         }
         .option-button.incorrect {
             background-color: #fee2e2;
             border-color: #f87171;
-            color: #991b1b;
         }
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
+        }
+        .fade-out {
+            animation: fadeOut 0.5s ease-in-out;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
     </style>
 </head>
-<body class="">
+<body class="bg-gray-100 flex flex-col items-center justify-center p-8">
 
     <header class="text-center mb-8">
-        <h1 class="text-4xl md:text-5xl font-bold text-[hsl(var(--primary))] mb-2">Alicia Libros</h1>
-        <p class="text-lg text-[hsl(var(--muted-foreground))]">¡Pon a prueba tu ingenio y creatividad! Diseña tu propio juego literario con la ayuda de nuestra inteligencia artificial.</p>
+        <h1 class="text-4xl md:text-5xl font-bold text-orange-500 mb-2">Alicia Libros</h1>
+        <p class="text-lg text-gray-700">¡Pon a prueba tu ingenio y creatividad! Diseña tu propio juego literario con la ayuda de nuestra inteligencia artificial.</p>
     </header>
 
     <div class="container">
         <!-- Panel de Configuración del Juego -->
         <div class="game-setup card">
-            <h2 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-4">Crea tu Juego</h2>
-            <p class="text-sm text-[hsl(var(--muted-foreground))] mb-6">Define los parámetros y deja que la IA diseñe una experiencia literaria única para ti.</p>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Crea tu Juego</h2>
+            <p class="text-sm text-gray-600 mb-6">Define los parámetros y deja que la IA diseñe una experiencia literaria única para ti.</p>
             
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Juego</label>
-                    <input type="text" value="Trivia" disabled class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed">
+                    <input type="text" value="Trivia" disabled class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500">
                     <p class="text-xs text-gray-500 mt-1">Prueba con 'Trivia' o 'Cuestionario' para un juego interactivo.</p>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Tema del Juego</label>
-                    <input type="text" id="theme" value="Literatura Universal" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                    <input type="text" value="Literatura Universal" disabled class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500">
                 </div>
                 
                 <div>
@@ -147,7 +149,7 @@ export default function GamesPage() {
                 </div>
             </div>
             
-            <button id="generate-button" onclick="startGame()" class="mt-8 w-full px-6 py-3 rounded-full text-white font-bold bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] transition shadow-lg hover:shadow-xl">
+            <button onclick="startGame()" class="mt-8 w-full px-6 py-3 rounded-full text-white font-bold bg-orange-500 hover:bg-orange-600 transition shadow-lg hover:shadow-xl">
                 Generar Juego
             </button>
         </div>
@@ -155,8 +157,8 @@ export default function GamesPage() {
         <!-- Panel de Visualización del Juego -->
         <div id="game-display" class="game-display card">
             <span class="game-icon">🎮</span>
-            <h3 class="text-xl font-bold text-[hsl(var(--foreground))] mb-2">Tu juego aparecerá aquí</h3>
-            <p class="text-[hsl(var(--muted-foreground))]">Completa el formulario para empezar.</p>
+            <h3 class="text-xl font-bold text-gray-700 mb-2">Tu juego aparecerá aquí</h3>
+            <p class="text-gray-500">Completa el formulario para empezar.</p>
         </div>
     </div>
     
@@ -167,36 +169,33 @@ export default function GamesPage() {
         let currentQuestionIndex = 0;
         let score = 0;
         let gameData = [];
-        const gameContainer = document.getElementById('game-display');
-        const generateButton = document.getElementById('generate-button');
+        let gameContainer = document.getElementById('game-display');
         let loadingIndicator = null;
 
         function createLoadingIndicator() {
             const loader = document.createElement('div');
             loader.className = 'flex flex-col items-center justify-center';
             loader.innerHTML = \`
-                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[hsl(var(--primary))]"></div>
-                <p class="mt-4 text-[hsl(var(--muted-foreground))]">Generando preguntas...</p>
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-orange-500"></div>
+                <p class="mt-4 text-gray-600">Generando preguntas...</p>
             \`;
             return loader;
         }
 
         async function startGame() {
-             if (!apiKey) {
+            if (!apiKey) {
                 gameContainer.innerHTML = '<div class="p-8 text-center"><p class="text-red-500 font-semibold">Error de Configuración</p><p>La clave de API de Gemini no está configurada en el entorno. Por favor, añádela a tus variables de entorno para continuar.</p></div>';
                 return;
             }
-
+            
             const complexity = document.getElementById('complexity').value;
-            const theme = document.getElementById('theme').value;
 
             gameContainer.innerHTML = '';
             loadingIndicator = createLoadingIndicator();
             gameContainer.appendChild(loadingIndicator);
-            generateButton.disabled = true;
 
             try {
-                const prompt = \`Genera un juego de trivia con 5 preguntas sobre el tema "${'$'}{theme}" con 4 opciones de respuesta para cada una, donde solo una sea correcta. La dificultad debe ser ${complexity}. Devuelve el resultado en un array de objetos JSON con el siguiente formato, sin ningún texto o formato adicional antes o después del JSON:
+                const prompt = \`Genera un juego de trivia con 5 preguntas sobre literatura universal con 4 opciones de respuesta para cada una, donde solo una sea correcta. La dificultad debe ser ${'$'}{complexity}. Las respuestas correctas deben estar marcadas con 'correcta': true. Devuelve el resultado en un array de objetos JSON con el siguiente formato:
                 [
                     {
                         "pregunta": "...",
@@ -224,8 +223,7 @@ export default function GamesPage() {
                 });
                 
                 if (!response.ok) {
-                    const errorBody = await response.text();
-                    throw new Error(\`Error en la API: ${'$'}{response.statusText} - ${'$'}{errorBody}\`);
+                    throw new Error(\`Error en la API: ${'$'}{response.statusText}\`);
                 }
                 
                 const result = await response.json();
@@ -243,8 +241,6 @@ export default function GamesPage() {
             } catch (error) {
                 console.error('Error al generar el juego:', error);
                 gameContainer.innerHTML = \`<div class="p-8 text-center"><p class="text-red-500">Ocurrió un error. Por favor, inténtalo de nuevo.</p><p class="text-xs text-gray-500 mt-2">${'$'}{error.message}</p></div>\`;
-            } finally {
-                generateButton.disabled = false;
             }
         }
 
@@ -291,16 +287,16 @@ export default function GamesPage() {
             setTimeout(() => {
                 currentQuestionIndex++;
                 renderQuestion();
-            }, 1500);
+            }, 1000);
         }
 
         function renderResults() {
             const resultElement = document.createElement('div');
             resultElement.className = 'result-card fade-in';
             resultElement.innerHTML = \`
-                <h3 class="text-2xl font-bold text-gray-800 mb-4">¡Juego terminado!</h3>
-                <p class="text-lg text-gray-700">Has respondido correctamente a <span class="text-[hsl(var(--primary))] font-bold">${'$'}{score} de ${'$'}{gameData.length}</span> preguntas.</p>
-                <button onclick="startGame()" class="mt-8 px-6 py-3 rounded-full text-white font-bold bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] transition shadow-lg hover:shadow-xl">
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Juego terminado!</h3>
+                <p class="text-lg text-gray-700">Has respondido correctamente a <span class="text-orange-500 font-bold">${'$'}{score} de ${'$'}{gameData.length}</span> preguntas.</p>
+                <button onclick="startGame()" class="mt-8 px-6 py-3 rounded-full text-white font-bold bg-orange-500 hover:bg-orange-600 transition shadow-lg hover:shadow-xl">
                     Jugar de Nuevo
                 </button>
             \`;
