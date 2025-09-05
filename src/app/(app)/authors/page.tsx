@@ -1,4 +1,3 @@
-
 // src/app/(app)/authors/page.tsx
 "use client";
 
@@ -6,7 +5,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowRight, BookCopy, Rocket, Wand2, BarChart2, LayoutDashboard, FileSignature, DollarSign, Printer, Globe } from "lucide-react";
+import { ArrowRight, BookCopy, Rocket, Wand2, BarChart2, LayoutDashboard, FileSignature, DollarSign, Printer, Globe, Mail } from "lucide-react";
 import type { User } from '@/types';
 
 export default function AuthorsHomePage() {
@@ -224,6 +223,20 @@ export default function AuthorsHomePage() {
           </Card>
         </div>
       </section>
+
+      <section className="py-16 text-center bg-background">
+        <div className="container mx-auto px-4">
+          <h2 className="font-headline text-2xl font-semibold text-foreground mb-4">¿Aún tienes dudas?</h2>
+          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">Nuestro equipo está listo para ayudarte en cada paso del proceso. Contáctanos para resolver cualquier inquietud.</p>
+          <Link href="/contact">
+            <Button size="lg" className="font-body text-base">
+              <Mail className="mr-2 h-5 w-5"/>
+              Escríbenos
+            </Button>
+          </Link>
+        </div>
+      </section>
+
     </div>
   );
 }
