@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -30,6 +30,9 @@ import { slugify } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { bookCategories } from '@/lib/options';
+import { QRCodeSVG } from 'qrcode.react';
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -55,6 +58,34 @@ const marketAnalysisFormSchema = z.object({
     authorBookTitle: z.string().min(3, { message: "El título de referencia es requerido." }),
 });
 type MarketAnalysisFormValues = z.infer<typeof marketAnalysisFormSchema>;
+
+// Dummy data for followers
+const placeholderFollowers: User[] = [
+    { id: '1', name: 'Lector Apasionado', email: 'lector1@email.com', role: 'reader' },
+    { id: '2', name: 'Ana Reseñas', email: 'ana.r@email.com', role: 'reader' },
+    { id: '3', name: 'Carlos Libros', email: 'carlos.libros@email.com', role: 'reader' },
+];
+
+const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title: string, value: string | number, icon: React.ElementType, isLoading: boolean, description?: string }) => {
+    return (
+      <Card className="shadow-md hover:shadow-lg transition-shadow">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">{title}</CardTitle>
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="pt-2"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : (
+            <>
+              <div className="text-2xl font-bold">{value}</div>
+              {description && <p className="text-xs text-muted-foreground">{description}</p>}
+            </>
+          )}
+        </CardContent>
+      </Card>
+    );
+};
 
 
 export default function AuthorDashboardPage() {
@@ -335,32 +366,74 @@ export default function AuthorDashboardPage() {
         </div>
         <Button onClick={handleLogout} variant="outline"><LogOut className="mr-2 h-4 w-4" />Cerrar Sesión</Button>
       </header>
-      
-      <div className="mb-8 p-4 bg-muted/50 rounded-lg flex items-center justify-center gap-2 md:gap-4 text-center flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-primary">Perfil</span>
-            <ChevronRight className="h-5 w-5 text-muted-foreground"/>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground/80">Análisis</span>
-             <ChevronRight className="h-5 w-5 text-muted-foreground"/>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground/80">Plan</span>
-             <ChevronRight className="h-5 w-5 text-muted-foreground"/>
-          </div>
-           <div className="flex items-center gap-2">
-            <Rocket className="h-5 w-5 text-foreground/60"/>
-            <span className="font-semibold text-foreground/60">Lanzamiento</span>
-          </div>
-      </div>
 
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
-            <TabsTrigger value="analysis">Tendencias y Competencia</TabsTrigger>
-            <TabsTrigger value="marketing">Plan de Lanzamiento</TabsTrigger>
+            <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
+            <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="mt-6">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                <StatCard title="Libros Vendidos" value="1,234" icon={BookOpen} isLoading={false} description="+50 en la última semana"/>
+                <StatCard title="Ventas del Mes" value="$1,580.50" icon={BarChart2} isLoading={false} />
+                <StatCard title="Seguidores" value="89" icon={Heart} isLoading={false} description="Lectores que te siguen."/>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1 space-y-8">
+                    <Card className="shadow-md">
+                        <CardHeader><CardTitle className="font-headline text-lg">Atajos</CardTitle></CardHeader>
+                        <CardContent className="flex flex-col gap-3">
+                            <Button size="lg" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                                <Rocket className="mr-3 h-5 w-5" /> Crear Plan de Marketing
+                            </Button>
+                             <Button size="lg" variant="outline" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                                <BarChart2 className="mr-3 h-5 w-5" /> Analizar Mercado
+                            </Button>
+                             <Button size="lg" variant="outline" className="w-full justify-start text-base py-3 shadow-sm hover:shadow-md transition-shadow">
+                                <Save className="mr-3 h-5 w-5" /> Editar Perfil
+                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Card className="shadow-md">
+                        <CardHeader>
+                            <CardTitle className="font-headline text-lg flex items-center"><QrCode className="mr-2 h-5 w-5 text-primary"/>Tu Código de Autor</CardTitle>
+                            <CardDescription>Permite que los lectores te sigan escaneando este código.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex justify-center items-center p-6">
+                           {user.id ? <div className="p-4 bg-white rounded-lg"><QRCodeSVG value={`/authors/${user.id}`} size={140} /></div> : <p>Cargando código...</p>}
+                        </CardContent>
+                    </Card>
+                </div>
+                 <div className="lg:col-span-2">
+                    <Card className="shadow-lg">
+                        <CardHeader>
+                            <CardTitle className="font-headline text-lg flex items-center"><User className="mr-2 h-5 w-5 text-primary"/>Tus Seguidores ({placeholderFollowers.length})</CardTitle>
+                            <CardDescription>Lectores que han marcado tu perfil como favorito.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableBody>
+                                    {placeholderFollowers.map((follower) => (
+                                    <TableRow key={follower.id}>
+                                        <TableCell className="w-[50px]">
+                                            <Image src={follower.avatarUrl || `https://placehold.co/100x100.png?text=${follower.name.charAt(0)}`} alt={follower.name} width={40} height={40} className="rounded-full" />
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="font-medium">{follower.name}</div>
+                                            <div className="text-xs text-muted-foreground">{follower.email}</div>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </TabsContent>
 
         <TabsContent value="marketing" className="mt-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
