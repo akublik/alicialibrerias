@@ -1,348 +1,319 @@
 // src/app/(app)/games/page.tsx
-"use client";
-
-import { useState, useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Gamepad2, Wand2, Brain, CheckCircle, XCircle, RefreshCw, Trophy, BookText } from "lucide-react";
-import { literaryGamesAI, type LiteraryGamesAIOutput, type QuizQuestion } from "@/ai/flows/literary-game-ai";
-import { useToast } from "@/hooks/use-toast";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
-
-const gameFormSchema = z.object({
-  gameType: z.string().min(3, { message: "El tipo de juego debe tener al menos 3 caracteres." }),
-  theme: z.string().min(3, { message: "El tema debe tener al menos 3 caracteres." }),
-  complexity: z.enum(["easy", "medium", "hard"], { required_error: "Debes seleccionar una complejidad." }),
-});
-
-type GameFormValues = z.infer<typeof gameFormSchema>;
 
 export default function GamesPage() {
-  const [aiResponse, setAiResponse] = useState<LiteraryGamesAIOutput | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { toast } = useToast();
-
-  // Quiz state
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [score, setScore] = useState(0);
-  const [quizFinished, setQuizFinished] = useState(false);
-
-  const form = useForm<GameFormValues>({
-    resolver: zodResolver(gameFormSchema),
-    defaultValues: {
-      gameType: "Trivia",
-      theme: "Literatura Universal",
-      complexity: "easy",
-    },
-  });
-
-  const resetGameState = () => {
-    setAiResponse(null);
-    setCurrentQuestionIndex(0);
-    setSelectedAnswer(null);
-    setIsAnswered(false);
-    setScore(0);
-    setQuizFinished(false);
-  };
+  const geminiApiKey = process.env.GEMINI_API_KEY || '';
   
-  const handleGenerateGame = async (values: GameFormValues) => {
-    setIsLoading(true);
-    resetGameState();
+  const htmlContent = `
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego Literario - AliciaLibros.com</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Belleza&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Alegreya', serif;
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            flex-direction: column;
+        }
+        h1, h2, h3 { font-family: 'Belleza', sans-serif; }
+        .container {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1200px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .card {
+            background-color: hsl(var(--card));
+            border-radius: var(--radius);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+            transition: transform 0.3s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .game-setup {
+            flex: 1;
+            min-width: 300px;
+        }
+        .game-display {
+            flex: 2;
+            min-width: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .game-icon {
+            font-size: 4rem;
+            color: hsl(var(--primary));
+            margin-bottom: 1rem;
+        }
+        .question-card, .result-card {
+            width: 100%;
+            max-width: 600px;
+            background-color: hsl(var(--card));
+            padding: 2rem;
+            border-radius: var(--radius);
+            border: 2px solid hsl(var(--primary));
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .option-button {
+            width: 100%;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-radius: var(--radius);
+            background-color: hsl(var(--secondary));
+            border: 2px solid hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            font-weight: 600;
+        }
+        .option-button:hover:not(:disabled) {
+            background-color: hsl(var(--primary) / 0.2);
+            border-color: hsl(var(--primary));
+            transform: translateY(-2px);
+        }
+        .option-button.correct {
+            background-color: #d1fae5;
+            border-color: #34d399;
+            color: #064e3b;
+        }
+        .option-button.incorrect {
+            background-color: #fee2e2;
+            border-color: #f87171;
+            color: #991b1b;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="">
 
-    try {
-      const result = await literaryGamesAI(values);
-      setAiResponse(result);
-      toast({
-        title: "¡Juego Generado!",
-        description: "Tu juego literario está listo para empezar.",
-      });
-    } catch (error: any) {
-      console.error("Error generating literary game:", error);
-      let toastDescription = "No pudimos crear tu juego en este momento. Inténtalo de nuevo.";
-      if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
-          toastDescription = "La función de juegos por IA no está disponible en este momento. Disculpa las molestias."
-      }
-      toast({
-        title: "Error al Generar Juego",
-        description: toastDescription,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    <header class="text-center mb-8">
+        <h1 class="text-4xl md:text-5xl font-bold text-[hsl(var(--primary))] mb-2">Alicia Libros</h1>
+        <p class="text-lg text-[hsl(var(--muted-foreground))]">¡Pon a prueba tu ingenio y creatividad! Diseña tu propio juego literario con la ayuda de nuestra inteligencia artificial.</p>
+    </header>
 
-  const handleAnswerSubmit = (question: QuizQuestion) => {
-    if (!selectedAnswer) return;
-    setIsAnswered(true);
-
-    if (selectedAnswer === question.correctAnswer) {
-      setScore(s => s + 1);
-    }
-
-    setTimeout(() => {
-      if (aiResponse?.type === 'quiz' && currentQuestionIndex < aiResponse.questions.length - 1) {
-        setCurrentQuestionIndex(i => i + 1);
-        setSelectedAnswer(null);
-        setIsAnswered(false);
-      } else {
-        setQuizFinished(true);
-      }
-    }, 2000); // Wait 2 seconds before moving to the next question or finishing
-  };
-
-  const currentQuestion = useMemo(() => {
-    if (aiResponse?.type === 'quiz') {
-      return aiResponse.questions[currentQuestionIndex];
-    }
-    return null;
-  }, [aiResponse, currentQuestionIndex]);
-
-  const quizProgress = useMemo(() => {
-      if(aiResponse?.type !== 'quiz') return 0;
-      return ((currentQuestionIndex) / aiResponse.questions.length) * 100;
-  }, [currentQuestionIndex, aiResponse]);
-  
-  const renderGameContent = () => {
-    if (isLoading) {
-      return (
-        <div className="md:col-span-1 flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[300px]">
-          <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
-          <p className="font-headline text-xl text-foreground">Creando tu juego...</p>
-          <p className="text-muted-foreground">La IA está tejiendo palabras e ideas.</p>
-        </div>
-      );
-    }
-
-    if (!aiResponse) {
-       return (
-         <div className="md:col-span-1 flex flex-col items-center justify-center text-center p-8 bg-card rounded-lg shadow-md min-h-[300px]">
-            <Gamepad2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="font-headline text-xl text-foreground">Tu juego aparecerá aquí</p>
-            <p className="text-muted-foreground">Completa el formulario para empezar.</p>
-        </div>
-      );
-    }
-
-    if (aiResponse.type === 'text') {
-      return (
-        <Card className="shadow-lg md:col-span-1 animate-fadeIn">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl text-primary flex items-center">
-              <BookText className="mr-2 h-6 w-6"/>
-              {aiResponse.title}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="font-headline text-lg font-semibold text-foreground mb-1">Descripción y Reglas:</h3>
-              <p className="text-foreground/80 whitespace-pre-wrap text-sm">{aiResponse.description}</p>
-            </div>
-            <div>
-              <h3 className="font-headline text-lg font-semibold text-foreground mb-1">Instrucciones:</h3>
-              <p className="text-foreground/80 whitespace-pre-wrap text-sm">{aiResponse.instructions}</p>
-            </div>
-          </CardContent>
-          <CardFooter>
-              <Button onClick={() => form.handleSubmit(handleGenerateGame)()} variant="outline" className="w-full font-body">
-                  Crear Otro Juego
-              </Button>
-          </CardFooter>
-        </Card>
-      );
-    }
-
-    if (aiResponse.type === 'quiz') {
-      if (quizFinished) {
-         return (
-            <Card className="shadow-lg md:col-span-1 animate-fadeIn">
-              <CardHeader className="text-center">
-                <Trophy className="mx-auto h-12 w-12 text-amber-400 mb-4" />
-                <CardTitle className="font-headline text-2xl text-primary">¡Juego Terminado!</CardTitle>
-                <CardDescription>Resultado para: {aiResponse.title}</CardDescription>
-              </CardHeader>
-              <CardContent className="text-center">
-                 <p className="text-4xl font-bold mb-2">{score} <span className="text-lg font-medium text-muted-foreground">/ {aiResponse.questions.length}</span></p>
-                 <p className="font-semibold text-xl">Respuestas Correctas</p>
-              </CardContent>
-              <CardFooter>
-                  <Button onClick={() => form.handleSubmit(handleGenerateGame)()} className="w-full font-body">
-                      <RefreshCw className="mr-2 h-4 w-4" /> Jugar de Nuevo
-                  </Button>
-              </CardFooter>
-            </Card>
-         );
-      }
-      
-      if (currentQuestion) {
-        return (
-          <Card className="shadow-lg md:col-span-1 animate-fadeIn">
-            <CardHeader>
-                <Progress value={quizProgress} className="w-full mb-2" />
-                <CardTitle className="font-headline text-2xl text-primary pt-2">
-                    {aiResponse.title}
-                </CardTitle>
-                 <CardDescription>Pregunta {currentQuestionIndex + 1} de {aiResponse.questions.length}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <p className="text-lg font-semibold text-foreground">{currentQuestion.question}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {currentQuestion.options.map((option, index) => {
-                        const isCorrect = option === currentQuestion.correctAnswer;
-                        const isSelected = option === selectedAnswer;
-
-                        return (
-                             <Button
-                                key={index}
-                                variant="outline"
-                                className={cn(
-                                    "h-auto py-3 text-base justify-start whitespace-normal",
-                                    isAnswered && isCorrect && "bg-green-100 border-green-500 text-green-800 hover:bg-green-200",
-                                    isAnswered && isSelected && !isCorrect && "bg-red-100 border-red-500 text-red-800 hover:bg-red-200",
-                                    isSelected && !isAnswered && "bg-primary/10 border-primary"
-                                )}
-                                onClick={() => !isAnswered && setSelectedAnswer(option)}
-                                disabled={isAnswered}
-                            >
-                                {option}
-                            </Button>
-                        )
-                    })}
+    <div class="container">
+        <!-- Panel de Configuración del Juego -->
+        <div class="game-setup card">
+            <h2 class="text-2xl font-bold text-[hsl(var(--foreground))] mb-4">Crea tu Juego</h2>
+            <p class="text-sm text-[hsl(var(--muted-foreground))] mb-6">Define los parámetros y deja que la IA diseñe una experiencia literaria única para ti.</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de Juego</label>
+                    <input type="text" value="Trivia" disabled class="w-full px-4 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed">
+                    <p class="text-xs text-gray-500 mt-1">Prueba con 'Trivia' o 'Cuestionario' para un juego interactivo.</p>
                 </div>
-                 {isAnswered && (
-                    <div className={cn(
-                        "p-3 rounded-md animate-fadeIn",
-                         selectedAnswer === currentQuestion.correctAnswer ? "bg-green-100" : "bg-red-100"
-                    )}>
-                        {selectedAnswer === currentQuestion.correctAnswer ? (
-                            <div className="flex items-start gap-2">
-                                <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                                <div>
-                                    <p className="font-bold text-green-800">¡Correcto!</p>
-                                    {currentQuestion.rationale && <p className="text-sm text-green-700">{currentQuestion.rationale}</p>}
-                                </div>
-                            </div>
-                        ) : (
-                             <div className="flex items-start gap-2">
-                                <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                                 <div>
-                                    <p className="font-bold text-red-800">Incorrecto.</p>
-                                    <p className="text-sm text-red-700">La respuesta correcta era: <strong>{currentQuestion.correctAnswer}</strong></p>
-                                     {currentQuestion.rationale && <p className="text-sm text-red-700 mt-1">{currentQuestion.rationale}</p>}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </CardContent>
-            <CardFooter>
-                <Button onClick={() => handleAnswerSubmit(currentQuestion)} disabled={isAnswered || !selectedAnswer} className="w-full font-body">
-                    {isAnswered ? "Siguiente" : "Confirmar Respuesta"}
-                </Button>
-            </CardFooter>
-          </Card>
-        );
-      }
-    }
-    
-    return null;
-  };
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Tema del Juego</label>
+                    <input type="text" id="theme" value="Literatura Universal" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                </div>
+                
+                <div>
+                    <label for="complexity" class="block text-sm font-semibold text-gray-700 mb-1">Dificultad</label>
+                    <select id="complexity" class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                        <option value="Fácil">Fácil</option>
+                        <option value="Medio">Medio</option>
+                        <option value="Difícil">Difícil</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="generate-button" onclick="startGame()" class="mt-8 w-full px-6 py-3 rounded-full text-white font-bold bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] transition shadow-lg hover:shadow-xl">
+                Generar Juego
+            </button>
+        </div>
 
-  return (
-    <div className="container mx-auto px-4 py-8 md:py-12 animate-fadeIn">
-      <header className="mb-12 text-center">
-        <Gamepad2 className="mx-auto h-16 w-16 text-primary mb-4" />
-        <h1 className="font-headline text-4xl md:text-5xl font-bold text-primary mb-4">
-          Juegos Literarios con IA
-        </h1>
-        <p className="text-lg text-foreground/80 max-w-2xl mx-auto">
-          ¡Pon a prueba tu ingenio y creatividad! Diseña tu propio juego literario con la ayuda de nuestra inteligencia artificial.
-        </p>
-      </header>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline text-2xl flex items-center">
-              <Wand2 className="mr-2 h-6 w-6 text-primary" />
-              Crea tu Juego
-            </CardTitle>
-            <CardDescription>
-              Define los parámetros y deja que la IA diseñe una experiencia literaria única para ti.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleGenerateGame)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="gameType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Juego</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Trivia, Adivinanzas, Relato interactivo" {...field} className="text-base md:text-sm" />
-                      </FormControl>
-                      <FormDescription>Prueba con "Trivia" o "Cuestionario" para un juego interactivo.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="theme"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tema del Juego</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Realismo mágico, Ciencia ficción ecuatoriana, Poesía modernista" {...field} className="text-base md:text-sm" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="complexity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Complejidad</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="text-base md:text-sm">
-                            <SelectValue placeholder="Selecciona un nivel de complejidad" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="easy">Fácil</SelectItem>
-                          <SelectItem value="medium">Medio</SelectItem>
-                          <SelectItem value="hard">Difícil</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" disabled={isLoading} size="lg" className="w-full font-body">
-                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Brain className="mr-2 h-5 w-5" />}
-                  {isLoading ? "Generando Juego..." : "Generar Juego Literario"}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-
-        {renderGameContent()}
-      </div>
+        <!-- Panel de Visualización del Juego -->
+        <div id="game-display" class="game-display card">
+            <span class="game-icon">🎮</span>
+            <h3 class="text-xl font-bold text-[hsl(var(--foreground))] mb-2">Tu juego aparecerá aquí</h3>
+            <p class="text-[hsl(var(--muted-foreground))]">Completa el formulario para empezar.</p>
+        </div>
     </div>
+    
+    <script>
+        const apiKey = "${geminiApiKey}"; 
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey;
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let gameData = [];
+        const gameContainer = document.getElementById('game-display');
+        const generateButton = document.getElementById('generate-button');
+        let loadingIndicator = null;
+
+        function createLoadingIndicator() {
+            const loader = document.createElement('div');
+            loader.className = 'flex flex-col items-center justify-center';
+            loader.innerHTML = \`
+                <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[hsl(var(--primary))]"></div>
+                <p class="mt-4 text-[hsl(var(--muted-foreground))]">Generando preguntas...</p>
+            \`;
+            return loader;
+        }
+
+        async function startGame() {
+             if (!apiKey) {
+                gameContainer.innerHTML = '<div class="p-8 text-center"><p class="text-red-500 font-semibold">Error de Configuración</p><p>La clave de API de Gemini no está configurada en el entorno. Por favor, añádela a tus variables de entorno para continuar.</p></div>';
+                return;
+            }
+
+            const complexity = document.getElementById('complexity').value;
+            const theme = document.getElementById('theme').value;
+
+            gameContainer.innerHTML = '';
+            loadingIndicator = createLoadingIndicator();
+            gameContainer.appendChild(loadingIndicator);
+            generateButton.disabled = true;
+
+            try {
+                const prompt = \`Genera un juego de trivia con 5 preguntas sobre el tema "${'$'}{theme}" con 4 opciones de respuesta para cada una, donde solo una sea correcta. La dificultad debe ser ${complexity}. Devuelve el resultado en un array de objetos JSON con el siguiente formato, sin ningún texto o formato adicional antes o después del JSON:
+                [
+                    {
+                        "pregunta": "...",
+                        "opciones": [
+                            {"texto": "...", "correcta": false},
+                            {"texto": "...", "correcta": true},
+                            {"texto": "...", "correcta": false},
+                            {"texto": "...", "correcta": false}
+                        ]
+                    },
+                    ...
+                ]\`;
+
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json"
+                    },
+                };
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    throw new Error(\`Error en la API: ${'$'}{response.statusText} - ${'$'}{errorBody}\`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.candidates || !result.candidates[0].content || !result.candidates[0].content.parts[0].text) {
+                     throw new Error('La respuesta de la API no tiene el formato esperado.');
+                }
+                const jsonString = result.candidates[0].content.parts[0].text;
+                gameData = JSON.parse(jsonString);
+
+                currentQuestionIndex = 0;
+                score = 0;
+                renderQuestion();
+
+            } catch (error) {
+                console.error('Error al generar el juego:', error);
+                gameContainer.innerHTML = \`<div class="p-8 text-center"><p class="text-red-500">Ocurrió un error. Por favor, inténtalo de nuevo.</p><p class="text-xs text-gray-500 mt-2">${'$'}{error.message}</p></div>\`;
+            } finally {
+                generateButton.disabled = false;
+            }
+        }
+
+        function renderQuestion() {
+            if (currentQuestionIndex >= gameData.length) {
+                renderResults();
+                return;
+            }
+
+            const question = gameData[currentQuestionIndex];
+            const questionElement = document.createElement('div');
+            questionElement.className = 'question-card fade-in';
+            questionElement.innerHTML = \`
+                <p class="text-lg font-semibold mb-4">${'$'}{currentQuestionIndex + 1}. ${'$'}{question.pregunta}</p>
+                <div class="options-container w-full space-y-2">
+                    ${'$'}{question.opciones.map((option, index) => \`
+                        <button class="option-button" onclick="checkAnswer(${'$'}{index})">${'$'}{option.texto}</button>
+                    \`).join('')}
+                </div>
+            \`;
+            
+            gameContainer.innerHTML = '';
+            gameContainer.appendChild(questionElement);
+        }
+
+        function checkAnswer(selectedIndex) {
+            const question = gameData[currentQuestionIndex];
+            const selectedOption = question.opciones[selectedIndex];
+            const optionButtons = gameContainer.querySelectorAll('.option-button');
+
+            optionButtons.forEach((button, index) => {
+                button.disabled = true;
+                if (question.opciones[index].correcta) {
+                    button.classList.add('correct');
+                } else if (index === selectedIndex) {
+                    button.classList.add('incorrect');
+                }
+            });
+
+            if (selectedOption.correcta) {
+                score++;
+            }
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                renderQuestion();
+            }, 1500);
+        }
+
+        function renderResults() {
+            const resultElement = document.createElement('div');
+            resultElement.className = 'result-card fade-in';
+            resultElement.innerHTML = \`
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">¡Juego terminado!</h3>
+                <p class="text-lg text-gray-700">Has respondido correctamente a <span class="text-[hsl(var(--primary))] font-bold">${'$'}{score} de ${'$'}{gameData.length}</span> preguntas.</p>
+                <button onclick="startGame()" class="mt-8 px-6 py-3 rounded-full text-white font-bold bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/0.9)] transition shadow-lg hover:shadow-xl">
+                    Jugar de Nuevo
+                </button>
+            \`;
+            
+            gameContainer.innerHTML = '';
+            gameContainer.appendChild(resultElement);
+        }
+    </script>
+</body>
+</html>
+  `;
+  
+  return (
+    <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
   );
 }
