@@ -84,8 +84,8 @@ export default function AuthorsHomePage() {
 
   return (
     <div className="animate-fadeIn">
-      <section className="relative py-20 md:py-28 overflow-hidden bg-background">
-         <div className="absolute inset-0 z-0 opacity-40">
+      <section className="relative py-16 md:py-20 overflow-hidden bg-background">
+         <div className="absolute inset-0 z-0 opacity-50">
             <video
               src="/videos/authors-background.mp4"
               autoPlay
@@ -95,12 +95,12 @@ export default function AuthorsHomePage() {
               className="w-full h-full object-cover"
             />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/50 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/60 z-10"></div>
         <div className="container mx-auto px-4 text-center relative z-20">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary drop-shadow-md">
             No solo publiques tu libro… ¡lánzalo y conecta con tu comunidad!
           </h1>
-          <p className="text-lg md:text-xl text-foreground/80 mb-8 max-w-3xl mx-auto">
+          <p className="text-lg md:text-xl text-foreground/90 mb-8 max-w-3xl mx-auto drop-shadow-sm">
             Alicialibros.com te permite publicar digital y físico, organizar eventos de lanzamiento y vivir la experiencia completa de tu libro.
           </p>
           {renderAuthButtons()}
