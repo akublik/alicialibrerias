@@ -403,7 +403,7 @@ export default function AuthorDashboardPage() {
                             <CardDescription>Permite que los lectores te sigan escaneando este código.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex justify-center items-center p-6">
-                           {user.id ? <div className="p-4 bg-white rounded-lg"><QRCodeSVG value={`/authors/${user.id}`} size={140} /></div> : <p>Cargando código...</p>}
+                           {authorProfile?.slug ? <div className="p-4 bg-white rounded-lg"><QRCodeSVG value={`${window.location.origin}/authors/${authorProfile.slug}`} size={140} /></div> : <p>Guarda tu perfil para generar el QR.</p>}
                         </CardContent>
                     </Card>
                 </div>
