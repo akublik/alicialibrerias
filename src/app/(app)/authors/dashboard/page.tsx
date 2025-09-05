@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -86,6 +86,19 @@ const StatCard = ({ title, value, icon: Icon, isLoading, description }: { title:
       </Card>
     );
 };
+
+const marketingTips = [
+  { title: "1. Crea expectativa antes del lanzamiento", points: ["Empieza a hablar del libro 30 a 60 días antes.", "Publica frases, fragmentos o citas llamativas.", "Usa el concepto de “coming soon” (ej. portada borrosa y revelar después)."] },
+  { title: "2. Usa un Booktrailer", points: ["Un video corto (30–60 seg.) con música + imágenes + texto impactante.", "Ideal para Instagram Reels, TikTok y YouTube Shorts.", "En Alicia puedes generar un guion y assets automáticamente."] },
+  { title: "3. Activa la preventa", points: ["Permite comprar el libro antes del lanzamiento.", "Ofrece beneficios:", "Firma digital o física.", "Descuento en preventa.", "Acceso a un capítulo exclusivo."] },
+  { title: "4. Haz de tu portada tu mejor campaña", points: ["Una portada llamativa multiplica las posibilidades de compra.", "Muestra varias opciones y haz una encuesta en redes para que los lectores participen."] },
+  { title: "5. Crea comunidad en redes sociales", points: ["Comparte tu proceso de escritura, anécdotas, fotos del “detrás de cámaras”.", "Usa hashtags específicos (#LecturaJuvenil #RomanceHistórico, etc.).", "Interactúa: responde comentarios, pregunta opiniones, genera cercanía."] },
+  { title: "6. Conecta con bookstagrammers, booktokers y bloggers", points: ["Regala copias digitales para que hagan reseñas honestas.", "Un buen review en redes puede tener más impacto que una publicidad pagada."] },
+  { title: "7. Organiza un evento de lanzamiento (online o físico)", points: ["Firma de libros en una librería asociada.", "Transmisión en vivo por Facebook/Instagram/YouTube.", "Juegos o trivias sobre el libro con premios para los asistentes."] },
+  { title: "8. Aprovecha el mailing", points: ["Envía correos a tus lectores con:", "Fecha de lanzamiento.", "Links de compra.", "Contenido exclusivo (ej. “detrás de la portada”)."] },
+  { title: "9. Gamifica la experiencia", points: ["Crea retos de lectura (ej. leer el libro en 7 días y compartir reflexión).", "Sorteos: quien deje reseña entra en concurso por un ejemplar firmado.", "En Alicia, los lectores pueden ganar alitoks por leer y reseñar."] },
+  { title: "10. No te olvides del post-lanzamiento", points: ["Comparte reseñas que te dejen.", "Publica fotos de los lectores con el libro.", "Mantén activa la conversación (club de lectura online, lives con preguntas)."] },
+];
 
 
 export default function AuthorDashboardPage() {
@@ -368,11 +381,12 @@ export default function AuthorDashboardPage() {
       </header>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
+            <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
@@ -575,6 +589,42 @@ export default function AuthorDashboardPage() {
               <Card className="bg-primary/5 border-primary/20"><CardHeader><CardTitle>Sugerencias de la IA</CardTitle></CardHeader><CardContent className="space-y-4"><div><h4 className="font-semibold">Tono y Estilo para Diferenciarte</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.toneAndStyle}</p></div><div><h4 className="font-semibold">Diferenciación de Audiencia</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.targetAudienceDifferentiation}</p></div><div><h4 className="font-semibold">Sugerencias Visuales (Portadas)</h4><p className="text-muted-foreground whitespace-pre-wrap">{marketAnalysis.aiSuggestions.visualSuggestions}</p></div></CardContent></Card>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="tips" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <Lightbulb className="mr-2 h-6 w-6 text-primary" />
+                Tips de Marketing para el Lanzamiento de tu Libro
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {marketingTips.map((tip, index) => (
+                <Card key={index} className="shadow-sm">
+                  <CardHeader><CardTitle className="font-headline text-lg">{tip.title}</CardTitle></CardHeader>
+                  <CardContent>
+                    <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
+                      {tip.points.map((point, pointIndex) => (
+                        <li key={pointIndex}>{point}</li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ))}
+              <Card className="bg-primary/5 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="font-headline text-lg flex items-center">
+                      <Star className="mr-2 h-5 w-5 text-amber-400 fill-amber-400"/>
+                      Extra: Tu Marca Personal
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Siempre piensa en tu libro como una marca personal. No es solo la obra, sino tú como autor lo que conecta con los lectores.</p>
+                </CardContent>
+              </Card>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
