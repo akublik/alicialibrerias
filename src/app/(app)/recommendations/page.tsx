@@ -75,13 +75,14 @@ export default function RecommendationsPage() {
     } catch (error: any) {
       console.error("Error getting recommendations:", error);
       let toastDescription = "No pudimos generar recomendaciones en este momento. Por favor, inténtalo de nuevo más tarde.";
-      if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY'))) {
-        toastDescription = "La función de recomendación por IA no está disponible en este momento. Disculpa las molestias."
+      if (error instanceof Error && (error.message.includes('API key') || error.message.includes('GOOGLE_API_KEY') || error.message.includes('GEMINI_API_KEY'))) {
+        toastDescription = "La función de recomendación por IA no está disponible en este momento debido a un problema de configuración. Disculpa las molestias."
       }
       toast({
         title: "Error de Recomendación",
         description: toastDescription,
         variant: "destructive",
+        duration: 7000,
       });
     } finally {
       setIsLoading(false);
