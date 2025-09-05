@@ -1,13 +1,22 @@
 // src/app/(app)/authors/page.tsx
 "use client";
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowRight, UserPlus, LayoutDashboard, BookCopy, Rocket, Wand2, BarChart2 } from "lucide-react";
-import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import type { Review, User } from '@/types';
 import Image from "next/image";
-import { useState, useEffect } from 'react';
-import type { User } from '@/types';
+import { MessageSquare, Users, CalendarDays, Star, ThumbsUp, Send, PlusCircle, Loader2, Bot, BookCopy, Rocket, Wand2, BarChart2, ArrowRight, UserPlus, LayoutDashboard } from "lucide-react";
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { db } from "@/lib/firebase";
+import { collection, query, onSnapshot, addDoc, serverTimestamp, orderBy, limit, doc, getDoc, runTransaction } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 
 export default function AuthorsHomePage() {
   const [user, setUser] = useState<User | null>(null);
@@ -84,7 +93,7 @@ export default function AuthorsHomePage() {
 
   return (
     <div className="animate-fadeIn">
-      <section className="relative py-16 md:py-20 overflow-hidden bg-background">
+      <section className="relative py-20 md:py-24 overflow-hidden bg-background">
          <div className="absolute inset-0 z-0 opacity-50">
             <video
               src="/videos/authors-background.mp4"
@@ -95,7 +104,7 @@ export default function AuthorsHomePage() {
               className="w-full h-full object-cover"
             />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-background/60 z-10"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/40 to-background/10 z-10"></div>
         <div className="container mx-auto px-4 text-center relative z-20">
           <h1 className="font-headline text-4xl md:text-6xl font-bold mb-6 text-primary drop-shadow-md">
             No solo publiques tu libro… ¡lánzalo y conecta con tu comunidad!
