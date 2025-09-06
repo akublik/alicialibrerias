@@ -11,6 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { googleAI } from '@genkit-ai/googleai';
+import { textToSpeech } from './tts-flow';
 
 const GenerateContentStudioInputSchema = z.object({
   prompt: z.string().describe('The author\'s high-level idea or goal for the post.'),
@@ -23,6 +24,8 @@ const GenerateContentStudioOutputSchema = z.object({
   text: z.string().describe('The generated text content for the social media post, including emojis and relevant hashtags.'),
   imageUrl: z.string().describe('A data URI of the generated image in PNG format.'),
   suggestedTime: z.string().describe('A suggested time to publish the content for maximum engagement.'),
+  reelScript: z.string().optional().describe('A script for the reel, if applicable.'),
+  audioUrl: z.string().optional().describe('A data URI for the generated audio of the reel script.'),
 });
 export type GenerateContentStudioOutput = z.infer<typeof GenerateContentStudioOutputSchema>;
 
@@ -30,7 +33,6 @@ export type GenerateContentStudioOutput = z.infer<typeof GenerateContentStudioOu
 const TextPromptInputSchema = GenerateContentStudioInputSchema.extend({
     imageDescription: z.string().describe("A brief, vivid description of the accompanying image, to ensure the text and image are coherent."),
 });
-
 
 const textGenerationPrompt = ai.definePrompt({
     name: "contentStudioTextPrompt",
@@ -54,6 +56,36 @@ const textGenerationPrompt = ai.definePrompt({
 {{{imageDescription}}}
 
 Genera solo el texto para la publicación.`,
+});
+
+const reelScriptPrompt = ai.definePrompt({
+    name: "reelScriptPrompt",
+    model: 'googleai/gemini-1.5-flash',
+    input: { schema: z.object({
+        prompt: z.string(),
+        imageDescription: z.string(),
+        postText: z.string(),
+    })},
+    output: { schema: z.object({ script: z.string() }) },
+    prompt: `Eres un guionista experto en crear contenido viral para Reels de TikTok e Instagram.
+
+Basado en el prompt original del autor, el texto del post y la imagen generada, crea un guion corto y dinámico para un Reel de 5 a 15 segundos.
+
+**Formato del Guion:**
+- Describe las escenas visualmente (ej. "Escena 1: (Visual) Un primer plano del libro con un café al lado.").
+- Incluye sugerencias de audio o música (ej. "(Audio) Música de misterio suave.").
+- El texto a narrar debe ser claro y conciso.
+
+**Prompt del Autor:**
+{{{prompt}}}
+
+**Texto del Post:**
+{{{postText}}}
+
+**Descripción de la Imagen:**
+{{{imageDescription}}}
+
+Genera solo el texto del guion.`,
 });
 
 export async function generateContentStudio(input: GenerateContentStudioInput): Promise<GenerateContentStudioOutput> {
@@ -95,9 +127,30 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
       prompt: `Basado en la plataforma "${input.platform}" y el formato "${input.format}", sugiere una hora de publicación óptima (ej. "18:00 (hora local)"). Solo la hora.`,
   });
 
+  let reelScript: string | undefined = undefined;
+  let audioUrl: string | undefined = undefined;
+
+  // 5. If it's a Reel, generate script and audio
+  if (input.format === 'Reel') {
+      const scriptResponse = await reelScriptPrompt({
+          prompt: input.prompt,
+          imageDescription,
+          postText: generatedText,
+      });
+      reelScript = scriptResponse.output?.script;
+
+      if (reelScript) {
+          // Generate audio from the script
+          const audioResponse = await textToSpeech({ text: reelScript, voice: 'Achernar' });
+          audioUrl = audioResponse.media;
+      }
+  }
+
   return {
     text: generatedText,
     imageUrl: media.url,
     suggestedTime: timeSuggestion.text,
+    reelScript,
+    audioUrl,
   };
 }

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -118,6 +118,7 @@ export default function AuthorDashboardPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
+  const [editableContent, setEditableContent] = useState('');
 
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
@@ -269,6 +270,7 @@ export default function AuthorDashboardPage() {
     try {
       const result = await generateContentStudio(values);
       setGeneratedContent(result);
+      setEditableContent(result.text); // Set editable content
       toast({ title: "¡Contenido Generado!", description: "Tu nueva publicación está lista para revisar." });
     } catch (error: any) {
       toast({ title: "Error al generar contenido", description: error.message, variant: "destructive" });
@@ -500,20 +502,41 @@ export default function AuthorDashboardPage() {
                     </div>
                     <div>
                         <Label>Resultado</Label>
-                        <Card className="mt-2 min-h-[300px] flex items-center justify-center">
+                        <Card className="mt-2 min-h-[300px] flex flex-col items-center justify-center p-4 gap-4">
                           {isGeneratingContent ? (
                               <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
                           ) : generatedContent ? (
-                              <div className="p-4 w-full space-y-4">
-                                  <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
-                                      <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
-                                  </div>
-                                  <Textarea readOnly value={generatedContent.text} rows={6} className="text-sm bg-background"/>
-                                  <div className="flex justify-between items-center text-sm">
-                                      <span className="text-muted-foreground">Hora sugerida: <strong className="text-foreground">{generatedContent.suggestedTime}</strong></span>
-                                      <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(generatedContent.text)}><Copy className="mr-2 h-3 w-3"/>Copiar Texto</Button>
-                                  </div>
-                              </div>
+                            <div className="w-full space-y-4">
+                                <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
+                                    <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
+                                </div>
+                                <div className="flex gap-2">
+                                     <Button variant="outline" size="sm" disabled><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
+                                     <Button variant="outline" size="sm" disabled><Video className="mr-2 h-3 w-3"/>Generar Video</Button>
+                                </div>
+                                 <div>
+                                    <Label className="text-sm font-medium">Texto Sugerido</Label>
+                                    <Textarea value={editableContent} onChange={(e) => setEditableContent(e.target.value)} rows={6} className="text-sm bg-background mt-1"/>
+                                    <div className="flex justify-between items-center text-sm mt-2">
+                                        <span className="text-muted-foreground">Hora sugerida: <strong className="text-foreground">{generatedContent.suggestedTime}</strong></span>
+                                        <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(editableContent)}><Copy className="mr-2 h-3 w-3"/>Copiar Texto</Button>
+                                    </div>
+                                </div>
+
+                                {generatedContent.reelScript && (
+                                    <div>
+                                        <Label className="text-sm font-medium">Guion y Audio para Reel</Label>
+                                        <div className="mt-1 p-3 border rounded-md bg-muted/50 space-y-3">
+                                            <Textarea readOnly value={generatedContent.reelScript} rows={5} className="text-xs bg-background"/>
+                                            {generatedContent.audioUrl && (
+                                                <audio controls src={generatedContent.audioUrl} className="w-full h-10">
+                                                    Tu navegador no soporta el elemento de audio.
+                                                </audio>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                           ) : (
                               <div className="text-center p-8"><ImageIcon className="h-10 w-10 text-muted-foreground mb-4"/><p className="text-muted-foreground">El contenido generado aparecerá aquí.</p></div>
                           )}

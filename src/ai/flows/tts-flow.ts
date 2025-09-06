@@ -16,7 +16,7 @@ import { googleAI } from '@genkit-ai/googleai';
 // Define the Zod schema for the input, now including an optional voice
 const TextToSpeechInputSchema = z.object({
   text: z.string().describe("The text to convert to speech."),
-  voice: z.string().optional().describe("The prebuilt voice to use (e.g., 'Algenib', 'Sirius'). Defaults to 'Algenib' if not provided."),
+  voice: z.string().optional().describe("The prebuilt voice to use (e.g., 'Algenib', 'Sirius', 'Achernar'). Defaults to 'Algenib' if not provided."),
 });
 export type TextToSpeechInput = z.infer<typeof TextToSpeechInputSchema>;
 
