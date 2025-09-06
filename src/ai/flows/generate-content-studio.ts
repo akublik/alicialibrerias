@@ -58,6 +58,7 @@ Genera solo el texto para la publicación.`,
 
 const imageGenerationPrompt = ai.definePrompt({
     name: "contentStudioImagePrompt",
+    model: 'googleai/imagen-4.0-fast-generate-001',
     input: { schema: z.string() },
     prompt: `Genera una imagen cinematográfica, vibrante y de alta calidad basada en la siguiente descripción. La imagen debe ser visualmente impactante y adecuada para una campaña de marketing en redes sociales. Estilo: Fotorrealista, emocional, con iluminación dramática.
 
@@ -70,7 +71,7 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
   const imagePrompt = `Una imagen para un post de ${input.platform} en formato ${input.format}. Idea del autor: ${input.prompt}`;
   const { media } = await ai.generate({
       model: googleAI.model('imagen-4.0-fast-generate-001'),
-      prompt: await imageGenerationPrompt(imagePrompt),
+      prompt: imagePrompt,
   });
 
   if (!media?.url) {
