@@ -34,7 +34,9 @@ const TextPromptInputSchema = GenerateContentStudioInputSchema.extend({
 
 const textGenerationPrompt = ai.definePrompt({
     name: "contentStudioTextPrompt",
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: TextPromptInputSchema },
+    output: { schema: z.string() },
     prompt: `Eres un experto en marketing de redes sociales para autores. Tu tarea es generar el texto para una publicación en redes sociales.
 
 **Instrucciones:**
@@ -81,7 +83,7 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
       prompt: `Describe la siguiente imagen en una frase corta y vívida para un prompt de texto. Imagen: {{media url=imageUrl}}`,
       context: { imageUrl: media.url },
   });
-  const imageDescription = descriptionResponse.text();
+  const imageDescription = descriptionResponse.text;
 
   // 3. Generate Text based on author prompt and image description
   const textResponse = await textGenerationPrompt({
@@ -96,8 +98,8 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
   });
 
   return {
-    text: textResponse.output() as string,
+    text: textResponse.output as string,
     imageUrl: media.url,
-    suggestedTime: timeSuggestion.text(),
+    suggestedTime: timeSuggestion.text,
   };
 }
