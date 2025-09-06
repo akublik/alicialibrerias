@@ -36,7 +36,7 @@ const textGenerationPrompt = ai.definePrompt({
     name: "contentStudioTextPrompt",
     model: 'googleai/gemini-1.5-flash',
     input: { schema: TextPromptInputSchema },
-    output: { schema: z.string() },
+    output: { schema: z.object({ text: z.string() }) },
     prompt: `Eres un experto en marketing de redes sociales para autores. Tu tarea es generar el texto para una publicación en redes sociales.
 
 **Instrucciones:**
@@ -54,15 +54,6 @@ const textGenerationPrompt = ai.definePrompt({
 {{{imageDescription}}}
 
 Genera solo el texto para la publicación.`,
-});
-
-const imageGenerationPrompt = ai.definePrompt({
-    name: "contentStudioImagePrompt",
-    model: 'googleai/imagen-4.0-fast-generate-001',
-    input: { schema: z.string() },
-    prompt: `Genera una imagen cinematográfica, vibrante y de alta calidad basada en la siguiente descripción. La imagen debe ser visualmente impactante y adecuada para una campaña de marketing en redes sociales. Estilo: Fotorrealista, emocional, con iluminación dramática.
-
-Descripción: {{{input}}}`,
 });
 
 export async function generateContentStudio(input: GenerateContentStudioInput): Promise<GenerateContentStudioOutput> {
@@ -91,6 +82,12 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
     ...input,
     imageDescription: imageDescription,
   });
+  
+  const generatedText = textResponse.output?.text;
+  if (!generatedText) {
+      throw new Error("La IA no pudo generar el texto para la publicación.");
+  }
+
 
   // 4. Generate a suggested time
   const timeSuggestion = await ai.generate({
@@ -99,7 +96,7 @@ export async function generateContentStudio(input: GenerateContentStudioInput): 
   });
 
   return {
-    text: textResponse.output as string,
+    text: generatedText,
     imageUrl: media.url,
     suggestedTime: timeSuggestion.text,
   };
