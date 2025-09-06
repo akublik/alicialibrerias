@@ -29,127 +29,91 @@ const GenerateContentStudioOutputSchema = z.object({
 });
 export type GenerateContentStudioOutput = z.infer<typeof GenerateContentStudioOutputSchema>;
 
-// Define a separate schema for the text generation prompt for clarity
-const TextPromptInputSchema = GenerateContentStudioInputSchema.extend({
-    imageDescription: z.string().describe("A brief, vivid description of the accompanying image, to ensure the text and image are coherent."),
-});
-
+// A simpler, more robust text generation prompt.
 const textGenerationPrompt = ai.definePrompt({
     name: "contentStudioTextPrompt",
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: TextPromptInputSchema },
-    output: { schema: z.object({ text: z.string() }) },
-    prompt: `Eres un experto en marketing de redes sociales para autores. Tu tarea es generar el texto para una publicación en redes sociales.
-
-**Instrucciones:**
-1.  **Adapta el Tono:** El tono debe ser apropiado para la plataforma seleccionada ({{platform}}) y el formato ({{format}}).
-2.  **Sé Creativo:** Usa el prompt del autor como inspiración, pero siéntete libre de proponer un ángulo creativo.
-3.  **Coherencia Visual:** Asegúrate de que el texto complemente la imagen descrita a continuación.
-4.  **Llamada a la Acción:** Incluye una llamada a la acción clara (ej. "¡Resérvalo ahora!", "¡Comenta tu opinión!", "¡Link en la bio!").
-5.  **Hashtags y Emojis:** Usa emojis relevantes y de 3 a 5 hashtags populares y específicos.
-6.  **Formato:** Para un Reel de TikTok/Instagram, el texto puede ser más corto o incluso un guion simple. Para un Post, puede ser más largo y descriptivo.
+    input: { schema: GenerateContentStudioInputSchema },
+    output: { schema: z.object({ text: z.string(), suggestedTime: z.string() }) },
+    prompt: `Eres un experto en marketing de redes sociales para autores. Tu tarea es generar el texto para una publicación en {{platform}} con formato {{format}}.
 
 **Prompt del Autor:**
 {{{prompt}}}
 
-**Descripción de la Imagen Generada:**
-{{{imageDescription}}}
+**Instrucciones:**
+1.  **Texto del Post:** Escribe un texto atractivo y coherente. Incluye emojis relevantes y de 3 a 5 hashtags populares. Adapta el tono a la plataforma y formato.
+2.  **Hora Sugerida:** Sugiere una hora de publicación óptima (ej. "18:00 (hora local)").
 
-Genera solo el texto para la publicación.`,
+Genera solo el texto del post y la hora sugerida.`,
 });
 
 const reelScriptPrompt = ai.definePrompt({
     name: "reelScriptPrompt",
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: z.object({
-        prompt: z.string(),
-        imageDescription: z.string(),
-        postText: z.string(),
-    })},
+    input: { schema: z.object({ postText: z.string() })},
     output: { schema: z.object({ script: z.string() }) },
     prompt: `Eres un guionista experto en crear contenido viral para Reels de TikTok e Instagram.
 
-Basado en el prompt original del autor, el texto del post y la imagen generada, crea un guion corto y dinámico para un Reel de 5 a 15 segundos.
-
-**Formato del Guion:**
-- Describe las escenas visualmente (ej. "Escena 1: (Visual) Un primer plano del libro con un café al lado.").
-- Incluye sugerencias de audio o música (ej. "(Audio) Música de misterio suave.").
-- El texto a narrar debe ser claro y conciso.
-
-**Prompt del Autor:**
-{{{prompt}}}
+Basado en el siguiente texto de una publicación, crea un guion corto y dinámico para un Reel de 5 a 15 segundos. El guion debe ser solo el texto a narrar o mostrar en pantalla, de forma concisa y clara.
 
 **Texto del Post:**
 {{{postText}}}
 
-**Descripción de la Imagen:**
-{{{imageDescription}}}
-
-Genera solo el texto del guion.`,
+Genera solo el texto del guion para la narración del Reel.`,
 });
+
 
 export async function generateContentStudio(input: GenerateContentStudioInput): Promise<GenerateContentStudioOutput> {
   
-  // 1. Generate Image First
-  const imagePrompt = `Una imagen para un post de ${input.platform} en formato ${input.format}. Idea del autor: ${input.prompt}`;
-  const { media } = await ai.generate({
+  // 1. Generate Image and Text/Time in Parallel
+  const imagePromise = ai.generate({
       model: googleAI.model('imagen-4.0-fast-generate-001'),
-      prompt: imagePrompt,
+      prompt: `Una imagen cinematográfica y atractiva para una publicación de autor. Idea del autor: "${input.prompt}". No incluyas texto en la imagen.`,
   });
 
-  if (!media?.url) {
+  const textPromise = textGenerationPrompt(input);
+
+  const [imageResponse, textResponse] = await Promise.all([imagePromise, textPromise]);
+  
+  const imageUrl = imageResponse.media?.url;
+  if (!imageUrl) {
     throw new Error('La generación de la imagen falló.');
   }
-
-  // 2. Generate a simple description of the image for the text prompt
-  const descriptionResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: `Describe la siguiente imagen en una frase corta y vívida para un prompt de texto. Imagen: {{media url=imageUrl}}`,
-      context: { imageUrl: media.url },
-  });
-  const imageDescription = descriptionResponse.text;
-
-  // 3. Generate Text based on author prompt and image description
-  const textResponse = await textGenerationPrompt({
-    ...input,
-    imageDescription: imageDescription,
-  });
   
   const generatedText = textResponse.output?.text;
   if (!generatedText) {
       throw new Error("La IA no pudo generar el texto para la publicación.");
   }
+  
+  const suggestedTime = textResponse.output?.suggestedTime || "19:00 (hora local)";
 
 
-  // 4. Generate a suggested time
-  const timeSuggestion = await ai.generate({
-      model: 'googleai/gemini-1.5-flash',
-      prompt: `Basado en la plataforma "${input.platform}" y el formato "${input.format}", sugiere una hora de publicación óptima (ej. "18:00 (hora local)"). Solo la hora.`,
-  });
-
+  // 2. If it's a Reel, generate script and audio based on the generated text
   let reelScript: string | undefined = undefined;
   let audioUrl: string | undefined = undefined;
 
-  // 5. If it's a Reel, generate script and audio
   if (input.format === 'Reel') {
       const scriptResponse = await reelScriptPrompt({
-          prompt: input.prompt,
-          imageDescription,
           postText: generatedText,
       });
       reelScript = scriptResponse.output?.script;
 
       if (reelScript) {
-          // Generate audio from the script
-          const audioResponse = await textToSpeech({ text: reelScript, voice: 'Achernar' });
-          audioUrl = audioResponse.media;
+          try {
+              const audioResponse = await textToSpeech({ text: reelScript, voice: 'Achernar' });
+              audioUrl = audioResponse.media;
+          } catch (ttsError) {
+              console.error("TTS generation failed:", ttsError);
+              // Fail gracefully: we can still return the script without audio.
+              audioUrl = undefined;
+          }
       }
   }
 
   return {
     text: generatedText,
-    imageUrl: media.url,
-    suggestedTime: timeSuggestion.text,
+    imageUrl: imageUrl,
+    suggestedTime: suggestedTime,
     reelScript,
     audioUrl,
   };

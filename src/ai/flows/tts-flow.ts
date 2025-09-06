@@ -83,7 +83,7 @@ const textToSpeechFlow = ai.defineFlow(
     let textToProcess = text;
     if (text.length > CHARACTER_LIMIT) {
       textToProcess = text.substring(0, CHARACTER_LIMIT);
-      console.log(`TTS input was too long (${text.length} chars) and has been truncated to ${CHARACTER_LIMIT} characters.`);
+      console.warn(`TTS input was too long (${text.length} chars) and has been truncated to ${CHARACTER_LIMIT} characters.`);
     }
 
     const { media } = await ai.generate({
