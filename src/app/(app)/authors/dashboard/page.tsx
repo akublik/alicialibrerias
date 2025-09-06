@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { bookCategories } from '@/lib/options';
 import { QRCodeSVG } from 'qrcode.react';
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
 
 
 const marketingPlanFormSchema = z.object({
@@ -58,6 +59,13 @@ const marketAnalysisFormSchema = z.object({
     authorBookTitle: z.string().min(3, { message: "El título de referencia es requerido." }),
 });
 type MarketAnalysisFormValues = z.infer<typeof marketAnalysisFormSchema>;
+
+const contentStudioFormSchema = z.object({
+  prompt: z.string().min(10, { message: "La idea debe tener al menos 10 caracteres." }),
+  platform: z.enum(['Instagram', 'TikTok', 'Facebook']),
+  format: z.enum(['Post', 'Story', 'Reel']),
+});
+type ContentStudioFormValues = z.infer<typeof contentStudioFormSchema>;
 
 // Dummy data for followers
 const placeholderFollowers: User[] = [
@@ -108,6 +116,8 @@ export default function AuthorDashboardPage() {
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
   const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysisOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
 
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
@@ -134,6 +144,11 @@ export default function AuthorDashboardPage() {
   const analysisForm = useForm<MarketAnalysisFormValues>({
       resolver: zodResolver(marketAnalysisFormSchema),
       defaultValues: { authorGenre: "", authorBookTitle: "" },
+  });
+  
+  const contentForm = useForm<ContentStudioFormValues>({
+    resolver: zodResolver(contentStudioFormSchema),
+    defaultValues: { prompt: "", platform: "Instagram", format: "Post" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -247,6 +262,20 @@ export default function AuthorDashboardPage() {
         setIsAnalyzing(false);
     }
   }
+
+  const onSubmitContentStudio = async (values: ContentStudioFormValues) => {
+    setIsGeneratingContent(true);
+    setGeneratedContent(null);
+    try {
+      const result = await generateContentStudio(values);
+      setGeneratedContent(result);
+      toast({ title: "¡Contenido Generado!", description: "Tu nueva publicación está lista para revisar." });
+    } catch (error: any) {
+      toast({ title: "Error al generar contenido", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -384,7 +413,7 @@ export default function AuthorDashboardPage() {
         <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
-            <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
+            <TabsTrigger value="content-studio">Estudio de Contenido</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
@@ -447,6 +476,52 @@ export default function AuthorDashboardPage() {
                     </Card>
                 </div>
             </div>
+        </TabsContent>
+        
+        <TabsContent value="content-studio" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary"/>Estudio de Contenido</CardTitle>
+                <CardDescription>Genera publicaciones para redes sociales con IA para promocionar tus libros.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                        <Form {...contentForm}>
+                            <form onSubmit={contentForm.handleSubmit(onSubmitContentStudio)} className="space-y-4">
+                                <FormField control={contentForm.control} name="prompt" render={({ field }) => ( <FormItem><FormLabel>Idea o Prompt</FormLabel><FormControl><Textarea rows={4} placeholder="Ej: Anunciar el lanzamiento de mi nueva novela de fantasía 'El Último Dragón'" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={contentForm.control} name="platform" render={({ field }) => ( <FormItem><FormLabel>Plataforma</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Instagram">Instagram</SelectItem><SelectItem value="TikTok">TikTok</SelectItem><SelectItem value="Facebook">Facebook</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                                    <FormField control={contentForm.control} name="format" render={({ field }) => ( <FormItem><FormLabel>Formato</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Post">Post</SelectItem><SelectItem value="Story">Story</SelectItem><SelectItem value="Reel">Reel</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                                </div>
+                                <Button type="submit" disabled={isGeneratingContent} className="w-full">{isGeneratingContent ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}{isGeneratingContent ? 'Generando...' : 'Generar Contenido'}</Button>
+                            </form>
+                        </Form>
+                    </div>
+                    <div>
+                        <Label>Resultado</Label>
+                        <Card className="mt-2 min-h-[300px] flex items-center justify-center">
+                          {isGeneratingContent ? (
+                              <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
+                          ) : generatedContent ? (
+                              <div className="p-4 w-full space-y-4">
+                                  <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
+                                      <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
+                                  </div>
+                                  <Textarea readOnly value={generatedContent.text} rows={6} className="text-sm bg-background"/>
+                                  <div className="flex justify-between items-center text-sm">
+                                      <span className="text-muted-foreground">Hora sugerida: <strong className="text-foreground">{generatedContent.suggestedTime}</strong></span>
+                                      <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(generatedContent.text)}><Copy className="mr-2 h-3 w-3"/>Copiar Texto</Button>
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="text-center p-8"><ImageIcon className="h-10 w-10 text-muted-foreground mb-4"/><p className="text-muted-foreground">El contenido generado aparecerá aquí.</p></div>
+                          )}
+                        </Card>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="marketing" className="mt-6">

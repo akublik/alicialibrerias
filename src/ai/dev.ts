@@ -6,6 +6,7 @@ import '@/ai/flows/generate-book-review.ts';
 import '@/ai/flows/generate-book-description.ts';
 import '@/ai/flows/tts-flow.ts';
 import '@/ai/flows/converse-with-book.ts';
-import '@/ai/flows/alicia-assistant-chat.ts';
+import '@/aiflows/alicia-assistant-chat.ts';
 import '@/ai/flows/generate-marketing-plan.ts';
 import '@/ai/flows/market-analysis.ts';
+import '@/ai/flows/generate-content-studio.ts';
