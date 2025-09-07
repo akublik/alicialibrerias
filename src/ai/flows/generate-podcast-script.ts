@@ -55,33 +55,45 @@ const podcastScriptPrompt = ai.definePrompt({
 Genera solo el título y el guion en el formato JSON solicitado.`,
 });
 
+const generatePodcastScriptFlow = ai.defineFlow(
+  {
+    name: 'generatePodcastScriptFlow',
+    inputSchema: GeneratePodcastScriptInputSchema,
+    outputSchema: GeneratePodcastScriptOutputSchema,
+  },
+  async (input: GeneratePodcastScriptInput) => {
+    // 1. Generate the script first
+    const scriptResponse = await podcastScriptPrompt(input);
+    const script = scriptResponse.output?.script;
+    const title = scriptResponse.output?.title;
+
+    if (!script || !title) {
+      throw new Error("La IA no pudo generar el guion del podcast.");
+    }
+
+    // 2. Generate the audio from the script
+    let audioUrl: string | undefined;
+    try {
+        const audioResponse = await textToSpeech({ text: script, voice: 'Achernar' }); // Using a different voice for variety
+        audioUrl = audioResponse.media;
+    } catch (ttsError) {
+        console.error("Podcast TTS generation failed:", ttsError);
+        throw new Error("El guion se generó, pero falló la creación del audio. Inténtalo de nuevo.");
+    }
+
+    if (!audioUrl) {
+        throw new Error("La generación del audio no produjo un resultado válido.");
+    }
+
+    return {
+      title,
+      script,
+      audioUrl,
+    };
+  }
+);
+
+
 export async function generatePodcastScript(input: GeneratePodcastScriptInput): Promise<GeneratePodcastScriptOutput> {
-  // 1. Generate the script first
-  const scriptResponse = await podcastScriptPrompt(input);
-  const script = scriptResponse.output?.script;
-  const title = scriptResponse.output?.title;
-
-  if (!script || !title) {
-    throw new Error("La IA no pudo generar el guion del podcast.");
-  }
-
-  // 2. Generate the audio from the script
-  let audioUrl: string | undefined;
-  try {
-      const audioResponse = await textToSpeech({ text: script, voice: 'Achernar' }); // Using a different voice for variety
-      audioUrl = audioResponse.media;
-  } catch (ttsError) {
-      console.error("Podcast TTS generation failed:", ttsError);
-      throw new Error("El guion se generó, pero falló la creación del audio. Inténtalo de nuevo.");
-  }
-
-  if (!audioUrl) {
-      throw new Error("La generación del audio no produjo un resultado válido.");
-  }
-
-  return {
-    title,
-    script,
-    audioUrl,
-  };
+  return generatePodcastScriptFlow(input);
 }
