@@ -33,6 +33,8 @@ import { bookCategories } from '@/lib/options';
 import { QRCodeSVG } from 'qrcode.react';
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
+import { regenerateImage } from '@/ai/flows/regenerate-image';
+import { generateVideoFromImage } from '@/ai/flows/generate-video-from-image';
 
 
 const marketingPlanFormSchema = z.object({
@@ -116,8 +118,12 @@ export default function AuthorDashboardPage() {
   const [marketingPlan, setMarketingPlan] = useState<GenerateMarketingPlanOutput | null>(null);
   const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysisOutput | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
+  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState('');
 
   const [user, setUser] = useState<User | null>(null);
@@ -267,15 +273,48 @@ export default function AuthorDashboardPage() {
   const onSubmitContentStudio = async (values: ContentStudioFormValues) => {
     setIsGeneratingContent(true);
     setGeneratedContent(null);
+    setGeneratedVideoUrl(null);
     try {
       const result = await generateContentStudio(values);
       setGeneratedContent(result);
-      setEditableContent(result.text); // Set editable content
+      setEditableContent(result.text); 
       toast({ title: "¡Contenido Generado!", description: "Tu nueva publicación está lista para revisar." });
     } catch (error: any) {
       toast({ title: "Error al generar contenido", description: error.message, variant: "destructive" });
     } finally {
       setIsGeneratingContent(false);
+    }
+  };
+
+  const handleRegenerateImage = async () => {
+    if (!generatedContent || !contentForm.getValues('prompt')) return;
+    setIsGeneratingImage(true);
+    try {
+        const result = await regenerateImage({ prompt: contentForm.getValues('prompt') });
+        setGeneratedContent(prev => prev ? { ...prev, imageUrl: result.imageUrl } : null);
+        toast({ title: "Imagen Regenerada", description: "Se ha creado una nueva imagen para tu publicación." });
+    } catch (error: any) {
+        toast({ title: "Error al regenerar imagen", description: error.message, variant: "destructive" });
+    } finally {
+        setIsGeneratingImage(false);
+    }
+  };
+  
+  const handleGenerateVideo = async () => {
+    if (!generatedContent) return;
+    setIsGeneratingVideo(true);
+    setGeneratedVideoUrl(null);
+    try {
+        const result = await generateVideoFromImage({
+            imageUrl: generatedContent.imageUrl,
+            prompt: contentForm.getValues('prompt'),
+        });
+        setGeneratedVideoUrl(result.videoUrl);
+        toast({ title: "¡Video Generado!", description: "Tu video está listo para previsualizar." });
+    } catch (error: any) {
+        toast({ title: "Error al generar video", description: error.message, variant: "destructive" });
+    } finally {
+        setIsGeneratingVideo(false);
     }
   };
 
@@ -507,13 +546,28 @@ export default function AuthorDashboardPage() {
                               <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
                           ) : generatedContent ? (
                             <div className="w-full space-y-4">
-                                <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
-                                    <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
-                                </div>
+                                {isGeneratingImage ? (
+                                    <div className="aspect-square w-full rounded-lg border bg-muted flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                                ) : (
+                                    <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
+                                        <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
+                                    </div>
+                                )}
                                 <div className="flex gap-2">
-                                     <Button variant="outline" size="sm" disabled><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
-                                     <Button variant="outline" size="sm" disabled><Video className="mr-2 h-3 w-3"/>Generar Video</Button>
+                                     <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage || isGeneratingVideo}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
+                                     <Button variant="outline" size="sm" onClick={handleGenerateVideo} disabled={isGeneratingImage || isGeneratingVideo}><Video className="mr-2 h-3 w-3"/>Generar Video</Button>
                                 </div>
+                                {isGeneratingVideo && (
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Generando video, esto puede tomar un minuto...</div>
+                                )}
+                                {generatedVideoUrl && (
+                                     <div className="relative aspect-video w-full rounded-lg overflow-hidden border bg-black">
+                                        <video key={generatedVideoUrl} controls autoPlay loop className="w-full h-full">
+                                            <source src={generatedVideoUrl} type="video/mp4" />
+                                            Tu navegador no soporta el tag de video.
+                                        </video>
+                                    </div>
+                                )}
                                  <div>
                                     <Label className="text-sm font-medium">Texto Sugerido</Label>
                                     <Textarea value={editableContent} onChange={(e) => setEditableContent(e.target.value)} rows={6} className="text-sm bg-background mt-1"/>

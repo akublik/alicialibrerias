@@ -10,3 +10,5 @@ import '@/aiflows/alicia-assistant-chat.ts';
 import '@/ai/flows/generate-marketing-plan.ts';
 import '@/ai/flows/market-analysis.ts';
 import '@/ai/flows/generate-content-studio.ts';
+import '@/ai/flows/regenerate-image.ts';
+import '@/ai/flows/generate-video-from-image.ts';
