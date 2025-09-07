@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -313,7 +313,7 @@ export default function AuthorDashboardPage() {
       const result = await analyzeMarketAndCompetition(values);
       setMarketAnalysis(result);
       toast({ title: "¡Análisis Completado!", description: "Las tendencias y sugerencias están listas." });
-    } catch (error: any) {
+    } catch (error: any) => {
       toast({ title: "Error al analizar", description: error.message, variant: "destructive" });
     } finally {
         setIsAnalyzing(false);
@@ -344,13 +344,7 @@ export default function AuthorDashboardPage() {
          return;
       }
       try {
-          const result = await generatePodcastScript({
-              ...values,
-              authorName: authorProfile.name,
-          });
-          if (!result || !result.script || !result.audioUrl) {
-            throw new Error("La IA no devolvió un podcast válido.");
-          }
+          const result = await generatePodcastScript({ ...values, authorName: authorProfile.name });
           setGeneratedPodcast(result);
           toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
       } catch (error: any) {
@@ -535,7 +529,7 @@ export default function AuthorDashboardPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
-            <TabsTrigger value="content-studio">Estudio de Contenido</TabsTrigger>
+            <TabsTrigger value="content-studio">Taller de Contenidos</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
@@ -603,14 +597,18 @@ export default function AuthorDashboardPage() {
         <TabsContent value="content-studio" className="mt-6">
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary"/>Estudio de Contenido</CardTitle>
-                    <CardDescription>Genera contenido con IA para promocionar tus libros.</CardDescription>
+                    <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary"/>Taller de contenidos</CardTitle>
+                    <CardDescription>Genera contenido con AlicIA para promocionar tus libros.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Tabs defaultValue="social" className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="social">Redes Sociales</TabsTrigger>
-                            <TabsTrigger value="podcast">Podcast</TabsTrigger>
+                             <TabsTrigger value="social">
+                                <Share2 className="mr-2 h-4 w-4"/>Redes Sociales
+                            </TabsTrigger>
+                            <TabsTrigger value="podcast">
+                                <Mic className="mr-2 h-4 w-4"/>Podcast
+                            </TabsTrigger>
                         </TabsList>
                         
                         <TabsContent value="social" className="mt-6">
