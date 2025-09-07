@@ -1,3 +1,4 @@
+
 // src/ai/flows/generate-podcast-script.ts
 'use server';
 /**
@@ -62,7 +63,15 @@ const generatePodcastScriptFlow = ai.defineFlow(
     outputSchema: GeneratePodcastScriptOutputSchema,
   },
   async (input: GeneratePodcastScriptInput) => {
-    // 1. Generate the script first by passing the full input object
+    
+    // Truncate the input content to avoid exceeding the model's token limit.
+    const MAX_INPUT_LENGTH = 20000;
+    if (input.bookContent.length > MAX_INPUT_LENGTH) {
+      input.bookContent = input.bookContent.substring(0, MAX_INPUT_LENGTH);
+      console.warn(`Podcast generation input was too long and was truncated to ${MAX_INPUT_LENGTH} characters.`);
+    }
+
+    // 1. Generate the script first by passing the (potentially truncated) input object
     const scriptResponse = await podcastScriptPrompt(input);
     
     // Robust validation: Ensure both title and script are present
