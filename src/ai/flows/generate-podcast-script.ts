@@ -62,7 +62,7 @@ const generatePodcastScriptFlow = ai.defineFlow(
     outputSchema: GeneratePodcastScriptOutputSchema,
   },
   async (input: GeneratePodcastScriptInput) => {
-    // 1. Generate the script first
+    // 1. Generate the script first by passing the full input object
     const scriptResponse = await podcastScriptPrompt(input);
     
     // Robust validation: Ensure both title and script are present
