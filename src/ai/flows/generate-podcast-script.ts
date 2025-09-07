@@ -45,7 +45,7 @@ const podcastScriptPrompt = ai.definePrompt({
     *   Un segmento sobre **el autor**: ¿Quién es {{authorName}}? ¿Cuál es su estilo?
     *   Una **conclusión** y llamada a la acción, invitando a los oyentes a comprar el libro.
 3.  **Tono:** Adapta el guion al tono solicitado: **{{podcastTone}}**.
-4.  **Público Objetivo:** Asegúrate de que el lenguaje y el contenido sean apropiados para el público objetivo: **{{targetAudience}}**.
+4.  **Público Objetivo:** Asegúrate de que el lenguaje y el contenido sean apropiado para el público objetivo: **{{targetAudience}}**.
 
 **Contenido del Libro para el Análisis:**
 ---

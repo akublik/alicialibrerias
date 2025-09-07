@@ -35,7 +35,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
 import { regenerateImage } from '@/ai/flows/regenerate-image';
 import { generatePodcastScript, type GeneratePodcastScriptOutput } from '@/ai/flows/generate-podcast-script';
-
+import { generateVideoFromImage, type GenerateVideoOutput } from '@/ai/flows/generate-video-from-image';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -118,6 +118,41 @@ const marketingTips = [
   { title: "10. No te olvides del post-lanzamiento", points: ["Comparte reseñas que te dejen.", "Publica fotos de los lectores con el libro.", "Mantén activa la conversación (club de lectura online, lives con preguntas)."] },
 ];
 
+const compressImage = (dataUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 1024;
+      const MAX_HEIGHT = 1024;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height *= MAX_WIDTH / width;
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width *= MAX_HEIGHT / height;
+          height = MAX_HEIGHT;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        return reject(new Error('No se pudo obtener el contexto del canvas.'));
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.8)); // Compress to 80% quality JPEG
+    };
+    img.onerror = (error) => reject(error);
+    img.src = dataUrl;
+  });
+};
+
 
 export default function AuthorDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -129,7 +164,8 @@ export default function AuthorDashboardPage() {
   
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput & { videoUrl?: string } | null>(null);
   const [editableContent, setEditableContent] = useState('');
   
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
@@ -232,7 +268,7 @@ export default function AuthorDashboardPage() {
         }
     };
     checkAuthAndFetchData();
-  }, [router, marketingForm, analysisForm]);
+  }, [router, marketingForm, analysisForm, profileForm]);
 
   const handleLogout = () => {
     if (auth) {
@@ -329,7 +365,7 @@ export default function AuthorDashboardPage() {
     setIsGeneratingImage(true);
     try {
         const result = await regenerateImage({ prompt: contentForm.getValues('prompt') });
-        setGeneratedContent(prev => prev ? { ...prev, imageUrl: result.imageUrl } : null);
+        setGeneratedContent(prev => prev ? { ...prev, imageUrl: result.imageUrl, videoUrl: undefined } : null);
         toast({ title: "Imagen Regenerada", description: "Se ha creado una nueva imagen para tu publicación." });
     } catch (error: any) {
         toast({ title: "Error al regenerar imagen", description: error.message, variant: "destructive" });
@@ -337,6 +373,25 @@ export default function AuthorDashboardPage() {
         setIsGeneratingImage(false);
     }
   };
+
+  const handleGenerateVideo = async () => {
+    if (!generatedContent?.imageUrl) return;
+    setIsGeneratingVideo(true);
+    try {
+      const compressedImageUrl = await compressImage(generatedContent.imageUrl);
+      const result = await generateVideoFromImage({
+        imageUrl: compressedImageUrl,
+        prompt: contentForm.getValues('prompt'),
+      });
+      setGeneratedContent(prev => prev ? { ...prev, videoUrl: result.videoUrl } : null);
+      toast({ title: "Video Generado", description: "Tu video corto está listo para reproducir." });
+    } catch (error: any) {
+      toast({ title: "Error al generar video", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -433,17 +488,22 @@ export default function AuthorDashboardPage() {
       const canvasWidth = canvas.width;
       const canvasHeight = canvas.height;
       const ratio = canvasWidth / canvasHeight;
-      const imgWidth = pdfWidth;
-      const imgHeight = imgWidth / ratio;
+      let imgWidth = pdfWidth;
+      let imgHeight = imgWidth / ratio;
+      
+      if (imgHeight > pdfHeight) {
+          imgHeight = pdfHeight;
+          imgWidth = imgHeight * ratio;
+      }
       
       let position = 0;
-      let heightLeft = imgHeight;
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      let heightLeft = canvasHeight * (pdfWidth / canvasWidth);
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, heightLeft);
       heightLeft -= pdfHeight;
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
+        position = heightLeft - (canvasHeight * (pdfWidth / canvasWidth));
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, canvasHeight * (pdfWidth/canvasWidth));
         heightLeft -= pdfHeight;
       }
       const title = marketingForm.getValues('title').replace(/ /g, '_');
@@ -574,16 +634,25 @@ export default function AuthorDashboardPage() {
                                           <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
                                       ) : generatedContent ? (
                                         <div className="w-full space-y-4">
-                                            {isGeneratingImage ? (
+                                            
+                                            {generatedContent.videoUrl ? (
+                                              <div className="aspect-square w-full rounded-lg overflow-hidden border bg-black">
+                                                <video src={generatedContent.videoUrl} controls autoPlay muted loop className="w-full h-full object-contain" />
+                                              </div>
+                                            ) : isGeneratingImage || isGeneratingVideo ? (
                                                 <div className="aspect-square w-full rounded-lg border bg-muted flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
                                             ) : (
                                                 <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
                                                     <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
                                                 </div>
                                             )}
+                                            
                                             <div className="flex gap-2">
-                                                 <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
-                                                 <Button variant="outline" size="sm" disabled={true}><Video className="mr-2 h-3 w-3"/>Generar Video (Pronto)</Button>
+                                                 <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage || isGeneratingVideo}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
+                                                 <Button variant="outline" size="sm" onClick={handleGenerateVideo} disabled={isGeneratingVideo || isGeneratingImage}>
+                                                   {isGeneratingVideo ? <Loader2 className="mr-2 h-3 w-3 animate-spin"/> : <Video className="mr-2 h-3 w-3"/>}
+                                                   Generar Video
+                                                 </Button>
                                             </div>
                                              <div>
                                                 <Label className="text-sm font-medium">Texto Sugerido</Label>
