@@ -37,12 +37,6 @@ const generatePodcastScriptFlow = ai.defineFlow(
   },
   async (input: GeneratePodcastScriptInput) => {
     
-    const MAX_INPUT_LENGTH = 20000;
-    if (input.bookContent.length > MAX_INPUT_LENGTH) {
-      input.bookContent = input.bookContent.substring(0, MAX_INPUT_LENGTH);
-      console.warn(`Podcast generation input was too long and was truncated to ${MAX_INPUT_LENGTH} characters.`);
-    }
-
     // 1. Generate the script and title first
     const scriptResponse = await ai.generate({
         model: 'googleai/gemini-1.5-flash',
@@ -58,9 +52,9 @@ const generatePodcastScriptFlow = ai.defineFlow(
 3.  **Tono:** Adapta el guion al tono solicitado: **${input.podcastTone}**.
 4.  **Público Objetivo:** Asegúrate de que el lenguaje y el contenido sean apropiado para el público objetivo: **${input.targetAudience}**.
 
-**Contenido del Libro para el Análisis:**
+**Contenido del Libro para el Análisis (Máximo 20000 caracteres):**
 ---
-${input.bookContent}
+${input.bookContent.substring(0, 20000)}
 ---
 
 Genera solo el título y el guion.`,
