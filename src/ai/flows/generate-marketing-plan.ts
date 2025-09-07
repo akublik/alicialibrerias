@@ -48,7 +48,7 @@ const GenerateMarketingPlanInputSchema = z.object({
   synopsis: z.string().describe('La sinopsis o resumen del libro.'),
   targetAudience: z.string().describe('Una descripción del público objetivo del libro.'),
   authorProfile: AuthorProfileSchema.optional().describe("El perfil del autor, incluyendo biografía y redes sociales."),
-  marketAnalysis: MarketAnalysisInputForPlanSchema,
+  marketAnalysis: MarketAnalysisInputForPlanSchema.nullable(),
 });
 export type GenerateMarketingPlanInput = z.infer<typeof GenerateMarketingPlanInputSchema>;
 
