@@ -10,8 +10,6 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { googleAI } from '@genkit-ai/googleai';
 import { MediaPart } from 'genkit';
-import * as fs from 'fs';
-import { Readable } from 'stream';
 
 const GenerateVideoInputSchema = z.object({
   imageUrl: z.string().describe("A data URI of the source image."),
@@ -50,39 +48,49 @@ export async function generateVideoFromImage(input: GenerateVideoInput): Promise
   
   const contentType = input.imageUrl.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
   
-  let { operation } = await ai.generate({
-    model: googleAI.model('veo-2.0-generate-001'),
-    prompt: [
-      { text: `Usando la imagen como referencia, anima una escena cinematográfica y sutil basada en la idea: "${input.prompt}".` },
-      { media: { url: input.imageUrl, contentType } },
-    ],
-    config: {
-      durationSeconds: 5,
-      aspectRatio: '16:9',
-    },
-  });
+  try {
+    let { operation } = await ai.generate({
+      model: googleAI.model('veo-2.0-generate-001'),
+      prompt: [
+        { text: `Usando la imagen como referencia, anima una escena cinematográfica y sutil basada en la idea: "${input.prompt}".` },
+        { media: { url: input.imageUrl, contentType } },
+      ],
+      config: {
+        durationSeconds: 5,
+        aspectRatio: '16:9',
+      },
+    });
 
-  if (!operation) {
-    throw new Error('El modelo no devolvió una operación para la generación de video.');
+    if (!operation) {
+      throw new Error('El modelo no devolvió una operación para la generación de video.');
+    }
+
+    // Poll for completion
+    while (!operation.done) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      operation = await ai.checkOperation(operation);
+    }
+
+    if (operation.error) {
+      throw new Error(`Fallo al generar el video: ${operation.error.message}`);
+    }
+
+    const videoPart = operation.output?.message?.content.find((p) => !!p.media && p.media.contentType === 'video/mp4');
+    if (!videoPart || !videoPart.media) {
+      throw new Error('No se encontró el video generado en la respuesta de la operación.');
+    }
+    
+    const videoBuffer = await downloadVideo(videoPart);
+    const videoDataUri = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
+
+    return { videoUrl: videoDataUri };
+
+  } catch (error: any) {
+    // Check for quota/rate limit error
+    if (error.message && (error.message.includes('429') || error.message.toLowerCase().includes('quota'))) {
+        throw new Error("Has excedido la cuota de generación de video. Por favor, espera un momento y vuelve a intentarlo más tarde.");
+    }
+    // Re-throw other errors
+    throw error;
   }
-
-  // Poll for completion
-  while (!operation.done) {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    operation = await ai.checkOperation(operation);
-  }
-
-  if (operation.error) {
-    throw new Error(`Fallo al generar el video: ${operation.error.message}`);
-  }
-
-  const videoPart = operation.output?.message?.content.find((p) => !!p.media && p.media.contentType === 'video/mp4');
-  if (!videoPart || !videoPart.media) {
-    throw new Error('No se encontró el video generado en la respuesta de la operación.');
-  }
-  
-  const videoBuffer = await downloadVideo(videoPart);
-  const videoDataUri = `data:video/mp4;base64,${videoBuffer.toString('base64')}`;
-
-  return { videoUrl: videoDataUri };
 }
