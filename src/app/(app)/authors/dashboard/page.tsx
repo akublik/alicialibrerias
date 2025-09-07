@@ -313,7 +313,7 @@ export default function AuthorDashboardPage() {
       const result = await analyzeMarketAndCompetition(values);
       setMarketAnalysis(result);
       toast({ title: "¡Análisis Completado!", description: "Las tendencias y sugerencias están listas." });
-    } catch (error: any) => {
+    } catch (error: any) {
       toast({ title: "Error al analizar", description: error.message, variant: "destructive" });
     } finally {
         setIsAnalyzing(false);
@@ -529,7 +529,7 @@ export default function AuthorDashboardPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
-            <TabsTrigger value="content-studio">Taller de Contenidos</TabsTrigger>
+            <TabsTrigger value="content-studio">Taller de contenidos</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
