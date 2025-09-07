@@ -34,7 +34,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
 import { regenerateImage } from '@/ai/flows/regenerate-image';
-import { generateVideoFromImage } from '@/ai/flows/generate-video-from-image';
 
 
 const marketingPlanFormSchema = z.object({
@@ -121,9 +120,7 @@ export default function AuthorDashboardPage() {
   
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
-  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [editableContent, setEditableContent] = useState('');
 
   const [user, setUser] = useState<User | null>(null);
@@ -273,7 +270,6 @@ export default function AuthorDashboardPage() {
   const onSubmitContentStudio = async (values: ContentStudioFormValues) => {
     setIsGeneratingContent(true);
     setGeneratedContent(null);
-    setGeneratedVideoUrl(null);
     try {
       const result = await generateContentStudio(values);
       setGeneratedContent(result);
@@ -299,47 +295,6 @@ export default function AuthorDashboardPage() {
         setIsGeneratingImage(false);
     }
   };
-  
-  const compressImage = async (dataUrl: string): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const img = document.createElement('img');
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1024;
-          const scaleSize = MAX_WIDTH / img.width;
-          canvas.width = MAX_WIDTH;
-          canvas.height = img.height * scaleSize;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject(new Error('Could not get canvas context'));
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          // Export as JPEG with quality 0.8 to significantly reduce size
-          resolve(canvas.toDataURL('image/jpeg', 0.8));
-        };
-        img.onerror = reject;
-        img.src = dataUrl;
-      });
-  };
-
-  const handleGenerateVideo = async () => {
-    if (!generatedContent?.imageUrl) return;
-    setIsGeneratingVideo(true);
-    setGeneratedVideoUrl(null);
-    try {
-        const compressedImageUrl = await compressImage(generatedContent.imageUrl);
-        const result = await generateVideoFromImage({
-            imageUrl: compressedImageUrl,
-            prompt: contentForm.getValues('prompt'),
-        });
-        setGeneratedVideoUrl(result.videoUrl);
-        toast({ title: "¡Video Generado!", description: "Tu video está listo para previsualizar." });
-    } catch (error: any) {
-        console.error("Error generating video:", error);
-        toast({ title: "Error al generar video", description: error.message, variant: "destructive" });
-    } finally {
-        setIsGeneratingVideo(false);
-    }
-  };
-
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -474,9 +429,10 @@ export default function AuthorDashboardPage() {
       </header>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
+            <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
             <TabsTrigger value="content-studio">Estudio de Contenido</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
@@ -577,20 +533,9 @@ export default function AuthorDashboardPage() {
                                     </div>
                                 )}
                                 <div className="flex gap-2">
-                                     <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage || isGeneratingVideo}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
-                                     <Button variant="outline" size="sm" onClick={handleGenerateVideo} disabled={isGeneratingImage || isGeneratingVideo}><Video className="mr-2 h-3 w-3"/>Generar Video</Button>
+                                     <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
+                                     <Button variant="outline" size="sm" disabled={true}><Video className="mr-2 h-3 w-3"/>Generar Video (Pronto)</Button>
                                 </div>
-                                {isGeneratingVideo && (
-                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin"/>Generando video, esto puede tomar un minuto...</div>
-                                )}
-                                {generatedVideoUrl && (
-                                     <div className="relative aspect-video w-full rounded-lg overflow-hidden border bg-black">
-                                        <video key={generatedVideoUrl} controls autoPlay loop className="w-full h-full">
-                                            <source src={generatedVideoUrl} type="video/mp4" />
-                                            Tu navegador no soporta el tag de video.
-                                        </video>
-                                    </div>
-                                )}
                                  <div>
                                     <Label className="text-sm font-medium">Texto Sugerido</Label>
                                     <Textarea value={editableContent} onChange={(e) => setEditableContent(e.target.value)} rows={6} className="text-sm bg-background mt-1"/>
