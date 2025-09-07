@@ -64,12 +64,16 @@ const generatePodcastScriptFlow = ai.defineFlow(
   async (input: GeneratePodcastScriptInput) => {
     // 1. Generate the script first
     const scriptResponse = await podcastScriptPrompt(input);
-    const script = scriptResponse.output?.script;
-    const title = scriptResponse.output?.title;
-
-    if (!script || !title) {
-      throw new Error("La IA no pudo generar el guion del podcast.");
+    
+    // Robust validation: Ensure both title and script are present
+    if (!scriptResponse.output?.script || !scriptResponse.output?.title) {
+        let missing = [];
+        if (!scriptResponse.output?.title) missing.push("título");
+        if (!scriptResponse.output?.script) missing.push("guion");
+        throw new Error(`La IA no pudo generar un ${missing.join(' y ')} válido para el podcast.`);
     }
+
+    const { script, title } = scriptResponse.output;
 
     // 2. Generate the audio from the script
     let audioUrl: string | undefined;
