@@ -70,7 +70,8 @@ const contentStudioFormSchema = z.object({
 type ContentStudioFormValues = z.infer<typeof contentStudioFormSchema>;
 
 const podcastFormSchema = z.object({
-  bookTitle: z.string().min(1, "Debes seleccionar un libro."),
+  bookTitle: z.string().min(3, "El título del libro es requerido."),
+  bookContent: z.string().min(50, "El contenido/resumen es muy corto."),
   targetAudience: z.string().min(5, "El público objetivo es requerido."),
   podcastTone: z.enum(['informativo', 'entusiasta', 'reflexivo']),
 });
@@ -168,7 +169,7 @@ export default function AuthorDashboardPage() {
 
   const podcastForm = useForm<PodcastFormValues>({
     resolver: zodResolver(podcastFormSchema),
-    defaultValues: { bookTitle: "", targetAudience: "Jóvenes adultos", podcastTone: "entusiasta" },
+    defaultValues: { bookTitle: "", bookContent: "", targetAudience: "Jóvenes adultos", podcastTone: "entusiasta" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -308,10 +309,8 @@ export default function AuthorDashboardPage() {
       }
       try {
           const result = await generatePodcastScript({
-              bookTitle: values.bookTitle,
+              ...values,
               authorName: authorProfile.name,
-              targetAudience: values.targetAudience,
-              podcastTone: values.podcastTone,
           });
           setGeneratedPodcast(result);
           toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
@@ -619,7 +618,8 @@ export default function AuthorDashboardPage() {
                                 <div>
                                     <Form {...podcastForm}>
                                         <form onSubmit={podcastForm.handleSubmit(onSubmitPodcast)} className="space-y-4">
-                                            <FormField control={podcastForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Libro a Promocionar</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona uno de tus libros"/></SelectTrigger></FormControl><SelectContent>{authorBooks.map(b => <SelectItem key={b.id} value={b.title}>{b.title}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                                            <FormField control={podcastForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Título del Libro</FormLabel><FormControl><Input placeholder="Ej: Cien años de soledad" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={podcastForm.control} name="bookContent" render={({ field }) => ( <FormItem><FormLabel>Contenido o Resumen del Libro</FormLabel><FormControl><Textarea rows={6} placeholder="Pega aquí un resumen, sinopsis o un capítulo clave de tu libro..." {...field} /></FormControl><FormMessage /></FormItem> )} />
                                             <FormField control={podcastForm.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Input placeholder="Ej: Jóvenes adultos amantes de la fantasía" {...field} /></FormControl><FormMessage /></FormItem> )} />
                                             <FormField control={podcastForm.control} name="podcastTone" render={({ field }) => ( <FormItem><FormLabel>Tono del Podcast</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="informativo">Informativo y Detallado</SelectItem><SelectItem value="entusiasta">Entusiasta y Energético</SelectItem><SelectItem value="reflexivo">Reflexivo e Íntimo</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
                                             <Button type="submit" disabled={isGeneratingPodcast} className="w-full">{isGeneratingPodcast ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Mic className="mr-2 h-4 w-4"/>}{isGeneratingPodcast ? 'Generando Podcast...' : 'Generar Podcast'}</Button>

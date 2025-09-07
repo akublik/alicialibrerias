@@ -14,6 +14,7 @@ import { textToSpeech } from './tts-flow';
 
 const GeneratePodcastScriptInputSchema = z.object({
   bookTitle: z.string().describe("The title of the book to feature."),
+  bookContent: z.string().describe("The full content or a detailed summary of the book."),
   authorName: z.string().describe("The name of the book's author."),
   targetAudience: z.string().describe("The target audience for the book (e.g., 'young adults', 'history lovers')."),
   podcastTone: z.enum(['informativo', 'entusiasta', 'reflexivo']).describe("The desired tone for the podcast."),
@@ -27,26 +28,29 @@ const GeneratePodcastScriptOutputSchema = z.object({
 });
 export type GeneratePodcastScriptOutput = z.infer<typeof GeneratePodcastScriptOutputSchema>;
 
-// Define the schema for the prompt's input
-const PromptInputSchema = GeneratePodcastScriptInputSchema;
 
 // Define the Genkit Prompt for the script
 const podcastScriptPrompt = ai.definePrompt({
     name: "podcastScriptPrompt",
     model: 'googleai/gemini-1.5-flash',
-    input: { schema: PromptInputSchema },
+    input: { schema: GeneratePodcastScriptInputSchema },
     output: { schema: z.object({ title: z.string(), script: z.string() }) },
-    prompt: `Eres un guionista y presentador de podcasts literarios. Tu tarea es crear un guion para un episodio corto (2-3 minutos) sobre el libro "{{bookTitle}}" del autor {{authorName}}.
+    prompt: `Eres un guionista y presentador de podcasts literarios. Tu tarea es crear un guion para un episodio corto (2-3 minutos) sobre el libro "{{bookTitle}}" del autor {{authorName}}, basándote en el contenido proporcionado.
 
 **Instrucciones:**
 1.  **Título del Episodio:** Crea un título atractivo y breve para el episodio.
 2.  **Guion:** Escribe un guion completo que incluya:
     *   Una **introducción** musical y una bienvenida entusiasta.
-    *   Un segmento sobre **el libro**: ¿De qué trata? ¿Cuáles son sus temas principales? ¿Por qué es una lectura obligada?
+    *   Un segmento sobre **el libro**: Usa el contenido proporcionado para explicar de qué trata, cuáles son sus temas principales y por qué es una lectura obligada.
     *   Un segmento sobre **el autor**: ¿Quién es {{authorName}}? ¿Cuál es su estilo?
     *   Una **conclusión** y llamada a la acción, invitando a los oyentes a comprar el libro.
 3.  **Tono:** Adapta el guion al tono solicitado: **{{podcastTone}}**.
 4.  **Público Objetivo:** Asegúrate de que el lenguaje y el contenido sean apropiados para el público objetivo: **{{targetAudience}}**.
+
+**Contenido del Libro para el Análisis:**
+---
+{{{bookContent}}}
+---
 
 Genera solo el título y el guion en el formato JSON solicitado.`,
 });
