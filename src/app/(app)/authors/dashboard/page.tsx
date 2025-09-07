@@ -303,7 +303,7 @@ export default function AuthorDashboardPage() {
       setIsGeneratingPodcast(true);
       setGeneratedPodcast(null);
       if(!authorProfile) {
-         toast({ title: "Error", description: "No se encontró perfil de autor.", variant: "destructive" });
+         toast({ title: "Error", description: "No se encontró perfil de autor. Por favor, asegúrate de que tu perfil esté guardado.", variant: "destructive" });
          setIsGeneratingPodcast(false);
          return;
       }
@@ -312,6 +312,9 @@ export default function AuthorDashboardPage() {
               ...values,
               authorName: authorProfile.name,
           });
+          if (!result || !result.script || !result.audioUrl) {
+            throw new Error("La IA no devolvió un podcast válido.");
+          }
           setGeneratedPodcast(result);
           toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
       } catch (error: any) {
