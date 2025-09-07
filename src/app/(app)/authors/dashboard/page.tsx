@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -34,6 +34,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
 import { regenerateImage } from '@/ai/flows/regenerate-image';
+import { generatePodcastScript, type GeneratePodcastScriptOutput } from '@/ai/flows/generate-podcast-script';
 
 
 const marketingPlanFormSchema = z.object({
@@ -67,6 +68,13 @@ const contentStudioFormSchema = z.object({
   format: z.enum(['Post', 'Story', 'Reel']),
 });
 type ContentStudioFormValues = z.infer<typeof contentStudioFormSchema>;
+
+const podcastFormSchema = z.object({
+  bookTitle: z.string().min(1, "Debes seleccionar un libro."),
+  targetAudience: z.string().min(5, "El público objetivo es requerido."),
+  podcastTone: z.enum(['informativo', 'entusiasta', 'reflexivo']),
+});
+type PodcastFormValues = z.infer<typeof podcastFormSchema>;
 
 // Dummy data for followers
 const placeholderFollowers: User[] = [
@@ -122,6 +130,9 @@ export default function AuthorDashboardPage() {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<GenerateContentStudioOutput | null>(null);
   const [editableContent, setEditableContent] = useState('');
+  
+  const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
+  const [generatedPodcast, setGeneratedPodcast] = useState<GeneratePodcastScriptOutput | null>(null);
 
   const [user, setUser] = useState<User | null>(null);
   const [authorProfile, setAuthorProfile] = useState<Author | null>(null);
@@ -153,6 +164,11 @@ export default function AuthorDashboardPage() {
   const contentForm = useForm<ContentStudioFormValues>({
     resolver: zodResolver(contentStudioFormSchema),
     defaultValues: { prompt: "", platform: "Instagram", format: "Post" },
+  });
+
+  const podcastForm = useForm<PodcastFormValues>({
+    resolver: zodResolver(podcastFormSchema),
+    defaultValues: { bookTitle: "", targetAudience: "Jóvenes adultos", podcastTone: "entusiasta" },
   });
   
   const fetchAuthorData = async (userData: User) => {
@@ -281,6 +297,30 @@ export default function AuthorDashboardPage() {
       setIsGeneratingContent(false);
     }
   };
+
+  const onSubmitPodcast = async (values: PodcastFormValues) => {
+      setIsGeneratingPodcast(true);
+      setGeneratedPodcast(null);
+      if(!authorProfile) {
+         toast({ title: "Error", description: "No se encontró perfil de autor.", variant: "destructive" });
+         setIsGeneratingPodcast(false);
+         return;
+      }
+      try {
+          const result = await generatePodcastScript({
+              bookTitle: values.bookTitle,
+              authorName: authorProfile.name,
+              targetAudience: values.targetAudience,
+              podcastTone: values.podcastTone,
+          });
+          setGeneratedPodcast(result);
+          toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
+      } catch (error: any) {
+          toast({ title: "Error al generar el podcast", description: error.message, variant: "destructive" });
+      } finally {
+          setIsGeneratingPodcast(false);
+      }
+  }
 
   const handleRegenerateImage = async () => {
     if (!generatedContent || !contentForm.getValues('prompt')) return;
@@ -499,74 +539,120 @@ export default function AuthorDashboardPage() {
         </TabsContent>
         
         <TabsContent value="content-studio" className="mt-6">
-          <Card className="shadow-lg">
-            <CardHeader>
-                <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary"/>Estudio de Contenido</CardTitle>
-                <CardDescription>Genera publicaciones para redes sociales con IA para promocionar tus libros.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <Form {...contentForm}>
-                            <form onSubmit={contentForm.handleSubmit(onSubmitContentStudio)} className="space-y-4">
-                                <FormField control={contentForm.control} name="prompt" render={({ field }) => ( <FormItem><FormLabel>Idea o Prompt</FormLabel><FormControl><Textarea rows={4} placeholder="Ej: Anunciar el lanzamiento de mi nueva novela de fantasía 'El Último Dragón'" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={contentForm.control} name="platform" render={({ field }) => ( <FormItem><FormLabel>Plataforma</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Instagram">Instagram</SelectItem><SelectItem value="TikTok">TikTok</SelectItem><SelectItem value="Facebook">Facebook</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
-                                    <FormField control={contentForm.control} name="format" render={({ field }) => ( <FormItem><FormLabel>Formato</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Post">Post</SelectItem><SelectItem value="Story">Story</SelectItem><SelectItem value="Reel">Reel</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="font-headline text-2xl flex items-center"><Wand2 className="mr-2 h-6 w-6 text-primary"/>Estudio de Contenido</CardTitle>
+                    <CardDescription>Genera contenido con IA para promocionar tus libros.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Tabs defaultValue="social" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="social">Redes Sociales</TabsTrigger>
+                            <TabsTrigger value="podcast">Podcast</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="social" className="mt-6">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <Form {...contentForm}>
+                                        <form onSubmit={contentForm.handleSubmit(onSubmitContentStudio)} className="space-y-4">
+                                            <FormField control={contentForm.control} name="prompt" render={({ field }) => ( <FormItem><FormLabel>Idea o Prompt</FormLabel><FormControl><Textarea rows={4} placeholder="Ej: Anunciar el lanzamiento de mi nueva novela de fantasía 'El Último Dragón'" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <FormField control={contentForm.control} name="platform" render={({ field }) => ( <FormItem><FormLabel>Plataforma</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Instagram">Instagram</SelectItem><SelectItem value="TikTok">TikTok</SelectItem><SelectItem value="Facebook">Facebook</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                                                <FormField control={contentForm.control} name="format" render={({ field }) => ( <FormItem><FormLabel>Formato</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Post">Post</SelectItem><SelectItem value="Story">Story</SelectItem><SelectItem value="Reel">Reel</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                                            </div>
+                                            <Button type="submit" disabled={isGeneratingContent} className="w-full">{isGeneratingContent ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}{isGeneratingContent ? 'Generando...' : 'Generar Contenido'}</Button>
+                                        </form>
+                                    </Form>
                                 </div>
-                                <Button type="submit" disabled={isGeneratingContent} className="w-full">{isGeneratingContent ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Wand2 className="mr-2 h-4 w-4"/>}{isGeneratingContent ? 'Generando...' : 'Generar Contenido'}</Button>
-                            </form>
-                        </Form>
-                    </div>
-                    <div>
-                        <Label>Resultado</Label>
-                        <Card className="mt-2 min-h-[300px] flex flex-col items-center justify-center p-4 gap-4">
-                          {isGeneratingContent ? (
-                              <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
-                          ) : generatedContent ? (
-                            <div className="w-full space-y-4">
-                                {isGeneratingImage ? (
-                                    <div className="aspect-square w-full rounded-lg border bg-muted flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-                                ) : (
-                                    <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
-                                        <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
-                                    </div>
-                                )}
-                                <div className="flex gap-2">
-                                     <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
-                                     <Button variant="outline" size="sm" disabled={true}><Video className="mr-2 h-3 w-3"/>Generar Video (Pronto)</Button>
-                                </div>
-                                 <div>
-                                    <Label className="text-sm font-medium">Texto Sugerido</Label>
-                                    <Textarea value={editableContent} onChange={(e) => setEditableContent(e.target.value)} rows={6} className="text-sm bg-background mt-1"/>
-                                    <div className="flex justify-between items-center text-sm mt-2">
-                                        <span className="text-muted-foreground">Hora sugerida: <strong className="text-foreground">{generatedContent.suggestedTime}</strong></span>
-                                        <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(editableContent)}><Copy className="mr-2 h-3 w-3"/>Copiar Texto</Button>
-                                    </div>
-                                </div>
+                                <div>
+                                    <Label>Resultado</Label>
+                                    <Card className="mt-2 min-h-[300px] flex flex-col items-center justify-center p-4 gap-4">
+                                      {isGeneratingContent ? (
+                                          <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está creando...</p></div>
+                                      ) : generatedContent ? (
+                                        <div className="w-full space-y-4">
+                                            {isGeneratingImage ? (
+                                                <div className="aspect-square w-full rounded-lg border bg-muted flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                                            ) : (
+                                                <div className="relative aspect-square w-full rounded-lg overflow-hidden border">
+                                                    <Image src={generatedContent.imageUrl} alt="Imagen generada por IA" layout="fill" objectFit="cover" />
+                                                </div>
+                                            )}
+                                            <div className="flex gap-2">
+                                                 <Button variant="outline" size="sm" onClick={handleRegenerateImage} disabled={isGeneratingImage}><RefreshCw className="mr-2 h-3 w-3"/>Crear otra imagen</Button>
+                                                 <Button variant="outline" size="sm" disabled={true}><Video className="mr-2 h-3 w-3"/>Generar Video (Pronto)</Button>
+                                            </div>
+                                             <div>
+                                                <Label className="text-sm font-medium">Texto Sugerido</Label>
+                                                <Textarea value={editableContent} onChange={(e) => setEditableContent(e.target.value)} rows={6} className="text-sm bg-background mt-1"/>
+                                                <div className="flex justify-between items-center text-sm mt-2">
+                                                    <span className="text-muted-foreground">Hora sugerida: <strong className="text-foreground">{generatedContent.suggestedTime}</strong></span>
+                                                    <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(editableContent)}><Copy className="mr-2 h-3 w-3"/>Copiar Texto</Button>
+                                                </div>
+                                            </div>
 
-                                {generatedContent.reelScript && (
-                                    <div>
-                                        <Label className="text-sm font-medium">Guion y Audio para Reel</Label>
-                                        <div className="mt-1 p-3 border rounded-md bg-muted/50 space-y-3">
-                                            <Textarea readOnly value={generatedContent.reelScript} rows={5} className="text-xs bg-background"/>
-                                            {generatedContent.audioUrl && (
-                                                <audio controls src={generatedContent.audioUrl} className="w-full h-10">
-                                                    Tu navegador no soporta el elemento de audio.
-                                                </audio>
+                                            {generatedContent.reelScript && (
+                                                <div>
+                                                    <Label className="text-sm font-medium">Guion y Audio para Reel</Label>
+                                                    <div className="mt-1 p-3 border rounded-md bg-muted/50 space-y-3">
+                                                        <Textarea readOnly value={generatedContent.reelScript} rows={5} className="text-xs bg-background"/>
+                                                        {generatedContent.audioUrl && (
+                                                            <audio controls src={generatedContent.audioUrl} className="w-full h-10">
+                                                                Tu navegador no soporta el elemento de audio.
+                                                            </audio>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                    </div>
-                                )}
+                                      ) : (
+                                          <div className="text-center p-8"><ImageIcon className="h-10 w-10 text-muted-foreground mb-4"/><p className="text-muted-foreground">El contenido generado aparecerá aquí.</p></div>
+                                      )}
+                                    </Card>
+                                </div>
                             </div>
-                          ) : (
-                              <div className="text-center p-8"><ImageIcon className="h-10 w-10 text-muted-foreground mb-4"/><p className="text-muted-foreground">El contenido generado aparecerá aquí.</p></div>
-                          )}
-                        </Card>
-                    </div>
-                </div>
-            </CardContent>
-          </Card>
+                        </TabsContent>
+
+                        <TabsContent value="podcast" className="mt-6">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div>
+                                    <Form {...podcastForm}>
+                                        <form onSubmit={podcastForm.handleSubmit(onSubmitPodcast)} className="space-y-4">
+                                            <FormField control={podcastForm.control} name="bookTitle" render={({ field }) => ( <FormItem><FormLabel>Libro a Promocionar</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecciona uno de tus libros"/></SelectTrigger></FormControl><SelectContent>{authorBooks.map(b => <SelectItem key={b.id} value={b.title}>{b.title}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem> )}/>
+                                            <FormField control={podcastForm.control} name="targetAudience" render={({ field }) => ( <FormItem><FormLabel>Público Objetivo</FormLabel><FormControl><Input placeholder="Ej: Jóvenes adultos amantes de la fantasía" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                                            <FormField control={podcastForm.control} name="podcastTone" render={({ field }) => ( <FormItem><FormLabel>Tono del Podcast</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="informativo">Informativo y Detallado</SelectItem><SelectItem value="entusiasta">Entusiasta y Energético</SelectItem><SelectItem value="reflexivo">Reflexivo e Íntimo</SelectItem></SelectContent></Select><FormMessage /></FormItem> )}/>
+                                            <Button type="submit" disabled={isGeneratingPodcast} className="w-full">{isGeneratingPodcast ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Mic className="mr-2 h-4 w-4"/>}{isGeneratingPodcast ? 'Generando Podcast...' : 'Generar Podcast'}</Button>
+                                        </form>
+                                    </Form>
+                                </div>
+                                <div>
+                                    <Label>Resultado del Podcast</Label>
+                                    <Card className="mt-2 min-h-[300px] flex flex-col items-center justify-center p-4 gap-4">
+                                      {isGeneratingPodcast ? (
+                                          <div className="text-center p-8"><Loader2 className="h-10 w-10 animate-spin text-primary mb-4" /><p className="text-muted-foreground">AlicIA está grabando tu podcast...</p></div>
+                                      ) : generatedPodcast ? (
+                                        <div className="w-full space-y-4">
+                                            <h3 className="font-headline text-lg font-semibold">{generatedPodcast.title}</h3>
+                                            <audio controls src={generatedPodcast.audioUrl} className="w-full">Tu navegador no soporta el audio.</audio>
+                                            <div>
+                                                <Label className="text-sm font-medium">Guion Completo</Label>
+                                                <Textarea readOnly value={generatedPodcast.script} rows={10} className="text-sm bg-background mt-1"/>
+                                                <div className="flex justify-end mt-2">
+                                                    <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(generatedPodcast.script)}><Copy className="mr-2 h-3 w-3"/>Copiar Guion</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center p-8"><Mic className="h-10 w-10 text-muted-foreground mb-4"/><p className="text-muted-foreground">El podcast generado aparecerá aquí.</p></div>
+                                      )}
+                                    </Card>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </CardContent>
+            </Card>
         </TabsContent>
 
         <TabsContent value="marketing" className="mt-6">
