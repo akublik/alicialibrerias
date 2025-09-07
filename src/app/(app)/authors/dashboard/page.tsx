@@ -300,23 +300,46 @@ export default function AuthorDashboardPage() {
     }
   };
   
+  const compressImage = async (dataUrl: string): Promise<string> => {
+      return new Promise((resolve, reject) => {
+        const img = document.createElement('img');
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject(new Error('Could not get canvas context'));
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          // Export as JPEG with quality 0.8 to significantly reduce size
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+  };
+
   const handleGenerateVideo = async () => {
-    if (!generatedContent) return;
+    if (!generatedContent?.imageUrl) return;
     setIsGeneratingVideo(true);
     setGeneratedVideoUrl(null);
     try {
+        const compressedImageUrl = await compressImage(generatedContent.imageUrl);
         const result = await generateVideoFromImage({
-            imageUrl: generatedContent.imageUrl,
+            imageUrl: compressedImageUrl,
             prompt: contentForm.getValues('prompt'),
         });
         setGeneratedVideoUrl(result.videoUrl);
         toast({ title: "¡Video Generado!", description: "Tu video está listo para previsualizar." });
     } catch (error: any) {
+        console.error("Error generating video:", error);
         toast({ title: "Error al generar video", description: error.message, variant: "destructive" });
     } finally {
         setIsGeneratingVideo(false);
     }
   };
+
 
   const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];

@@ -47,11 +47,14 @@ async function downloadVideo(video: MediaPart): Promise<Buffer> {
 
 
 export async function generateVideoFromImage(input: GenerateVideoInput): Promise<GenerateVideoOutput> {
+  
+  const contentType = input.imageUrl.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png';
+  
   let { operation } = await ai.generate({
     model: googleAI.model('veo-2.0-generate-001'),
     prompt: [
       { text: `Usando la imagen como referencia, anima una escena cinematográfica y sutil basada en la idea: "${input.prompt}".` },
-      { media: { url: input.imageUrl, contentType: 'image/png' } },
+      { media: { url: input.imageUrl, contentType } },
     ],
     config: {
       durationSeconds: 5,
