@@ -20,7 +20,6 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
     
     try {
         // Robust validation: Ensure each message is a valid object with the required properties.
-        // This prevents the "Cannot read properties of undefined (reading 'content')" error.
         const validHistory = history.filter(
           (m): m is ChatMessage => m && typeof m.role === 'string' && typeof m.content === 'string' && m.content.trim() !== ''
         );
@@ -40,7 +39,7 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             history: genkitHistory,
         });
 
-        // Use the safe .text accessor provided by Genkit
+        // Use the safe .text accessor provided by Genkit v1
         const responseText = response.text;
         
         if (responseText) {
