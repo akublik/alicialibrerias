@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, UserCircle, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2 } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, UserCircle, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2, CalendarClock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition } from '@/ai/flows/market-analysis';
@@ -31,11 +31,12 @@ import { XIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { bookCategories } from '@/lib/options';
 import { QRCodeSVG } from 'qrcode.react';
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { generateContentStudio, type GenerateContentStudioOutput } from '@/ai/flows/generate-content-studio';
 import { regenerateImage } from '@/ai/flows/regenerate-image';
 import { generatePodcastScript, type GeneratePodcastScriptOutput } from '@/ai/flows/generate-podcast-script';
 import { generateVideoFromImage, type GenerateVideoOutput } from '@/ai/flows/generate-video-from-image';
+import { Badge } from '@/components/ui/badge';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -117,6 +118,38 @@ const marketingTips = [
   { title: "9. Gamifica la experiencia", points: ["Crea retos de lectura (ej. leer el libro en 7 días y compartir reflexión).", "Sorteos: quien deje reseña entra en concurso por un ejemplar firmado.", "En Alicia, los lectores pueden ganar alitoks por leer y reseñar."] },
   { title: "10. No te olvides del post-lanzamiento", points: ["Comparte reseñas que te dejen.", "Publica fotos de los lectores con el libro.", "Mantén activa la conversación (club de lectura online, lives con preguntas)."] },
 ];
+
+const launchCalendarData = [
+  { fase: "Expectativa", dia: -30, accion: "Publica un post anunciando el proyecto", objetivo: "Generar curiosidad" },
+  { fase: "Expectativa", dia: -28, accion: "Sube una frase impactante o diálogo del libro", objetivo: "Generar curiosidad" },
+  { fase: "Expectativa", dia: -26, accion: "Foto del proceso de escritura o detrás de cámaras", objetivo: "Conexión con lectores" },
+  { fase: "Expectativa", dia: -25, accion: "Encuesta en redes: ¿Qué portada prefieren?", objetivo: "Interacción con comunidad" },
+  { fase: "Expectativa", dia: -23, accion: "Mini-video con la portada borrosa (teaser)", objetivo: "Intriga" },
+  { fase: "Expectativa", dia: -21, accion: "Publica un fragmento del primer capítulo", objetivo: "Adelanto del contenido" },
+  { fase: "Expectativa", dia: -18, accion: "Presenta la portada oficial con reel animado", objetivo: "Visibilidad" },
+  { fase: "Expectativa", dia: -15, accion: "Anuncio oficial: fecha de lanzamiento + preventa", objetivo: "Activar preventa" },
+  { fase: "Preventa", dia: -14, accion: "Publica un reel/booktrailer de 30s", objetivo: "Promoción visual" },
+  { fase: "Preventa", dia: -12, accion: "Regala un capítulo exclusivo a preventa", objetivo: "Incentivar compras" },
+  { fase: "Preventa", dia: -10, accion: "Live hablando del proceso creativo", objetivo: "Conexión con audiencia" },
+  { fase: "Preventa", dia: -8, accion: "Publica reseña de lector beta", objetivo: "Generar confianza" },
+  { fase: "Preventa", dia: -6, accion: "Lanza concurso: gana un ejemplar firmado", objetivo: "Motivar preventa" },
+  { fase: "Preventa", dia: -3, accion: "Muestra el libro impreso (unboxing)", objetivo: "Prueba tangible" },
+  { fase: "Preventa", dia: -1, accion: "Cuenta regresiva en historias", objetivo: "Crear expectativa" },
+  { fase: "Lanzamiento", dia: 0, accion: "Evento de lanzamiento (físico/online)", objetivo: "Máxima visibilidad" },
+  { fase: "Lanzamiento", dia: 1, accion: "Agradece públicamente a los compradores", objetivo: "Reforzar comunidad" },
+  { fase: "Lanzamiento", dia: 2, accion: "Publica fotos del evento o live", objetivo: "Mostrar alcance" },
+  { fase: "Lanzamiento", dia: 3, accion: "Reto en redes: foto con el libro", objetivo: "Promoción orgánica" },
+  { fase: "Lanzamiento", dia: 5, accion: "Post de trivia sobre el libro", objetivo: "Engagement" },
+  { fase: "Lanzamiento", dia: 7, accion: "Live con preguntas de lectores (Q&A)", objetivo: "Fidelización" },
+  { fase: "Post-Lanzamiento", dia: 10, accion: "Publica la primera reseña recibida", objetivo: "Generar confianza" },
+  { fase: "Post-Lanzamiento", dia: 12, accion: "Clip de lectura en voz alta", objetivo: "Mostrar contenido" },
+  { fase: "Post-Lanzamiento", dia: 15, accion: "Club de lectura online", objetivo: "Crear comunidad" },
+  { fase: "Post-Lanzamiento", dia: 18, accion: "Reel: 3 curiosidades sobre el libro", objetivo: "Contenido atractivo" },
+  { fase: "Post-Lanzamiento", dia: 21, accion: "Comparte estadísticas de lectura", objetivo: "Validación social" },
+  { fase: "Post-Lanzamiento", dia: 25, accion: "Sorteo: comparte tu reseña", objetivo: "Aumentar reseñas" },
+  { fase: "Post-Lanzamiento", dia: 30, accion: "Video resumen del mes de lanzamiento", objetivo: "Cierre y proyección" },
+];
+
 
 const compressImage = (dataUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -514,6 +547,16 @@ export default function AuthorDashboardPage() {
     }
   };
 
+  const getPhaseBadgeColor = (phase: string) => {
+    switch (phase) {
+        case 'Expectativa': return 'bg-blue-100 text-blue-800';
+        case 'Preventa': return 'bg-purple-100 text-purple-800';
+        case 'Lanzamiento': return 'bg-green-100 text-green-800';
+        case 'Post-Lanzamiento': return 'bg-orange-100 text-orange-800';
+        default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (!user) {
     return <div className="flex justify-center items-center h-screen"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
   }
@@ -529,12 +572,13 @@ export default function AuthorDashboardPage() {
       </header>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
             <TabsTrigger value="content-studio">Taller de contenidos</TabsTrigger>
+            <TabsTrigger value="launch-calendar">Calendario</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
 
@@ -766,6 +810,44 @@ export default function AuthorDashboardPage() {
                     )}
                 </div>
             </div>
+        </TabsContent>
+        
+        <TabsContent value="launch-calendar" className="mt-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <CalendarClock className="mr-2 h-6 w-6 text-primary" />
+                Calendario de Lanzamiento Sugerido
+              </CardTitle>
+              <CardDescription>
+                Una guía de 60 días para un lanzamiento exitoso. "Día 0" es la fecha de lanzamiento de tu libro.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[150px]">Fase</TableHead>
+                    <TableHead className="w-[80px]">Día</TableHead>
+                    <TableHead>Acción Recomendada</TableHead>
+                    <TableHead>Objetivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {launchCalendarData.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Badge className={`${getPhaseBadgeColor(item.fase)}`}>{item.fase}</Badge>
+                      </TableCell>
+                      <TableCell className="font-mono font-semibold">{item.dia > 0 ? `+${item.dia}` : item.dia}</TableCell>
+                      <TableCell>{item.accion}</TableCell>
+                      <TableCell className="text-muted-foreground">{item.objetivo}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="profile" className="mt-6">
