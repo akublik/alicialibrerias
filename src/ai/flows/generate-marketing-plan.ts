@@ -10,6 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import type { MarketAnalysisOutput } from '@/types/index';
 
 const AuthorProfileSchema = z.object({
   bio: z.string().optional().describe("La biografía del autor."),
@@ -21,6 +22,7 @@ const AuthorProfileSchema = z.object({
   youtube: z.string().url().optional(),
 });
 
+// The schema from MarketAnalysisOutput, made nullable.
 const MarketAnalysisInputForPlanSchema = z.object({
   marketTrends: z.object({
     growingGenres: z.array(z.string()),
@@ -65,24 +67,24 @@ export async function generateMarketingPlan(input: GenerateMarketingPlanInput): 
     prompt: `Eres un experto en marketing editorial y un estratega de lanzamientos de libros. Un autor necesita ayuda para lanzar su nuevo libro. Basado en la información proporcionada, crea un plan de lanzamiento conciso y efectivo.
 
 **Detalles del Libro:**
-*   **Título:** ${input.title}
-*   **Autor:** ${input.author}
-*   **Sinopsis:** ${input.synopsis}
-*   **Público Objetivo:** ${input.targetAudience}
+*   **Título:** {{{title}}}
+*   **Autor:** {{{author}}}
+*   **Sinopsis:** {{{synopsis}}}
+*   **Público Objetivo:** {{{targetAudience}}}
 
 {{#if authorProfile}}
 **Perfil del Autor:**
-*   **Biografía:** ${input.authorProfile.bio || 'No proporcionada'}
-*   **Sitio Web:** ${input.authorProfile.website || 'No proporcionado'}
-*   **Redes Sociales:** {{#if authorProfile.instagram}}Instagram: ${input.authorProfile.instagram} {{/if}}{{#if authorProfile.facebook}}Facebook: ${input.authorProfile.facebook} {{/if}}{{#if authorProfile.x}}X: ${input.authorProfile.x} {{/if}}{{#if authorProfile.tiktok}}TikTok: ${input.authorProfile.tiktok} {{/if}}{{#if authorProfile.youtube}}YouTube: ${input.authorProfile.youtube}{{/if}}
+*   **Biografía:** {{authorProfile.bio}}
+*   **Sitio Web:** {{authorProfile.website}}
+*   **Redes Sociales:** {{#if authorProfile.instagram}}Instagram: {{authorProfile.instagram}} {{/if}}{{#if authorProfile.facebook}}Facebook: {{authorProfile.facebook}} {{/if}}{{#if authorProfile.x}}X: {{authorProfile.x}} {{/if}}{{#if authorProfile.tiktok}}TikTok: {{authorProfile.tiktok}} {{/if}}{{#if authorProfile.youtube}}YouTube: {{authorProfile.youtube}}{{/if}}
 {{/if}}
 
 {{#if marketAnalysis}}
 **Análisis de Mercado Previo:**
 Utiliza este análisis de mercado y competencia como base fundamental para informar tu plan. Las estrategias deben reflejar estos hallazgos.
-*   **Tendencias:** ${JSON.stringify(input.marketAnalysis.marketTrends)}
-*   **Competencia:** ${JSON.stringify(input.marketAnalysis.competitorAnalysis)}
-*   **Sugerencias de la IA:** ${JSON.stringify(input.marketAnalysis.aiSuggestions)}
+*   **Tendencias:** {{json marketAnalysis.marketTrends}}
+*   **Competencia:** {{json marketAnalysis.competitorAnalysis}}
+*   **Sugerencias de la IA:** {{json marketAnalysis.aiSuggestions}}
 {{else}}
 **Nota:** No se ha proporcionado un análisis de mercado. Genera el plan basándote únicamente en la información del libro y del autor.
 {{/if}}
