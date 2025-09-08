@@ -67,27 +67,22 @@ export async function generateMarketingPlan(input: GenerateMarketingPlanInput): 
     prompt: `Eres un experto en marketing editorial y un estratega de lanzamientos de libros. Un autor necesita ayuda para lanzar su nuevo libro. **Toda tu respuesta debe estar en español.** Basado en la información proporcionada, crea un plan de lanzamiento conciso y efectivo.
 
 **Detalles del Libro:**
-*   **Título:** {{{title}}}
-*   **Autor:** {{{author}}}
-*   **Sinopsis:** {{{synopsis}}}
-*   **Público Objetivo:** {{{targetAudience}}}
+*   **Título:** ${input.title}
+*   **Autor:** ${input.author}
+*   **Sinopsis:** ${input.synopsis}
+*   **Público Objetivo:** ${input.targetAudience}
 
-{{#if authorProfile}}
-**Perfil del Autor:**
-*   **Biografía:** {{authorProfile.bio}}
-*   **Sitio Web:** {{authorProfile.website}}
-*   **Redes Sociales:** {{#if authorProfile.instagram}}Instagram: {{authorProfile.instagram}} {{/if}}{{#if authorProfile.facebook}}Facebook: {{authorProfile.facebook}} {{/if}}{{#if authorProfile.x}}X: {{authorProfile.x}} {{/if}}{{#if authorProfile.tiktok}}TikTok: {{authorProfile.tiktok}} {{/if}}{{#if authorProfile.youtube}}YouTube: {{authorProfile.youtube}}{{/if}}
-{{/if}}
+${input.authorProfile ? `**Perfil del Autor:**
+*   **Biografía:** ${input.authorProfile.bio || ''}
+*   **Sitio Web:** ${input.authorProfile.website || ''}
+*   **Redes Sociales:** ${input.authorProfile.instagram || ''} ${input.authorProfile.facebook || ''} ${input.authorProfile.x || ''} ${input.authorProfile.tiktok || ''} ${input.authorProfile.youtube || ''}` : ''}
 
-{{#if marketAnalysis}}
-**Análisis de Mercado Previo:**
+${input.marketAnalysis ? `**Análisis de Mercado Previo:**
 Utiliza este análisis de mercado y competencia como base fundamental para informar tu plan. Las estrategias deben reflejar estos hallazgos.
-*   **Tendencias:** {{json marketAnalysis.marketTrends}}
-*   **Competencia:** {{json marketAnalysis.competitorAnalysis}}
-*   **Sugerencias de la IA:** {{json marketAnalysis.aiSuggestions}}
-{{else}}
-**Nota:** No se ha proporcionado un análisis de mercado. Genera el plan basándote únicamente en la información del libro y del autor.
-{{/if}}
+*   **Tendencias:** ${JSON.stringify(input.marketAnalysis.marketTrends)}
+*   **Competencia:** ${JSON.stringify(input.marketAnalysis.competitorAnalysis)}
+*   **Sugerencias de la IA:** ${JSON.stringify(input.marketAnalysis.aiSuggestions)}` 
+: '**Nota:** No se ha proporcionado un análisis de mercado. Genera el plan basándote únicamente en la información del libro y del autor.'}
 
 **Tu Tarea:**
 Genera un plan de marketing que incluya un eslogan, un análisis del público, tres ejemplos de publicaciones para redes sociales (mencionando las redes del autor si están disponibles) y tres estrategias de lanzamiento. Si se proporcionó un análisis de mercado, asegúrate de que tus estrategias sean coherentes y se basen en esa información. Responde únicamente en el formato JSON solicitado.`,
