@@ -295,7 +295,7 @@ export default function AuthorDashboardPage() {
             tiktok: authorProfile.tiktok,
             youtube: authorProfile.youtube,
         } : undefined,
-        marketAnalysis,
+        marketAnalysis: marketAnalysis, // This can be null
       });
       setMarketingPlan(result);
       toast({ title: "¡Plan de Lanzamiento Generado!", description: "Tu plan personalizado está listo." });
@@ -314,7 +314,7 @@ export default function AuthorDashboardPage() {
       setMarketAnalysis(result);
       toast({ title: "¡Análisis Completado!", description: "Las tendencias y sugerencias están listas." });
     } catch (error: any) {
-      toast({ title: "Error al analizar", description: error.message, variant: "destructive" });
+        toast({ title: "Error al analizar", description: error.message, variant: "destructive" });
     } finally {
         setIsAnalyzing(false);
     }
@@ -338,15 +338,19 @@ export default function AuthorDashboardPage() {
   const onSubmitPodcast = async (values: PodcastFormValues) => {
       setIsGeneratingPodcast(true);
       setGeneratedPodcast(null);
-      if(!authorProfile) {
+      if(!authorProfile?.name) {
          toast({ title: "Error", description: "No se encontró perfil de autor. Por favor, asegúrate de que tu perfil esté guardado.", variant: "destructive" });
          setIsGeneratingPodcast(false);
          return;
       }
       try {
           const result = await generatePodcastScript({ ...values, authorName: authorProfile.name });
-          setGeneratedPodcast(result);
-          toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
+          if(result.script && result.title) {
+            setGeneratedPodcast(result);
+            toast({ title: "¡Podcast Generado!", description: "Tu guion y audio están listos." });
+          } else {
+            throw new Error("La IA no devolvió un podcast válido.");
+          }
       } catch (error: any) {
           toast({ title: "Error al generar el podcast", description: error.message, variant: "destructive" });
       } finally {

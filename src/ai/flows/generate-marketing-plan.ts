@@ -38,7 +38,7 @@ const MarketAnalysisInputForPlanSchema = z.object({
     targetAudienceDifferentiation: z.string(),
     visualSuggestions: z.string(),
   }),
-}).optional().describe("Un análisis de mercado y competencia previamente generado para el libro.");
+}).nullable().describe("Un análisis de mercado y competencia previamente generado para el libro. Puede ser nulo.");
 
 
 const GenerateMarketingPlanInputSchema = z.object({
@@ -47,7 +47,7 @@ const GenerateMarketingPlanInputSchema = z.object({
   synopsis: z.string().describe('La sinopsis o resumen del libro.'),
   targetAudience: z.string().describe('Una descripción del público objetivo del libro.'),
   authorProfile: AuthorProfileSchema.optional().describe("El perfil del autor, incluyendo biografía y redes sociales."),
-  marketAnalysis: MarketAnalysisInputForPlanSchema.nullable(),
+  marketAnalysis: MarketAnalysisInputForPlanSchema,
 });
 export type GenerateMarketingPlanInput = z.infer<typeof GenerateMarketingPlanInputSchema>;
 
