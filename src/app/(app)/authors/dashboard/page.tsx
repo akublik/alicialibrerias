@@ -533,8 +533,8 @@ export default function AuthorDashboardPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
-            <TabsTrigger value="content-studio">Taller de contenidos</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
+            <TabsTrigger value="content-studio">Taller de contenidos</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
         </TabsList>
 
