@@ -64,7 +64,7 @@ export type GenerateMarketingPlanOutput = z.infer<typeof GenerateMarketingPlanOu
 export async function generateMarketingPlan(input: GenerateMarketingPlanInput): Promise<GenerateMarketingPlanOutput> {
   const response = await ai.generate({
     model: 'googleai/gemini-1.5-flash',
-    prompt: `Eres un experto en marketing editorial y un estratega de lanzamientos de libros. Un autor necesita ayuda para lanzar su nuevo libro. Basado en la información proporcionada, crea un plan de lanzamiento conciso y efectivo.
+    prompt: `Eres un experto en marketing editorial y un estratega de lanzamientos de libros. Un autor necesita ayuda para lanzar su nuevo libro. **Toda tu respuesta debe estar en español.** Basado en la información proporcionada, crea un plan de lanzamiento conciso y efectivo.
 
 **Detalles del Libro:**
 *   **Título:** {{{title}}}
