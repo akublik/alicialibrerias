@@ -3,7 +3,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import type { MarketAnalysisInput, MarketAnalysisOutput } from '@/types';
+import type { MarketAnalysisInput } from '@/types';
 
 const MarketAnalysisInputSchema = z.object({
   authorGenre: z.string().describe("El género principal en el que escribe el autor."),
@@ -28,6 +28,8 @@ const MarketAnalysisOutputSchema = z.object({
     visualSuggestions: z.string().describe("Ideas creativas para el diseño de la portada y material visual que rompa con las tendencias dominantes."),
   }),
 });
+
+export type MarketAnalysisOutput = z.infer<typeof MarketAnalysisOutputSchema>;
 
 export async function analyzeMarketAndCompetition(input: MarketAnalysisInput): Promise<MarketAnalysisOutput> {
   const response = await ai.generate({
