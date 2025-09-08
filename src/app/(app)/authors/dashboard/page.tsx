@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, User, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2 } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, UserCircle, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition, type MarketAnalysisOutput } from '@/ai/flows/market-analysis';
@@ -573,7 +573,7 @@ export default function AuthorDashboardPage() {
                  <div className="lg:col-span-2">
                     <Card className="shadow-lg">
                         <CardHeader>
-                            <CardTitle className="font-headline text-lg flex items-center"><User className="mr-2 h-5 w-5 text-primary"/>Tus Seguidores ({placeholderFollowers.length})</CardTitle>
+                            <CardTitle className="font-headline text-lg flex items-center"><UserCircle className="mr-2 h-5 w-5 text-primary"/>Tus Seguidores ({placeholderFollowers.length})</CardTitle>
                             <CardDescription>Lectores que han marcado tu perfil como favorito.</CardDescription>
                         </CardHeader>
                         <CardContent>
