@@ -40,8 +40,8 @@ export async function converseWithBook(bookTitle: string, history: ChatMessage[]
             history: genkitHistory,
         });
 
-        // Use the safe .text() accessor provided by Genkit
-        const responseText = response.text();
+        // Use the safe .text accessor provided by Genkit
+        const responseText = response.text;
         
         if (responseText) {
             return responseText;
