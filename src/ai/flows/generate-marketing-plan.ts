@@ -10,7 +10,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import type { MarketAnalysisOutput } from '@/types';
 
 const AuthorProfileSchema = z.object({
   bio: z.string().optional().describe("La biografía del autor."),
@@ -84,6 +83,8 @@ Utiliza este análisis de mercado y competencia como base fundamental para infor
 *   **Tendencias:** ${JSON.stringify(input.marketAnalysis.marketTrends)}
 *   **Competencia:** ${JSON.stringify(input.marketAnalysis.competitorAnalysis)}
 *   **Sugerencias de la IA:** ${JSON.stringify(input.marketAnalysis.aiSuggestions)}
+{{else}}
+**Nota:** No se ha proporcionado un análisis de mercado. Genera el plan basándote únicamente en la información del libro y del autor.
 {{/if}}
 
 **Tu Tarea:**
