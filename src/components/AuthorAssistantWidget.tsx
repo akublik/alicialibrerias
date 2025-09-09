@@ -74,20 +74,13 @@ export default function AuthorAssistantWidget({ user }: AuthorAssistantWidgetPro
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
-          className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg z-50 p-0 overflow-hidden flex items-center justify-center transition-transform hover:scale-110"
+          className="fixed bottom-6 right-6 h-16 w-16 rounded-full shadow-lg z-50 p-0 overflow-hidden flex items-center justify-center transition-transform hover:scale-110 bg-primary hover:bg-primary/90 text-primary-foreground"
           aria-label="Abrir Asistente AlicIA"
         >
           {isOpen ? (
             <X className="h-8 w-8" />
           ) : (
-            <Image
-              src="/images/aliciaweb8.png"
-              alt="Asistente AlicIA"
-              width={80}
-              height={80}
-              className="object-contain"
-              data-ai-hint="friendly assistant"
-            />
+            <span className="font-headline text-4xl">A</span>
           )}
         </Button>
       </PopoverTrigger>
@@ -98,15 +91,8 @@ export default function AuthorAssistantWidget({ user }: AuthorAssistantWidgetPro
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <header className="p-4 border-b flex items-center gap-3 bg-primary/5">
-            <div className="relative w-10 h-10">
-                 <Image 
-                    src="/images/aliciaweb8.png" 
-                    alt="Avatar de AlicIA"
-                    width={40}
-                    height={40}
-                    className="rounded-full border-2 border-primary"
-                     data-ai-hint="friendly assistant"
-                />
+            <div className="relative w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                 <span className="font-headline text-2xl">A</span>
             </div>
             <div>
                 <p className="font-semibold text-primary">AlicIA</p>
