@@ -35,6 +35,7 @@ export async function chatWithAuthorAssistant(
 
 const prompt = ai.definePrompt({
   name: 'authorMarketingAssistantChatPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: {schema: ChatWithAuthorAssistantInputSchema},
   output: {schema: ChatWithAuthorAssistantOutputSchema},
   prompt: `Eres un asistente experto en marketing editorial y un coach para escritores. Tu nombre es AlicIA y estás aquí para ayudar a {{authorName}}.
