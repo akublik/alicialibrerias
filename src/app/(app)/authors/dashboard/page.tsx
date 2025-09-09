@@ -37,6 +37,7 @@ import { regenerateImage } from '@/ai/flows/regenerate-image';
 import { generatePodcastScript, type GeneratePodcastScriptOutput } from '@/ai/flows/generate-podcast-script';
 import { generateVideoFromImage, type GenerateVideoOutput } from '@/ai/flows/generate-video-from-image';
 import { Badge } from '@/components/ui/badge';
+import AuthorAssistantChat from '@/components/AuthorAssistantChat';
 
 const marketingPlanFormSchema = z.object({
   title: z.string().min(3, "El título es requerido."),
@@ -582,11 +583,12 @@ export default function AuthorDashboardPage() {
       </header>
 
       <Tabs value={activeDashboardTab} onValueChange={setActiveDashboardTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="profile">Mi Perfil</TabsTrigger>
             <TabsTrigger value="analysis">Análisis de Mercado</TabsTrigger>
             <TabsTrigger value="marketing">Plan de Marketing</TabsTrigger>
+            <TabsTrigger value="assistant">Asistente IA</TabsTrigger>
             <TabsTrigger value="content-studio">Taller de contenidos</TabsTrigger>
             <TabsTrigger value="launch-calendar">Calendario</TabsTrigger>
             <TabsTrigger value="tips">Tips de Marketing</TabsTrigger>
@@ -792,6 +794,10 @@ export default function AuthorDashboardPage() {
                     )}
                 </div>
             </div>
+        </TabsContent>
+        
+        <TabsContent value="assistant" className="mt-6">
+            <AuthorAssistantChat user={user} />
         </TabsContent>
         
         <TabsContent value="content-studio" className="mt-6">

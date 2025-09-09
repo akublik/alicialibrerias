@@ -12,3 +12,4 @@ import '@/ai/flows/market-analysis.ts';
 import '@/ai/flows/generate-content-studio.ts';
 import '@/ai/flows/regenerate-image.ts';
 import '@/ai/flows/generate-podcast-script.ts';
+import '@/ai/flows/author-marketing-assistant.ts';
