@@ -14,6 +14,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import Autoplay from "embla-carousel-autoplay";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import AliciaAssistantWidget from "@/components/AliciaAssistantWidget";
 
 
 export default function HomePage() {
@@ -347,6 +348,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <AliciaAssistantWidget />
     </div>
   );
 }

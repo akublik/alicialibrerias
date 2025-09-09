@@ -3,7 +3,6 @@
 
 import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
-import AliciaAssistantWidget from '@/components/AliciaAssistantWidget';
 
 export default function AppLayout({
   children,
@@ -17,7 +16,6 @@ export default function AppLayout({
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />
-      <AliciaAssistantWidget />
     </div>
   );
 }
