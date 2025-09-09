@@ -30,14 +30,9 @@ export type ChatWithAliciaAssistantOutput = z.infer<typeof ChatWithAliciaAssista
 export async function chatWithAliciaAssistant(
   input: ChatWithAliciaAssistantInput
 ): Promise<ChatWithAliciaAssistantOutput> {
-  return chatWithAliciaAssistantFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'aliciaAssistantChatPrompt',
-  input: {schema: ChatWithAliciaAssistantInputSchema},
-  output: {schema: ChatWithAliciaAssistantOutputSchema},
-  prompt: `Eres AlicIA, una asistente virtual amigable, experta y entusiasta de la plataforma de lectura Alicia Libros. Tu misión es ayudar a los visitantes (generalmente amantes de los libros y la lectura y librerias) a entender el valor de la plataforma y guiarlos para que se registren de manera gratuita o puedan conocer el catalogo de libros disponibles.
+  const llmResponse = await ai.generate({
+    model: 'googleai/gemini-1.5-flash',
+    prompt: `Eres AlicIA, una asistente virtual amigable, experta y entusiasta de la plataforma de lectura Alicia Libros. Tu misión es ayudar a los visitantes (generalmente amantes de los libros y la lectura y librerias) a entender el valor de la plataforma y guiarlos para que se registren de manera gratuita o puedan conocer el catalogo de libros disponibles.
 
 **Tu Personalidad:**
 - **Amigable y Servicial:** Siempre saluda con calidez y mantén un tono positivo.
@@ -66,23 +61,17 @@ const prompt = ai.definePrompt({
 **Historial de la Conversación:**
 Aquí está el historial de la conversación. El último mensaje es del usuario. Tu tarea es proporcionar la siguiente respuesta en la conversación.
 
-{{#each chatHistory}}
-{{role}}: {{{content}}}
-{{/each}}
-model:`,
-});
+${input.chatHistory.map(m => `${m.role}: ${m.content}`).join('\n')}`,
+    output: {
+      schema: ChatWithAliciaAssistantOutputSchema,
+    },
+  });
 
-const chatWithAliciaAssistantFlow = ai.defineFlow(
-  {
-    name: 'chatWithAliciaAssistantFlow',
-    inputSchema: ChatWithAliciaAssistantInputSchema,
-    outputSchema: ChatWithAliciaAssistantOutputSchema,
-  },
-  async (input: ChatWithAliciaAssistantInput) => {
-    const {output} = await prompt(input);
-    if (!output || !output.response) {
-      throw new Error("AI did not return a valid response object.");
-    }
-    return {response: output.response};
+  const output = llmResponse.output;
+
+  if (!output?.response) {
+    throw new Error('AI did not return a valid response text.');
   }
-);
+
+  return { response: output.response };
+}
