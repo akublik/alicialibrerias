@@ -86,7 +86,6 @@ export default function AuthorsHomePage() {
           points: [
               "La obra será ofrecida en Alicialibros.com.",
               "Distribución extendida a librerías asociadas en Latinoamérica y España.",
-              "Disponibilidad en formato digital e impreso."
           ]
       }
   ]
