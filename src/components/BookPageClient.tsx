@@ -39,10 +39,10 @@ const StarRating = ({ rating, interactive = false, setRating }: { rating: number
 };
 
 interface BookPageClientProps {
-  slug: string;
+  slug: string; // Can be a slug or an ID
 }
 
-export default function BookPageClient({ slug }: BookPageClientProps) {
+export default function BookPageClient({ slug: idOrSlug }: BookPageClientProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toast } = useToast();
@@ -96,20 +96,31 @@ export default function BookPageClient({ slug }: BookPageClientProps) {
 
   useEffect(() => {
     const fetchBookData = async () => {
-      if (!slug || !db) return;
+      if (!idOrSlug || !db) return;
       setIsLoading(true);
+
       try {
+        let bookDoc;
         const booksRef = collection(db, "books");
-        const q = query(booksRef, where("slug", "==", slug), limit(1));
+        
+        // Try fetching by slug
+        const q = query(booksRef, where("slug", "==", idOrSlug), limit(1));
         const bookSnapshot = await getDocs(q);
 
-        if (bookSnapshot.empty) {
+        if (!bookSnapshot.empty) {
+          bookDoc = bookSnapshot.docs[0];
+        } else {
+          // If not found by slug, try fetching by ID
+          const docRef = doc(db, "books", idOrSlug);
+          bookDoc = await getDoc(docRef);
+        }
+
+        if (!bookDoc.exists()) {
           console.error("No such document!");
           setIsLoading(false);
           return;
         }
-        
-        const bookDoc = bookSnapshot.docs[0];
+
         const bookData = bookDoc.data();
         let foundBook: Book = {
             id: bookDoc.id,
@@ -187,7 +198,7 @@ export default function BookPageClient({ slug }: BookPageClientProps) {
     
     fetchBookData();
 
-  }, [slug]);
+  }, [idOrSlug]);
 
   const handleAddToCart = () => {
     if (book) {
@@ -464,7 +475,7 @@ export default function BookPageClient({ slug }: BookPageClientProps) {
                 <Card className="text-center">
                     <CardContent className="p-6">
                         <p className="text-muted-foreground">
-                            <Link href={`/login?redirect=/books/${slug}`} className="text-primary hover:underline font-semibold">Inicia sesión</Link> para dejar una reseña.
+                            <Link href={`/login?redirect=/books/${idOrSlug}`} className="text-primary hover:underline font-semibold">Inicia sesión</Link> para dejar una reseña.
                         </p>
                     </CardContent>
                 </Card>
