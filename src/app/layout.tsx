@@ -4,8 +4,8 @@ import { Providers } from "@/context/Providers";
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Alicia Libros - Tu marketplace de librerías',
-  description: "Descubre libros únicos y apoya a librerías en Latinoamérica.",
+  title: 'Alicia Libros - tu marketplace de librerías',
+  description: "Descubre libros únicos y apoya a librerías y autores en Latinoamérica.",
 };
 
 export default function RootLayout({
