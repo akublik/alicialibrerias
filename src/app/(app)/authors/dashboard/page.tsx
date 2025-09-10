@@ -1,3 +1,4 @@
+
 // src/app/(app)/authors/dashboard/page.tsx
 "use client";
 
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, UserCircle, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2, CalendarClock } from "lucide-react";
+import { Loader2, Wand2, Bot, Download, LogOut, Link as LinkIcon, BookOpen, Save, ImagePlus, Globe, Facebook, Instagram, BarChart2, Rocket, ChevronRight, UserCircle, Heart, QrCode, Lightbulb, Star, Copy, Image as ImageIcon, Video, RefreshCw, Mic, Share2, CalendarClock, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateMarketingPlan, type GenerateMarketingPlanOutput } from '@/ai/flows/generate-marketing-plan';
 import { analyzeMarketAndCompetition } from '@/ai/flows/market-analysis';
@@ -55,6 +56,8 @@ const authorProfileFormSchema = z.object({
     x: z.string().url({ message: "URL de X (Twitter) no válida." }).optional().or(z.literal('')),
     tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
     youtube: z.string().url({ message: "URL de YouTube no válida." }).optional().or(z.literal('')),
+    email: z.string().email("Debe ser un email válido.").optional().or(z.literal('')),
+    phone: z.string().optional(),
 });
 type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 
@@ -226,7 +229,7 @@ export default function AuthorDashboardPage() {
 
   const profileForm = useForm<AuthorProfileFormValues>({
       resolver: zodResolver(authorProfileFormSchema),
-      defaultValues: { bio: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "" },
+      defaultValues: { bio: "", website: "", instagram: "", facebook: "", x: "", tiktok: "", youtube: "", email: "", phone: "" },
   });
   
   const analysisForm = useForm<MarketAnalysisFormValues>({
@@ -261,6 +264,8 @@ export default function AuthorDashboardPage() {
                   x: authorData.x || "",
                   tiktok: authorData.tiktok || "",
                   youtube: authorData.youtube || "",
+                  email: authorData.email || "",
+                  phone: authorData.phone || "",
               });
               
               const booksQuery = query(collection(db, "books"), where("authors", "array-contains", authorData.name));
@@ -492,6 +497,8 @@ export default function AuthorDashboardPage() {
             x: values.x,
             tiktok: values.tiktok,
             youtube: values.youtube,
+            email: values.email,
+            phone: values.phone,
         };
 
         if (authorProfile) {
@@ -664,7 +671,14 @@ export default function AuthorDashboardPage() {
                                    <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
                                         <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
                                         <div className="space-y-2"><Label>Tu foto de perfil</Label><div className="flex items-center gap-4">{imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}<div className="flex-grow space-y-2"><div className="space-y-2"><Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">Sube un archivo nuevo (recomendado)</Label><Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} /></div></div></div></div>
-                                        <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
+                                        
+                                        <h3 className="font-headline text-lg border-t pt-4">Datos Privados de Contacto</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={profileForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Mail className="h-4 w-4"/>Email de Contacto (Privado)</FormLabel><FormControl><Input {...field} placeholder="tu@email.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                            <FormField control={profileForm.control} name="phone" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Phone className="h-4 w-4"/>Teléfono (Privado)</FormLabel><FormControl><Input {...field} placeholder="0991234567" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        </div>
+
+                                        <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web (Públicos)</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
                                             <FormField control={profileForm.control} name="instagram" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Instagram className="h-4 w-4"/>Instagram</FormLabel><FormControl><Input {...field} placeholder="https://instagram.com/tu-usuario" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
