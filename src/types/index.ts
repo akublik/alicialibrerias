@@ -193,6 +193,8 @@ export interface Author {
   tiktok?: string;
   youtube?: string;
   website?: string;
+  email?: string;
+  phone?: string;
 }
 
 export interface SecondaryBannerSlide {

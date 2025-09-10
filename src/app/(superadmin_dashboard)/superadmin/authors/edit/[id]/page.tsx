@@ -27,6 +27,8 @@ const authorFormSchema = z.object({
   imageUrl: z.string().url("Debe ser una URL de imagen válida.").optional().or(z.literal('')),
   dataAiHint: z.string().optional(),
   countries: z.array(z.string()).min(1, "Debes seleccionar al menos un país."),
+  email: z.string().email({ message: "Email inválido." }).optional().or(z.literal('')),
+  phone: z.string().optional(),
 });
 
 type AuthorFormValues = z.infer<typeof authorFormSchema>;
@@ -47,6 +49,8 @@ export default function EditAuthorPage() {
       imageUrl: "",
       dataAiHint: "",
       countries: [],
+      email: "",
+      phone: "",
     },
   });
 
@@ -66,6 +70,8 @@ export default function EditAuthorPage() {
             imageUrl: authorData.imageUrl,
             dataAiHint: authorData.dataAiHint || "",
             countries: authorData.countries || [],
+            email: authorData.email || "",
+            phone: authorData.phone || "",
           });
         } else {
           toast({ title: "Error", description: "Autor no encontrado.", variant: "destructive" });
@@ -122,6 +128,14 @@ export default function EditAuthorPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nombre Completo</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )} />
+              
+              <h3 className="font-headline text-lg border-t pt-4">Datos Privados</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email de Contacto</FormLabel><FormControl><Input type="email" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Teléfono</FormLabel><FormControl><Input type="tel" {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
+              </div>
+              
+              <h3 className="font-headline text-lg border-t pt-4">Datos Públicos</h3>
               <FormField control={form.control} name="imageUrl" render={({ field }) => ( <FormItem><FormLabel>URL de la Foto</FormLabel><FormControl><Input type="url" {...field} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="dataAiHint" render={({ field }) => ( <FormItem><FormLabel>Pista IA (1-2 palabras)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem> )} />
               <FormField control={form.control} name="countries" render={({ field }) => ( <FormItem><FormLabel>Visibilidad por País</FormLabel><FormControl><MultiSelect placeholder="Selecciona países..." options={countryOptions} value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
