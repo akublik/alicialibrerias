@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
@@ -56,8 +56,8 @@ const authorProfileFormSchema = z.object({
     x: z.string().url({ message: "URL de X (Twitter) no válida." }).optional().or(z.literal('')),
     tiktok: z.string().url({ message: "URL de TikTok no válida." }).optional().or(z.literal('')),
     youtube: z.string().url({ message: "URL de YouTube no válida." }).optional().or(z.literal('')),
-    email: z.string().email("Debe ser un email válido.").optional().or(z.literal('')),
-    phone: z.string().optional(),
+    email: z.string().email("Debe ser un email válido."),
+    phone: z.string().min(7, { message: "El teléfono debe tener al menos 7 dígitos." }),
 });
 type AuthorProfileFormValues = z.infer<typeof authorProfileFormSchema>;
 
@@ -672,10 +672,13 @@ export default function AuthorDashboardPage() {
                                         <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
                                         <div className="space-y-2"><Label>Tu foto de perfil</Label><div className="flex items-center gap-4">{imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}<div className="flex-grow space-y-2"><div className="space-y-2"><Label htmlFor="profile-image-upload" className="text-xs text-muted-foreground">Sube un archivo nuevo (recomendado)</Label><Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} /></div></div></div></div>
                                         
-                                        <h3 className="font-headline text-lg border-t pt-4">Datos Privados de Contacto</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <FormField control={profileForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Mail className="h-4 w-4"/>Email de Contacto (Privado)</FormLabel><FormControl><Input {...field} placeholder="tu@email.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
-                                            <FormField control={profileForm.control} name="phone" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Phone className="h-4 w-4"/>Teléfono (Privado)</FormLabel><FormControl><Input {...field} placeholder="0991234567" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
+                                        <div className="border-t pt-4">
+                                            <h3 className="font-headline text-lg">Datos Privados de Contacto</h3>
+                                            <p className="text-sm text-muted-foreground mb-4">Esta información es obligatoria y será utilizada por el equipo de Alicia Libros para comunicarse contigo. No será pública.</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <FormField control={profileForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Mail className="h-4 w-4"/>Email de Contacto</FormLabel><FormControl><Input {...field} placeholder="tu@email.com" /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={profileForm.control} name="phone" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Phone className="h-4 w-4"/>Teléfono</FormLabel><FormControl><Input {...field} placeholder="0991234567" /></FormControl><FormMessage /></FormItem> )}/>
+                                            </div>
                                         </div>
 
                                         <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web (Públicos)</h3>
@@ -701,6 +704,16 @@ export default function AuthorDashboardPage() {
                                    <form onSubmit={profileForm.handleSubmit(onSubmitAuthorProfile)} className="space-y-6">
                                         <FormField control={profileForm.control} name="bio" render={({ field }) => ( <FormItem><FormLabel>Biografía</FormLabel><FormControl><Textarea {...field} rows={5} placeholder="Cuéntanos sobre ti, tu estilo de escritura, tus inspiraciones..."/></FormControl><FormMessage /></FormItem> )}/>
                                         <div className="space-y-2"><Label htmlFor="profile-image-upload">Tu foto de perfil</Label>{imagePreview && <Image src={imagePreview} alt="Vista previa" width={80} height={80} className="rounded-full aspect-square object-cover" />}<Input id="profile-image-upload" type="file" accept="image/*" onChange={handleProfileImageChange} required/></div>
+                                         
+                                         <div className="border-t pt-4">
+                                            <h3 className="font-headline text-lg">Datos Privados de Contacto</h3>
+                                            <p className="text-sm text-muted-foreground mb-4">Esta información es obligatoria y será utilizada por el equipo de Alicia Libros para comunicarse contigo. No será pública.</p>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <FormField control={profileForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Mail className="h-4 w-4"/>Email de Contacto</FormLabel><FormControl><Input {...field} placeholder="tu@email.com"/></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={profileForm.control} name="phone" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Phone className="h-4 w-4"/>Teléfono</FormLabel><FormControl><Input {...field} placeholder="0991234567"/></FormControl><FormMessage /></FormItem> )}/>
+                                            </div>
+                                        </div>
+                                         
                                          <h3 className="font-headline text-lg border-t pt-4">Enlaces Sociales y Web</h3>
                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={profileForm.control} name="website" render={({ field }) => ( <FormItem><FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sitio Web</FormLabel><FormControl><Input {...field} placeholder="https://tuweb.com" value={field.value || ''}/></FormControl><FormMessage /></FormItem> )}/>
