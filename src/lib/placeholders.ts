@@ -54,7 +54,8 @@ export const placeholderLibraries: Library[] = [
     location: 'Quito, Ecuador',
     imageUrl: 'https://placehold.co/400x300.png',
     dataAiHint: 'bookstore interior',
-    description: 'Un rincón acogedor para los amantes de la lectura en el corazón de Quito.'
+    description: 'Un rincón acogedor para los amantes de la lectura en el corazón de Quito.',
+    apiKey: 'placeholder-key-1'
   },
   {
     id: '2',
@@ -62,7 +63,8 @@ export const placeholderLibraries: Library[] = [
     location: 'Guayaquil, Ecuador',
     imageUrl: 'https://placehold.co/400x300.png',
     dataAiHint: 'library books',
-    description: 'La mayor variedad de libros y eventos culturales en Guayaquil.'
+    description: 'La mayor variedad de libros y eventos culturales en Guayaquil.',
+    apiKey: 'placeholder-key-2'
   },
   {
     id: '3',
@@ -70,7 +72,8 @@ export const placeholderLibraries: Library[] = [
     location: 'Cuenca, Ecuador',
     imageUrl: 'https://placehold.co/400x300.png',
     dataAiHint: 'cafe bookstore',
-    description: 'Café y librería, el lugar perfecto para disfrutar de un buen libro.'
+    description: 'Café y librería, el lugar perfecto para disfrutar de un buen libro.',
+    apiKey: 'placeholder-key-3'
   },
     {
     id: '4',
@@ -78,7 +81,8 @@ export const placeholderLibraries: Library[] = [
     location: 'Bogotá, Colombia',
     imageUrl: 'https://placehold.co/400x300.png',
     dataAiHint: 'modern bookstore',
-    description: 'Descubre tesoros literarios en nuestra librería en Bogotá.'
+    description: 'Descubre tesoros literarios en nuestra librería en Bogotá.',
+    apiKey: 'placeholder-key-4'
   },
   {
     id: '5',
@@ -86,7 +90,8 @@ export const placeholderLibraries: Library[] = [
     location: 'Lima, Perú',
     imageUrl: 'https://placehold.co/400x300.png',
     dataAiHint: 'cozy library',
-    description: 'Fomentando la lectura y la cultura en Lima.'
+    description: 'Fomentando la lectura y la cultura en Lima.',
+    apiKey: 'placeholder-key-5'
   },
 ];
 
