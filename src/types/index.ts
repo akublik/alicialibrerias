@@ -70,6 +70,7 @@ export interface Library {
   facebook?: string;
   tiktok?: string;
   isActive?: boolean;
+  apiKey?: string; // Secure key for API access
   createdAt?: any; // Firestore Timestamp
   importRules?: string; // JSON string with import rules
 }
