@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Store, MoreHorizontal, Eye, BarChart3, ShoppingCart, BookCopy, ExternalLink } from "lucide-react";
+import { Loader2, Store, MoreHorizontal, Eye, BarChart3, ShoppingCart, BookCopy, ExternalLink, Edit } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -200,6 +200,11 @@ export default function ManageLibrariesPage() {
                             <DropdownMenuItem onClick={() => handleOpenDetails(library)}>
                                <Eye className="mr-2 h-4 w-4" />
                                Ver Detalles
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                               <Link href={`/superadmin/libraries/edit/${library.id}`}>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
+                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                              <DropdownMenuItem asChild>
