@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Validate API Key
     const librariesRef = db.collection('libraries');
-    const q = librariesRef.where('apiKey', '==', apiKey).limit(1);
+    const q = librariesRef.where('apiKey', '==', apiKey).where('isActive', '==', true).limit(1);
     const librarySnapshot = await q.get();
 
     if (librarySnapshot.empty) {
