@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Users, Gift, MoreHorizontal, Edit, PlusCircle } from "lucide-react";
+import { Loader2, Users, Gift, MoreHorizontal, Edit, PlusCircle, ShoppingBag } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, addDoc, query, where, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PointsHistoryTableProps {
     transactions: PointsTransaction[];
@@ -62,7 +63,8 @@ function PointsHistoryTable({ transactions, libraries, isLoading }: PointsHistor
 
 export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [libraries, setLibraries] = useState<Map<string, string>>(new Map());
+  const [libraries, setLibraries] = useState<Library[]>([]);
+  const [libraryMap, setLibraryMap] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
@@ -73,6 +75,12 @@ export default function ManageUsersPage() {
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const pointAdjustmentFormRef = useRef<HTMLFormElement>(null);
+
+  // State for API Test Dialog
+  const [isTestApiDialogOpen, setIsTestApiDialogOpen] = useState(false);
+  const [testApiUser, setTestApiUser] = useState<User | null>(null);
+  const [isTestingApi, setIsTestingApi] = useState(false);
+  const apiTestFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const userDataString = localStorage.getItem("aliciaLibros_user");
@@ -103,9 +111,12 @@ export default function ManageUsersPage() {
     });
     
     const librariesUnsubscribe = onSnapshot(collection(db, "libraries"), (snapshot) => {
+        const libs = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}) as Library);
+        setLibraries(libs);
+
         const libMap = new Map<string, string>();
         snapshot.forEach(doc => libMap.set(doc.id, doc.data().name));
-        setLibraries(libMap);
+        setLibraryMap(libMap);
     }, (error) => {
       console.error("Error fetching libraries:", error);
     });
@@ -120,7 +131,7 @@ export default function ManageUsersPage() {
     if (!selectedUser || !db) return;
 
     setIsLoadingHistory(true);
-    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id));
+    const q = query(collection(db, "pointsTransactions"), where("userId", "==", selectedUser.id), orderBy("createdAt", "desc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       let history = snapshot.docs.map(doc => ({ 
@@ -128,8 +139,6 @@ export default function ManageUsersPage() {
         ...doc.data(), 
         createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate().toISOString() : new Date().toISOString()
       } as PointsTransaction));
-
-      history.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       setPointsHistory(history);
       setIsLoadingHistory(false);
@@ -202,6 +211,56 @@ export default function ManageUsersPage() {
       } catch (error: any) {
           toast({ title: "Error en el ajuste", description: error.message || "No se pudo completar la transacción.", variant: "destructive" });
       }
+  };
+
+  const handleTestApiSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!testApiUser) return;
+    
+    const formData = new FormData(event.currentTarget);
+    const purchaseAmount = parseFloat(formData.get('purchaseAmount') as string);
+    const libraryId = formData.get('libraryId') as string;
+    
+    const selectedLibrary = libraries.find(lib => lib.id === libraryId);
+
+    if (isNaN(purchaseAmount) || purchaseAmount <= 0) {
+      toast({ title: "Monto de compra inválido", variant: "destructive" });
+      return;
+    }
+    if (!selectedLibrary || !selectedLibrary.apiKey) {
+      toast({ title: "Librería no válida o sin API Key", variant: "destructive" });
+      return;
+    }
+
+    setIsTestingApi(true);
+    try {
+        const response = await fetch('/api/transactions/grant-points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: testApiUser.id,
+                purchaseAmount,
+                apiKey: selectedLibrary.apiKey,
+            }),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Respuesta de API no exitosa.');
+        }
+
+        toast({
+            title: "Prueba de API Exitosa",
+            description: result.message || "Puntos otorgados correctamente.",
+        });
+        setIsTestApiDialogOpen(false);
+
+    } catch (error: any) {
+        toast({ title: "Error en Prueba de API", description: error.message, variant: "destructive" });
+    } finally {
+        setIsTestingApi(false);
+    }
   };
 
   const getRoleBadgeVariant = (role: User['role']) => {
@@ -288,6 +347,9 @@ export default function ManageUsersPage() {
                             <DropdownMenuItem onSelect={() => { setSelectedUser(user); setIsPointsDialogOpen(true); }}>
                                 <Edit className="mr-2 h-4 w-4" /> Gestionar Puntos
                             </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setTestApiUser(user); setIsTestApiDialogOpen(true); }}>
+                                <ShoppingBag className="mr-2 h-4 w-4" /> Otorgar Puntos (Test)
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                     </TableCell>
@@ -332,7 +394,7 @@ export default function ManageUsersPage() {
                 <Card>
                     <CardHeader><CardTitle>Historial de Puntos</CardTitle></CardHeader>
                     <CardContent className="h-[300px] overflow-y-auto">
-                        <PointsHistoryTable transactions={pointsHistory} libraries={libraries} isLoading={isLoadingHistory} />
+                        <PointsHistoryTable transactions={pointsHistory} libraries={libraryMap} isLoading={isLoadingHistory} />
                     </CardContent>
                 </Card>
             </div>
@@ -342,6 +404,40 @@ export default function ManageUsersPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    
+    <Dialog open={isTestApiDialogOpen} onOpenChange={setIsTestApiDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Probar API de Puntos</DialogTitle>
+                <DialogDescription>Simula una compra en una librería física para {testApiUser?.name}.</DialogDescription>
+            </DialogHeader>
+            <form ref={apiTestFormRef} onSubmit={handleTestApiSubmit} className="space-y-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="libraryId">Librería</Label>
+                    <Select name="libraryId" required>
+                        <SelectTrigger><SelectValue placeholder="Selecciona una librería"/></SelectTrigger>
+                        <SelectContent>
+                            {libraries.filter(lib => lib.apiKey).map(lib => (
+                                <SelectItem key={lib.id} value={lib.id}>{lib.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="purchaseAmount">Monto de la Compra</Label>
+                    <Input id="purchaseAmount" name="purchaseAmount" type="number" step="0.01" placeholder="Ej: 25.50" required />
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsTestApiDialogOpen(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={isTestingApi}>
+                        {isTestingApi && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Otorgar Puntos
+                    </Button>
+                </DialogFooter>
+            </form>
+        </DialogContent>
+    </Dialog>
+
     </>
   );
 }
